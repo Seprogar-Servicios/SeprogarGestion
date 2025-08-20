@@ -7,6 +7,9 @@ const mongoose = require('mongoose');
 
 const app = express();
 
+// Configurar trust proxy para entornos de producción (necesario para express-rate-limit en Render)
+app.set('trust proxy', 1);
+
 // Jobs programados (Agenda.js)
 const agenda = require('./jobs/agenda');
 
