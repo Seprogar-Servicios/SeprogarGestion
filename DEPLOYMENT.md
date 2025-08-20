@@ -79,8 +79,8 @@ Esta cadena debe ser configurada en las variables de entorno de Render, reemplaz
 
 ```json
 "scripts": {
-  "start": "node dist/server.js",
-  "build": "tsc",
+  "start": "node src/server.js",
+  "build": "echo 'Build completed'",
   "dev": "nodemon src/server.js"
 }
 ```
@@ -124,7 +124,7 @@ services:
    - Entorno: Node
    - Región: Selecciona la más cercana a tus usuarios
    - Rama: main (o la que uses para producción)
-   - Comando de construcción: `npm install && npm run build`
+   - Comando de construcción: `npm install && npm run build` (ya configurado en render.yaml)
    - Comando de inicio: `npm start`
 
 ### 2.3 Configurar variables de entorno
