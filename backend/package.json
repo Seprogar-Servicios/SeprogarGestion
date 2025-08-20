@@ -8,7 +8,8 @@
     "build": "echo \"Build completed\"",
     "dev": "nodemon src/server.js",
     "lint": "eslint .",
-    "swagger-autogen": "node src/swagger/swagger.js"
+    "swagger-autogen": "node src/swagger/swagger.js",
+    "init-admin": "node scripts/initAdmin.js"
   },
   "dependencies": {
     "agenda": "^5.0.0",
