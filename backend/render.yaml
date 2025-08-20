@@ -21,3 +21,5 @@ services:
         sync: false
       - key: VAPID_PRIVATE_KEY
         sync: false
+      - key: CORS_ORIGINS
+        value: https://futurgas-gestion.vercel.app
