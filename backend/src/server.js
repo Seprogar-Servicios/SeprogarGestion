@@ -81,6 +81,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date() });
 });
 
+// IP check route para obtener la IP de Render
+app.get('/api/ip', (req, res) => {
+  const ipInfo = {
+    'x-forwarded-for': req.headers['x-forwarded-for'],
+    'remoteAddress': req.connection.remoteAddress,
+    'ip': req.ip
+  };
+  console.log('IP addresses:', ipInfo);
+  res.json(ipInfo);
+});
+
 // Rutas principales
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/usuarios', require('./routes/user.routes'));
