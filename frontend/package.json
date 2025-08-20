@@ -6,8 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build --emptyOutDir",
+    "preview": "vite preview",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "postinstall": "tailwindcss install --force"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^1.9.7",
