@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "vite build --emptyOutDir",
     "preview": "vite preview",
-    "lint": "eslint .",
-    "postinstall": "lightningcss rebuild"
+    "lint": "eslint ."
   },
   "engines": {
     "node": ">=18"
