@@ -3,10 +3,6 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  css: {
-    // Deshabilitar LightningCSS y usar procesador CSS estándar
-    transformer: 'postcss',
-  },
   plugins: [
     react(),
     tailwindcss(),

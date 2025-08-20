@@ -343,6 +343,79 @@ async function getTareas(req, res) {
 
 ---
 
+## 5. Solución de Problemas Comunes
+
+### 5.1 Errores con módulos nativos en Vercel
+
+Vercel puede tener problemas con módulos nativos como Rollup y LightningCSS. Para solucionarlos:
+
+1. **Configurar .npmrc**:
+
+```
+# Disable native addons
+node-gyp=false
+builtin-modules=true
+prefer-dedupe=true
+legacy-peer-deps=true
+
+# Disable rollup native binaries
+rollup:pure=true
+rollup:native=false
+ROLLUP_SKIP_NODEJS_NATIVE=1
+ROLLUP_PURE_RUNTIME=1
+
+# Disable LightningCSS native binaries
+lightningcss:pure=true
+lightningcss:native=false
+LIGHTNINGCSS_SKIP_NODEJS_NATIVE=1
+LIGHTNINGCSS_PURE_RUNTIME=1
+```
+
+2. **Configurar variables de entorno**:
+
+Añade estas variables en `.env` y `.env.production`:
+
+```
+ROLLUP_SKIP_NODEJS_NATIVE=1
+ROLLUP_PURE_RUNTIME=1
+LIGHTNINGCSS_SKIP_NODEJS_NATIVE=1
+LIGHTNINGCSS_PURE_RUNTIME=1
+```
+
+3. **Modificar vite.config.ts**:
+
+Configura Vite para usar PostCSS en lugar de LightningCSS:
+
+```typescript
+export default defineConfig({
+  css: {
+    // Deshabilitar LightningCSS y usar procesador CSS estándar
+    transformer: 'postcss',
+  },
+  // resto de la configuración...
+});
+```
+
+4. **Simplificar script de build**:
+
+En `package.json`, simplifica el script de build para evitar problemas con TypeScript y rollup:
+
+```json
+"scripts": {
+  "build": "vite build --emptyOutDir",
+  // otros scripts...
+}
+```
+
+### 5.2 Problemas con express-rate-limit en Render
+
+Si usas express-rate-limit y tu aplicación está detrás de un proxy (como en Render), necesitas configurar Express para confiar en el proxy:
+
+```javascript
+// Añade esto antes de definir el rate limiter
+app.set('trust proxy', 1);
+```
+
 ## Verificación Final
 
 Después de completar todos los pasos de despliegue, verifica:
