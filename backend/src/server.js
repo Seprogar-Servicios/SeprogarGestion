@@ -1,0 +1,97 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const mongoose = require('mongoose');
+
+const app = express();
+
+// Jobs programados (Agenda.js)
+const agenda = require('./jobs/agenda');
+
+// Middlewares
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+// Configuración de CORS para desarrollo
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permitir solicitudes sin 'origin' (como aplicaciones móviles o curl)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',  // Frontend en desarrollo (React)
+      'http://localhost:5173',  // Frontend en desarrollo (Vite)
+      'http://localhost:4000',  // Backend (si se accede directamente)
+      ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [])
+    ];
+    
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200, // Algunos navegadores (IE11, varios SmartTVs) fallan con 204
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Total-Count']
+};
+
+app.use(cors(corsOptions));
+
+// Manejar solicitudes OPTIONS (preflight)
+app.options('*', cors(corsOptions));
+app.use(morgan('dev'));
+
+// Configuración de rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 300, // límite de 300 peticiones por ventana por IP
+  message: 'Demasiadas peticiones desde esta IP, por favor inténtalo de nuevo en 15 minutos',
+  standardHeaders: true, // Devuelve información del límite en las cabeceras
+  legacyHeaders: false, // Desactiva los headers antiguos
+  skip: (req) => {
+    // No aplicar límite a rutas específicas que podrían necesitar más peticiones
+    const skipPaths = ['/api/tareas/crear-masivo', '/api/tareas/actualizar-masivo'];
+    return skipPaths.some(path => req.path.startsWith(path));
+  }
+});
+
+// Aplicar rate limiting a todas las rutas API
+const apiLimiter = limiter;
+app.use(apiLimiter);
+
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('MongoDB connected');
+}).catch((err) => {
+  console.error('MongoDB connection error:', err);
+});
+
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date() });
+});
+
+// Rutas principales
+app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/usuarios', require('./routes/user.routes'));
+app.use('/api/tareas', require('./routes/tarea.routes'));
+app.use('/api/especialidades', require('./routes/especialidad.routes'));
+app.use('/api/materiales', require('./routes/material.routes'));
+app.use('/api/data', require('./routes/data.routes'));
+app.use('/api/notifications', require('./routes/notification.routes'));
+app.use('/api/subscribe', require('./routes/subscriptionRoutes'));
+app.use('/api-docs', require('./swagger/swaggerUI'));
+
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  // Iniciar jobs automáticos
+  agenda.start();
+});
