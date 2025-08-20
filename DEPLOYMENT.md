@@ -382,16 +382,16 @@ LIGHTNINGCSS_SKIP_NODEJS_NATIVE=1
 LIGHTNINGCSS_PURE_RUNTIME=1
 ```
 
-3. **Modificar vite.config.ts**:
+3. **Mantener configuración estándar de Vite**:
 
-Configura Vite para usar PostCSS en lugar de LightningCSS:
+No modificar la configuración CSS en vite.config.ts, ya que puede causar problemas con Tailwind. Mantener la configuración estándar:
 
 ```typescript
 export default defineConfig({
-  css: {
-    // Deshabilitar LightningCSS y usar procesador CSS estándar
-    transformer: 'postcss',
-  },
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
   // resto de la configuración...
 });
 ```

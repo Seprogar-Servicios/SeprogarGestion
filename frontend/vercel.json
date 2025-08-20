@@ -4,8 +4,8 @@
   ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "installCommand": "npm install --no-optional --no-audit --no-fund --omit=optional",
   "framework": "vite",
-  "installCommand": "npm install --no-optional --no-audit --no-fund",
   "headers": [
     {
       "source": "/(.*)",
@@ -13,5 +13,11 @@
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
     }
-  ]
+  ],
+  "env": {
+    "LIGHTNINGCSS_SKIP_NODEJS_NATIVE": "1",
+    "LIGHTNINGCSS_PURE_RUNTIME": "1",
+    "ROLLUP_SKIP_NODEJS_NATIVE": "1",
+    "ROLLUP_PURE_RUNTIME": "1"
+  }
 }
