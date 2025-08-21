@@ -429,13 +429,23 @@ const TaskList: React.FC = () => {
       if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
       if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
       if (task.direccion) message += `• *Direccion:* ${task.direccion}\n`;
+      // Siempre mostrar información sobre la fecha de ejecución
       if (task.fechaEjecucion) {
-        message += `• *Fecha:* ${new Date(task.fechaEjecucion).toLocaleDateString('es-AR', {
+        // Obtener la fecha original
+        const fecha = new Date(task.fechaEjecucion);
+        // Ajustar para la zona horaria de Argentina (UTC-3)
+        // Añadir un día completo para compensar el problema
+        const fechaAjustada = new Date(fecha);
+        fechaAjustada.setDate(fecha.getDate() + 1);
+        
+        message += `• *Fecha de Ejecución:* ${fechaAjustada.toLocaleDateString('es-AR', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
           day: 'numeric'
         })}\n`;
+      } else {
+        message += `• *Fecha de Ejecución:* No programada\n`;
       }
       message += '\n';
     });
@@ -712,12 +722,20 @@ const TaskList: React.FC = () => {
                       </div>
                     )}
                     
-                    {task.fechaEjecucion && (
-                      <div className="flex items-center mr-4 mb-1">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {new Date(task.fechaEjecucion).toLocaleDateString()}
-                      </div>
-                    )}
+                    <div className="flex items-center mr-4 mb-1">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {task.fechaEjecucion 
+                        ? (() => {
+                            // Obtener la fecha original
+                            const fecha = new Date(task.fechaEjecucion);
+                            // Ajustar para la zona horaria de Argentina (UTC-3)
+                            // Añadir un día completo para compensar el problema
+                            const fechaAjustada = new Date(fecha);
+                            fechaAjustada.setDate(fecha.getDate() + 1);
+                            return fechaAjustada.toLocaleDateString('es-AR');
+                          })() 
+                        : <span className="text-gray-400 italic">Fecha no programada</span>}
+                    </div>
                   </div>
                 </div>
                 
