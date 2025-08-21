@@ -64,6 +64,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data: T;
   message?: string;
+  usuario?: T; // Para manejar respuestas del backend que usan 'usuario' en lugar de 'data'
 }
 
 export interface LoginCredentials {

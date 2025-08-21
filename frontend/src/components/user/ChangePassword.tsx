@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAppSelector } from '../../store';
 import { Lock, Eye, EyeOff, Save, AlertCircle, CheckCircle } from 'lucide-react';
 import api from '../../config/api';
+import { validatePassword } from '../../utils/passwordValidation';
 
 interface ChangePasswordFormData {
   currentPassword: string;
@@ -22,6 +23,7 @@ const ChangePassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [passwordValidation, setPasswordValidation] = useState<{ isValid: boolean; errors: string[] }>({ isValid: true, errors: [] });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -29,6 +31,11 @@ const ChangePassword: React.FC = () => {
     // Limpiar mensajes de error/éxito cuando el usuario empieza a escribir
     setError(null);
     setSuccess(null);
+    
+    // Validar contraseña cuando cambia
+    if (name === 'newPassword') {
+      setPasswordValidation(validatePassword(value));
+    }
   };
 
   const validateForm = (): boolean => {
@@ -40,10 +47,15 @@ const ChangePassword: React.FC = () => {
       setError('La nueva contraseña es requerida');
       return false;
     }
-    if (formData.newPassword.length < 6) {
-      setError('La nueva contraseña debe tener al menos 6 caracteres');
+    
+    // Validar requisitos de seguridad de la contraseña
+    const validation = validatePassword(formData.newPassword);
+    if (!validation.isValid) {
+      setPasswordValidation(validation);
+      setError('La contraseña no cumple con los requisitos de seguridad');
       return false;
     }
+    
     if (formData.newPassword !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       return false;
@@ -196,9 +208,27 @@ const ChangePassword: React.FC = () => {
               {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            La contraseña debe tener al menos 6 caracteres
-          </p>
+          {/* Mostrar errores de validación de contraseña */}
+          {formData.newPassword && !passwordValidation.isValid && (
+            <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-md">
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">La contraseña debe cumplir los siguientes requisitos:</h4>
+              <ul className="list-disc pl-5 text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
+                {passwordValidation.errors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Requisitos de contraseña */}
+          {formData.newPassword && passwordValidation.isValid && (
+            <div className="mt-2 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md">
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                <span className="text-xs text-green-700 dark:text-green-300">La contraseña cumple con todos los requisitos</span>
+              </div>
+            </div>
+          )}
         </div>
         
         <div>
@@ -232,7 +262,7 @@ const ChangePassword: React.FC = () => {
         <div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (formData.newPassword !== '' && !passwordValidation.isValid) || formData.newPassword !== formData.confirmPassword}
             className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
               loading ? 'opacity-70 cursor-not-allowed' : ''
             }`}

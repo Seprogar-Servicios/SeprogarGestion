@@ -73,14 +73,10 @@ export const registerUser = createAsyncThunk(
   'auth/register',
   async (userData: RegisterData, { rejectWithValue }) => {
     try {
-      const response = await api.post<ApiResponse<{ user: User; accessToken: string; refreshToken: string }>>('/auth/register', userData);
-      const { user, accessToken, refreshToken } = response.data.data;
-      
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      return { user, accessToken, refreshToken };
+      const response = await api.post<ApiResponse<{ message: string }>>('/auth/register', userData);
+      // Solo devolvemos el mensaje de éxito, ya que el backend no proporciona tokens
+      // porque el usuario necesita ser aprobado primero
+      return { message: response.data.message || 'Registro exitoso. Espera aprobación del administrador.' };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Error al registrarse');
     }
@@ -188,12 +184,10 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action) => {
+      .addCase(registerUser.fulfilled, (state) => {
         state.loading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
-        state.isAuthenticated = true;
+        // No actualizamos el estado de autenticación porque el usuario necesita ser aprobado
+        // Solo limpiamos el error para mostrar el mensaje de éxito
         state.error = null;
       })
       .addCase(registerUser.rejected, (state, action) => {

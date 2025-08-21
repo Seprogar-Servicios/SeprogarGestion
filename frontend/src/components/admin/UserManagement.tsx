@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { fetchUsers, updateUser, createUser, deleteUser } from '../../store/slices/usersSlice';
+import { fetchUsers, updateUser, createUser, deleteUser, fetchPendingUsers, approveUser } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import { 
   Users, 
@@ -12,7 +12,10 @@ import {
   Plus,
   RefreshCw,
   Key,
-  Trash2
+  Trash2,
+  CheckCircle,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import api from '../../config/api';
 import type { User } from '../../types';
@@ -31,11 +34,12 @@ const UserManagement: React.FC = () => {
     );
   }
   const dispatch = useAppDispatch();
-  const { users, loading } = useAppSelector((state) => state.users);
+  const { users, pendingUsers, loading } = useAppSelector((state) => state.users);
   const { especialidades } = useAppSelector((state) => state.especialidades);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'usuario'>('all');
+  const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -74,6 +78,7 @@ const UserManagement: React.FC = () => {
   useEffect(() => {
     if (user?.rol === 'admin') {
       dispatch(fetchUsers());
+      dispatch(fetchPendingUsers());
       dispatch(fetchEspecialidades());
     }
   }, [dispatch, user?.rol]);
@@ -309,7 +314,12 @@ const UserManagement: React.FC = () => {
     );
   };
 
+  // Asegurar que solo se muestren usuarios aprobados en la lista de usuarios filtrados
   const filteredUsers = users?.filter(user => {
+    // Verificar que el usuario no esté en la lista de pendientes
+    const isPending = pendingUsers?.some(pendingUser => pendingUser._id === user._id);
+    if (isPending) return false;
+    
     const matchesSearch = user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === 'all' || user.rol === filterRole;
@@ -325,6 +335,12 @@ const UserManagement: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400">
             Administra usuarios del sistema y aprueba nuevos registros
           </p>
+          {pendingUsers && pendingUsers.length > 0 && (
+            <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+              <AlertCircle className="h-4 w-4 mr-1" />
+              {pendingUsers.length} {pendingUsers.length === 1 ? 'usuario pendiente' : 'usuarios pendientes'} de aprobación
+            </div>
+          )}
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -333,6 +349,37 @@ const UserManagement: React.FC = () => {
           <Plus className="h-4 w-4 mr-2" />
           Crear Usuario
         </button>
+      </div>
+      
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700 mt-6">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('approved')}
+            className={`${activeTab === 'approved' 
+              ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'} 
+              whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+          >
+            <Users className="h-5 w-5 mr-2" />
+            Usuarios Aprobados
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`${activeTab === 'pending' 
+              ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400' 
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'} 
+              whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center`}
+          >
+            <Clock className="h-5 w-5 mr-2" />
+            Usuarios Pendientes
+            {pendingUsers && pendingUsers.length > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-yellow-500 rounded-full">
+                {pendingUsers.length}
+              </span>
+            )}
+          </button>
+        </nav>
       </div>
 
       {/* Header de usuarios */}
@@ -343,37 +390,135 @@ const UserManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar usuarios..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          />
+      {/* Search and Filter - Only show for approved users tab */}
+      {activeTab === 'approved' && (
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 my-4">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar usuarios..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-3 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            />
+          </div>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Filter className="h-5 w-5 text-gray-400" />
+            </div>
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value as 'all' | 'admin' | 'usuario')}
+              className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              <option value="all">Todos los roles</option>
+              <option value="admin">Administradores</option>
+              <option value="usuario">Usuarios/Técnicos</option>
+            </select>
+          </div>
         </div>
-        
-        <div className="relative">
-          <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <select
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value as any)}
-            className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          >
-            <option value="all">Todos los roles</option>
-            <option value="admin">Administradores</option>
-            <option value="usuario">Usuarios/Técnicos</option>
-          </select>
-        </div>
-      </div>
+      )}
 
       {/* Content */}
-      {/* Approved Users */}
-      <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+      {/* Pending Users Tab */}
+      {activeTab === 'pending' && (
+        <div className="mt-6">
+          {pendingUsers && pendingUsers.length > 0 ? (
+            <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                {pendingUsers.map((pendingUser) => (
+                  <li key={pendingUser._id} className="px-6 py-4 hover:bg-yellow-50 dark:hover:bg-gray-700 border-l-4 border-yellow-400">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center">
+                            <UserIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="flex items-center">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {pendingUser.nombre}
+                            </div>
+                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              Pendiente
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{pendingUser.email}</div>
+                          {pendingUser.telefono && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              <span className="inline-flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                {pendingUser.telefono}
+                              </span>
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-400 dark:text-gray-500">
+                            Registrado: {new Date(pendingUser.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={async () => {
+                            try {
+                              await dispatch(approveUser(pendingUser._id)).unwrap();
+                              const { toast } = await import('react-toastify');
+                              toast.success(`Usuario ${pendingUser.nombre} aprobado correctamente`, {
+                                position: "top-right",
+                                autoClose: 3000,
+                              });
+                            } catch (error) {
+                              console.error('Error al aprobar usuario:', error);
+                              const { toast } = await import('react-toastify');
+                              toast.error('Error al aprobar el usuario', {
+                                position: "top-right",
+                                autoClose: 3000,
+                              });
+                            }
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                          title="Aprobar usuario"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Aprobar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(pendingUser._id, pendingUser.nombre)}
+                          className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                          title="Rechazar usuario"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 dark:bg-yellow-900 mb-4">
+                <Clock className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No hay usuarios pendientes</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Todos los usuarios han sido aprobados o no hay nuevos registros pendientes.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Approved Users Tab */}
+      {activeTab === 'approved' && (
+        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md mt-6">
+          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
           {loading ? (
             [...Array(5)].map((_, i) => (
               <li key={i} className="px-6 py-4">
@@ -414,6 +559,16 @@ const UserManagement: React.FC = () => {
                         </span>
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
+                      {user.telefono && (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          <span className="inline-flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            {user.telefono}
+                          </span>
+                        </div>
+                      )}
                       <div className="text-xs text-gray-400 dark:text-gray-500">
                         Registrado: {new Date(user.createdAt).toLocaleDateString()}
                       </div>
@@ -456,6 +611,7 @@ const UserManagement: React.FC = () => {
           )}
         </ul>
       </div>
+      )}
 
       {/* Reset Password Modal */}
       {showResetPasswordModal && (

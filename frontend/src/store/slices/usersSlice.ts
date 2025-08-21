@@ -49,13 +49,13 @@ export const approveUser = createAsyncThunk(
   'users/approveUser',
   async (userId: string, { rejectWithValue }) => {
     try {
-      const response = await api.patch<ApiResponse<User>>(`/usuarios/${userId}/approve`);
-      return response.data.data;
+      const response = await api.put<ApiResponse<User>>(`/usuarios/aprobar/${userId}`);
+      return response.data.usuario || response.data.data; // Manejar ambos formatos de respuesta
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Error al aprobar usuario');
     }
   }
-);
+); 
 
 export const rejectUser = createAsyncThunk(
   'users/rejectUser',
@@ -147,9 +147,20 @@ const usersSlice = createSlice({
       // Approve user
       .addCase(approveUser.fulfilled, (state, action) => {
         const approvedUser = action.payload;
+        // Eliminar el usuario de la lista de pendientes
         state.pendingUsers = state.pendingUsers.filter(user => user._id !== approvedUser._id);
-        if (!state.users) state.users = [];
-        state.users.push(approvedUser);
+        
+        // Verificar si el usuario ya existe en la lista de usuarios aprobados
+        const existingUserIndex = state.users.findIndex(user => user._id === approvedUser._id);
+        
+        if (existingUserIndex !== -1) {
+          // Si el usuario ya existe, actualizarlo
+          state.users[existingUserIndex] = approvedUser;
+        } else {
+          // Si el usuario no existe, agregarlo
+          if (!state.users) state.users = [];
+          state.users.push(approvedUser);
+        }
       })
       // Reject user
       .addCase(rejectUser.fulfilled, (state, action) => {

@@ -33,7 +33,17 @@ exports.login = async (req, res) => {
     const accessToken = jwt.sign({ id: usuario._id, rol: usuario.rol }, config.jwt.accessSecret, { expiresIn: config.jwt.accessExpiresIn });
     const refreshToken = jwt.sign({ id: usuario._id }, config.jwt.refreshSecret, { expiresIn: config.jwt.refreshExpiresIn });
     // Opcional: guardar refreshToken en DB o en memoria
-    res.json({ accessToken, refreshToken, user: { id: usuario._id, nombre: usuario.nombre, email: usuario.email, rol: usuario.rol } });
+    res.json({ 
+      accessToken, 
+      refreshToken, 
+      user: { 
+        id: usuario._id, 
+        nombre: usuario.nombre, 
+        email: usuario.email, 
+        rol: usuario.rol,
+        telefono: usuario.telefono || null 
+      } 
+    });
   } catch (err) {
     res.status(500).json({ message: 'Error en login', error: err.message });
   }
