@@ -37,6 +37,7 @@ const tareaSchema = Joi.object({
   estado: Joi.string().valid('pendiente', 'en progreso', 'completada').optional(),
   tecnicos: Joi.array().items(Joi.string()),
   fechaEjecucion: Joi.date().optional(),
+  franja_horaria: Joi.string().allow('').optional(),
   cliente: Joi.string().optional(),
   numeroTitular: Joi.string().allow('').optional(),
   direccion: Joi.string().allow('').optional(),

@@ -22,6 +22,7 @@ export interface Task {
   fechaCreacion: string;
   fechaModificacion: string;
   fechaEjecucion?: string;
+  franja_horaria?: string;
   creadoPor: User;
   cliente?: string;
   numeroTitular?: string;

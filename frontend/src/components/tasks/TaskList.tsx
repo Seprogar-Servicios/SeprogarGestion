@@ -19,9 +19,17 @@ import {
   Square,
   Trash,
   X,
+  Phone,
+  Download,
 } from 'lucide-react';
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
+import { downloadICSFile } from '../../utils/calendarUtils';
+
+// Clases comunes para botones
+const buttonBaseClass = "inline-flex items-center justify-center h-10 px-4 py-0 border border-transparent text-sm font-medium rounded-lg shadow-sm transition-colors align-middle";
+const buttonPrimaryClass = `${buttonBaseClass} text-white bg-[#0056a2] hover:bg-[#003b6f] focus:outline-none focus:ring-2 focus:ring-[#0056a2]`;
+const buttonDangerClass = `${buttonBaseClass} text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500`;
 
 const TaskList: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -34,7 +42,8 @@ const TaskList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
-  const [showWhatsAppPanel] = useState(true);
+  const [showWhatsAppPanel, setShowWhatsAppPanel] = useState(false);
+  const [selectedTecnico, setSelectedTecnico] = useState<string | null>(null);
   
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,9 +63,24 @@ const TaskList: React.FC = () => {
     numeroTitular: '',
     direccion: '',
     fechaEjecucion: '',
+    horaInicio: '',
+    horaFin: '',
+    franja_horaria: '',
     tecnicos: [] as string[],
     estado: 'pendiente' as 'pendiente' | 'en progreso' | 'completada'
   });
+  
+  // Función para actualizar la franja horaria cuando cambian las horas
+  const actualizarFranjaHoraria = (inicio: string, fin: string) => {
+    if (inicio && fin) {
+      return `${inicio}-${fin}`;
+    } else if (inicio) {
+      return `${inicio}-`;
+    } else if (fin) {
+      return `-${fin}`;
+    }
+    return '';
+  };
 
   useEffect(() => {
     // Cargar usuarios solo una vez y solo si el usuario es admin
@@ -78,23 +102,35 @@ const TaskList: React.FC = () => {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await dispatch(createTask(formData as any)).unwrap();
+      // Concatenar horaInicio y horaFin para crear franja_horaria
+      const franja_horaria = actualizarFranjaHoraria(formData.horaInicio, formData.horaFin);
+      
+      // Crear objeto con los datos del formulario incluyendo franja_horaria pero excluyendo horaInicio y horaFin
+      const { horaInicio, horaFin, ...restFormData } = formData;
+      const taskData = {
+        ...restFormData,
+        franja_horaria
+      };
+      
+      await dispatch(createTask(taskData as any)).unwrap();
       resetForm();
       setShowCreateModal(false);
       import('react-toastify').then(({ toast }) => {
         toast.success('Tarea creada correctamente', {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true
         });
       });
-      // Recargar tareas para asegurar que los datos estén actualizados
+      
+      // Recargar las tareas
       dispatch(fetchTasks(filters));
-    } catch (error) {
-      console.error('Error creating task:', error);
+    } catch (error: any) {
+      import('react-toastify').then(({ toast }) => {
+        toast.error(`Error al crear la tarea: ${error.message || 'Error desconocido'}`, {
+          position: "top-right",
+          autoClose: 5000,
+        });
+      });
     }
   };
 
@@ -103,17 +139,23 @@ const TaskList: React.FC = () => {
     if (!editingTask) return;
     
     try {
-      await dispatch(updateTask({ id: editingTask._id, data: formData as any })).unwrap();
+      // Concatenar horaInicio y horaFin para crear franja_horaria
+      const franja_horaria = actualizarFranjaHoraria(formData.horaInicio, formData.horaFin);
+      
+      // Crear objeto con los datos del formulario incluyendo franja_horaria pero excluyendo horaInicio y horaFin
+      const { horaInicio, horaFin, ...restFormData } = formData;
+      const taskData = {
+        ...restFormData,
+        franja_horaria
+      };
+      
+      await dispatch(updateTask({ id: editingTask._id, data: taskData as any })).unwrap();
       
       // Mostrar mensaje de éxito con toast
       import('react-toastify').then(({ toast }) => {
         toast.success('Tarea actualizada correctamente', {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true
         });
       });
       
@@ -124,17 +166,11 @@ const TaskList: React.FC = () => {
       
       // Recargar las tareas
       dispatch(fetchTasks(filters));
-      
-    } catch (error) {
-      console.error('Error updating task:', error);
+    } catch (error: any) {
       import('react-toastify').then(({ toast }) => {
-        toast.error('Error al actualizar la tarea. Por favor, inténtalo de nuevo.', {
+        toast.error(`Error al actualizar la tarea: ${error.message || 'Error desconocido'}`, {
           position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true
+          autoClose: 5000,
         });
       });
     }
@@ -205,13 +241,26 @@ const TaskList: React.FC = () => {
       numeroTitular: '',
       direccion: '',
       fechaEjecucion: '',
+      horaInicio: '',
+      horaFin: '',
+      franja_horaria: '',
       tecnicos: [],
-      estado: 'pendiente' as 'pendiente' | 'en progreso' | 'completada'
+      estado: 'pendiente'
     });
   };
 
   const openEditModal = (task: Task) => {
     setEditingTask(task);
+    
+    // Extraer hora de inicio y hora de fin si existe franja_horaria
+    let horaInicio = '';
+    let horaFin = '';
+    if (task.franja_horaria) {
+      const partes = task.franja_horaria.split('-');
+      horaInicio = partes[0] || '';
+      horaFin = partes[1] || '';
+    }
+    
     setFormData({
       numero: task.numero,
       titulo: task.titulo,
@@ -220,8 +269,11 @@ const TaskList: React.FC = () => {
       numeroTitular: task.numeroTitular || '',
       direccion: task.direccion || '',
       fechaEjecucion: task.fechaEjecucion ? new Date(task.fechaEjecucion).toISOString().split('T')[0] : '',
-      tecnicos: task.tecnicos?.map(t => t._id) || [],
-      estado: task.estado
+      horaInicio,
+      horaFin,
+      franja_horaria: task.franja_horaria || '',
+      tecnicos: task.tecnicos ? task.tecnicos.map(t => t._id) : [],
+      estado: task.estado as 'pendiente' | 'en progreso' | 'completada'
     });
     setShowCreateModal(true);
   };
@@ -381,19 +433,18 @@ const TaskList: React.FC = () => {
     if (allSelected) {
       // Deseleccionar todas las tareas del técnico
       setSelectedTasks(selectedTasks.filter(id => !tecnicoTaskIds.includes(id)));
+      setSelectedTecnico(null);
     } else {
-      // Seleccionar todas las tareas del técnico
-      const newSelectedTasks = [...selectedTasks];
-      tecnicoTaskIds.forEach(id => {
-        if (!newSelectedTasks.includes(id)) {
-          newSelectedTasks.push(id);
-        }
-      });
-      setSelectedTasks(newSelectedTasks);
+      // Primero deseleccionar todas las tareas actuales
+      setSelectedTasks([]);
+      
+      // Luego seleccionar solo las tareas del técnico actual
+      setSelectedTasks(tecnicoTaskIds);
+      setSelectedTecnico(tecnicoId);
     }
   };
   
-  // Generar mensaje de WhatsApp para el técnico seleccionado
+  // Generar mensaje de WhatsApp y archivo .ics para el técnico seleccionado
   const generateWhatsAppMessage = (tecnicoId: string) => {
     const tecnico = groupedTasks[tecnicoId]?.tecnico;
     // Verificar si el técnico existe y tiene un teléfono válido (no vacío)
@@ -411,7 +462,6 @@ const TaskList: React.FC = () => {
         selectedTasksForTecnico.push(task);
       }
     }
-    
     
     if (selectedTasksForTecnico.length === 0) {
       alert('No hay tareas seleccionadas para este técnico');
@@ -443,7 +493,14 @@ const TaskList: React.FC = () => {
           year: 'numeric',
           month: 'long',
           day: 'numeric'
-        })}\n`;
+        })}`;
+        
+        // Agregar franja horaria si existe
+        if (task.franja_horaria) {
+          message += ` - *Horario:* ${task.franja_horaria}`;
+        }
+        
+        message += '\n';
       } else {
         message += `• *Fecha de Ejecución:* No programada\n`;
       }
@@ -452,6 +509,7 @@ const TaskList: React.FC = () => {
     
     message += '*Tareas listadas correctamente*\n';
     message += '*Recorda:* Puedes usar este mensaje como recordatorio de tus tareas pendientes.';
+    message += '\n\n*Nota:* También puedes descargar estas tareas como eventos para tu calendario.';
     
     // Codificar el mensaje para URL
     const encodedMessage = encodeURIComponent(message);
@@ -459,6 +517,133 @@ const TaskList: React.FC = () => {
     // Abrir WhatsApp con el mensaje predefinido
     const whatsappUrl = `https://wa.me/${tecnico.telefono?.replace(/\D/g, '')}?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
+    
+    return selectedTasksForTecnico;
+  };
+  
+  // Generar y descargar archivo .ics para las tareas seleccionadas (para administradores)
+  const handleDownloadCalendar = (tecnicoId: string) => {
+    const tecnico = groupedTasks[tecnicoId]?.tecnico;
+    if (!tecnico) {
+      alert('No se encontró el técnico seleccionado');
+      return;
+    }
+    
+    // Obtener las tareas del técnico que están seleccionadas
+    const tecnicoTasks = groupedTasks[tecnicoId]?.tasks || [];
+    const selectedTasksForTecnico = tecnicoTasks.filter(task => selectedTasks.includes(task._id));
+    
+    if (selectedTasksForTecnico.length === 0) {
+      alert('No hay tareas seleccionadas para este técnico');
+      return;
+    }
+    
+    // Generar nombre base del archivo con el nombre del técnico
+    const baseFileName = `tareas-${tecnico.nombre.toLowerCase().replace(/\s+/g, '-')}`;
+    
+    // Descargar el archivo .ics (la fecha actual se añadirá automáticamente)
+    downloadICSFile(selectedTasksForTecnico, baseFileName);
+  };
+
+  // Generar y descargar archivo .ics para las tareas seleccionadas (para usuarios normales)
+  const handleDownloadCalendarForUser = () => {
+    if (selectedTasks.length === 0) {
+      alert('No hay tareas seleccionadas');
+      return;
+    }
+    
+    // Obtener las tareas seleccionadas del usuario actual
+    const userSelectedTasks = filteredTasks.filter(task => selectedTasks.includes(task._id));
+    
+    if (userSelectedTasks.length === 0) {
+      alert('No hay tareas seleccionadas');
+      return;
+    }
+    
+    // Generar nombre base del archivo con el nombre del usuario
+    const baseFileName = `mis-tareas-${user?.nombre?.toLowerCase().replace(/\s+/g, '-') || 'usuario'}`;
+    
+    // Descargar el archivo .ics (la fecha actual se añadirá automáticamente)
+    downloadICSFile(userSelectedTasks, baseFileName);
+  };
+
+  // Generar mensaje de WhatsApp para usuario normal
+  const generateWhatsAppMessageForUser = () => {
+    if (!user || !user.telefono || user.telefono.trim() === '') {
+      alert('No tienes un número de teléfono registrado');
+      return;
+    }
+    
+    if (selectedTasks.length === 0) {
+      alert('No hay tareas seleccionadas');
+      return;
+    }
+    
+    // Obtener las tareas seleccionadas del usuario actual
+    const userSelectedTasks = filteredTasks.filter(task => selectedTasks.includes(task._id));
+    
+    if (userSelectedTasks.length === 0) {
+      alert('No hay tareas seleccionadas');
+      return;
+    }
+    
+    // Generar el mensaje para WhatsApp
+    let message = `*Recordatorio de Tareas Pendientes*\n\n`;
+    message += `Hola ${user.nombre},\n\n`;
+    message += `Aquí tienes un resumen de tus tareas pendientes:\n\n`;
+    
+    userSelectedTasks.forEach((task, index) => {
+      message += `*Tarea ${index + 1}: ${task.titulo}*\n`;
+      if (task.descripcion) {
+        message += `• *Descripción:* ${task.descripcion}\n`;
+      }
+      if (task.cliente) {
+        message += `• *Cliente:* ${task.cliente}\n`;
+      }
+      if (task.numeroTitular) {
+        message += `• *Teléfono:* ${task.numeroTitular}\n`;
+      }
+      if (task.direccion) {
+        message += `• *Dirección:* ${task.direccion}\n`;
+      }
+      
+      if (task.fechaEjecucion) {
+        // Obtener la fecha original
+        const fecha = new Date(task.fechaEjecucion);
+        // Ajustar para la zona horaria de Argentina (UTC-3)
+        // Añadir un día completo para compensar el problema
+        const fechaAjustada = new Date(fecha);
+        fechaAjustada.setDate(fecha.getDate() + 1);
+        
+        message += `• *Fecha de Ejecución:* ${fechaAjustada.toLocaleDateString('es-AR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        })}`;
+        
+        if (task.franja_horaria) {
+          message += ` - ${task.franja_horaria}`;
+        }
+        
+        message += '\n';
+      } else {
+        message += `• *Fecha de Ejecución:* No programada\n`;
+      }
+      message += '\n';
+    });
+    
+    message += '*Tareas listadas correctamente*\n';
+    message += '*Recorda:* Puedes usar este mensaje como recordatorio de tus tareas pendientes.';
+    message += '\n\n*Nota:* También puedes descargar estas tareas como eventos para tu calendario.';
+    
+    // Codificar el mensaje para URL
+    const encodedMessage = encodeURIComponent(message);
+    
+    // Abrir WhatsApp con el mensaje predefinido
+    const whatsappUrl = `https://wa.me/${user.telefono?.replace(/\D/g, '')}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+    
+    return userSelectedTasks;
   };
 
   // Estas funciones se han eliminado porque ya no se utilizan
@@ -475,7 +660,7 @@ const TaskList: React.FC = () => {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-[#0056a2] hover:bg-[#003b6f] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0056a2] transition-colors"
+          className={buttonPrimaryClass}
         >
           <Plus className="h-4 w-4 mr-2" />
           Nueva Tarea
@@ -491,7 +676,7 @@ const TaskList: React.FC = () => {
       )}
 
       {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 overflow-x-auto">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -499,28 +684,28 @@ const TaskList: React.FC = () => {
             placeholder="Buscar tareas..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
+            className="w-full pl-10 pr-3 h-10 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {/* Selección múltiple y eliminación */}
           <div className="flex items-center">
             {selectedTasks.length > 0 ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-sm text-gray-600 dark:text-gray-400 h-10 flex items-center">
                   {selectedTasks.length} seleccionadas
                 </span>
                 <button
                   onClick={handleDeleteMultipleTasks}
-                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                  className={buttonDangerClass}
                   disabled={selectedTasks.length === 0}
                 >
-                  <Trash className="h-4 w-4 mr-1" />
+                  <Trash className="h-4 w-4 mr-2" />
                   Eliminar
                 </button>
                 <button
                   onClick={() => setSelectedTasks([])}
-                  className="inline-flex items-center px-2 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                  className={buttonDangerClass}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -528,9 +713,9 @@ const TaskList: React.FC = () => {
             ) : (
               <button
                 onClick={handleSelectAllTasks}
-                className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                className={buttonPrimaryClass}
               >
-                <CheckSquare className="h-4 w-4 mr-1" />
+                <CheckSquare className="h-4 w-4 mr-2" />
                 Seleccionar
               </button>
             )}
@@ -539,10 +724,24 @@ const TaskList: React.FC = () => {
           {/* Filters Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+            className={buttonPrimaryClass}
           >
             <Filter className="h-4 w-4 mr-2" />
             Filtros
+          </button>
+          
+          {/* WhatsApp Button */}
+          <button
+            onClick={() => setShowWhatsAppPanel(!showWhatsAppPanel)}
+            className={buttonPrimaryClass}
+          >
+            <Send className="h-4 w-4 mr-2" />
+            {showWhatsAppPanel ? 'Ocultar WhatsApp' : 'Enviar WhatsApp'}
+            {selectedTasks.length > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 bg-white text-[#0056a2] text-xs rounded-full">
+                {selectedTasks.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -559,68 +758,156 @@ const TaskList: React.FC = () => {
       
       {/* Panel de WhatsApp */}
       {showWhatsAppPanel && (
-        <div className="my-4 overflow-y-auto max-h-[60vh] bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-          <div className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center justify-between">
-              <div className="flex items-center">
-                <Send className="h-5 w-5 mr-2" />
-                {user?.rol === 'admin' ? 'Enviar tareas por WhatsApp' : 'Mis Tareas Pendientes'}
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {selectedTasks.length} {user?.rol === 'admin' ? 'seleccionadas' : 'tareas seleccionadas'}
-              </div>
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {user?.rol === 'admin' 
-                ? 'Envía un recordatorio de sus tareas al técnico por WhatsApp'
-                : 'Envía un recordatorio de tus tareas a tu WhatsApp'}
-            </p>
-          </div>
-        
-        <div className="space-y-4">
-          {Object.keys(groupedTasks).length > 0 ? (
-            Object.entries(groupedTasks).map(([tecnicoId, { tecnico, tasks }]) => (
-              <div key={tecnicoId} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center">
-                    <button 
-                      onClick={() => handleSelectAllForTecnico(tecnicoId)}
-                      className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 mr-2"
-                    >
-                      {tasks.every(task => selectedTasks.includes(task._id)) ? (
-                        <CheckSquare className="h-5 w-5" />
-                      ) : (
-                        <Square className="h-5 w-5" />
-                      )}
-                    </button>
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      {tecnico.nombre} {user?.rol === 'admin' ? (tecnico.telefono ? `(${tecnico.telefono})` : '(Sin teléfono)') : '(Mis tareas)'}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      generateWhatsAppMessage(tecnicoId);
-                    }}
-                    disabled={!tecnico.telefono || tecnico.telefono.trim() === '' || !tasks.some(task => selectedTasks.includes(task._id))}
-                    className={`inline-flex items-center px-3 py-1 text-sm rounded-md ${
-                      !tecnico.telefono || tecnico.telefono.trim() === '' || !tasks.some(task => selectedTasks.includes(task._id))
-                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                        : 'bg-[#f7941d] text-white hover:bg-[#e07c0a]'
-                    }`}
-                  >
-                    <Send className="h-4 w-4 mr-1" />
-                    WhatsApp
-                  </button>
+        <div className="my-4 overflow-hidden bg-white dark:bg-gray-800 rounded-lg shadow transition-all duration-300 ease-in-out">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="mb-2">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center justify-between">
+                <div className="flex items-center">
+                  <Send className="h-5 w-5 mr-2" />
+                  {user?.rol === 'admin' ? 'Enviar tareas por WhatsApp' : 'Mis Tareas Pendientes'}
                 </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {selectedTasks.length} {user?.rol === 'admin' ? 'seleccionadas' : 'tareas seleccionadas'}
+                </div>
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {user?.rol === 'admin' 
+                  ? 'Envía un recordatorio de sus tareas al técnico por WhatsApp. Solo puedes seleccionar un técnico a la vez.'
+                  : 'Envía un recordatorio de tus tareas a tu WhatsApp o descárgalas como eventos para tu calendario.'}
+              </p>
+            </div>
+          
+            <div className="overflow-y-auto max-h-[50vh]">
+              <div className="space-y-4 py-2">
+                {user?.rol === 'admin' ? (
+                  // Panel para administradores
+                  Object.keys(groupedTasks).length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries(groupedTasks).map(([tecnicoId, { tecnico, tasks }]) => (
+                        <div key={tecnicoId} className={`border ${selectedTecnico === tecnicoId ? 'border-[#f7941d] bg-orange-50 dark:bg-gray-700/50' : 'border-gray-200 dark:border-gray-700'} rounded-lg p-4 hover:shadow-md transition-shadow`}>
+                          <div className="flex flex-col space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <button 
+                                  onClick={() => handleSelectAllForTecnico(tecnicoId)}
+                                  className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 mr-2"
+                                >
+                                  {tasks.every(task => selectedTasks.includes(task._id)) ? (
+                                    <CheckSquare className="h-5 w-5" />
+                                  ) : (
+                                    <Square className="h-5 w-5" />
+                                  )}
+                                </button>
+                                <span className="font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
+                                  {tecnico.nombre}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {tasks.filter(task => selectedTasks.includes(task._id)).length}/{tasks.length} tareas
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                              <Phone className="h-4 w-4 mr-1" />
+                              <span className="truncate">{tecnico.telefono || 'Sin teléfono'}</span>
+                            </div>
+                            
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <button
+                                onClick={() => {
+                                  generateWhatsAppMessage(tecnicoId);
+                                }}
+                                disabled={!tecnico.telefono || tecnico.telefono.trim() === '' || !tasks.some(task => selectedTasks.includes(task._id))}
+                                className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
+                                  !tecnico.telefono || tecnico.telefono.trim() === '' || !tasks.some(task => selectedTasks.includes(task._id))
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : 'bg-green-600 text-white hover:bg-green-700'
+                                }`}
+                              >
+                                <Send className="h-4 w-4 mr-1" />
+                                Enviar por WhatsApp
+                              </button>
+                              <button
+                                onClick={() => handleDownloadCalendar(tecnicoId)}
+                                disabled={!tasks.some(task => selectedTasks.includes(task._id))}
+                                className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
+                                  !tasks.some(task => selectedTasks.includes(task._id))
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
+                              >
+                                <Download className="h-4 w-4 mr-1" />
+                                Descargar Calendario
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 dark:text-gray-400 py-4 text-center">
+                      No hay tareas asignadas a técnicos
+                    </p>
+                  )
+                ) : (
+                  // Panel para usuarios normales
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                    <div className="flex flex-col space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            Mis tareas seleccionadas
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {selectedTasks.length} tareas seleccionadas
+                        </div>
+                      </div>
+                      
+                      {user?.telefono ? (
+                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                          <Phone className="h-4 w-4 mr-1" />
+                          <span className="truncate">{user.telefono || 'Sin teléfono'}</span>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-yellow-600 dark:text-yellow-400">
+                          No tienes un número de teléfono registrado. Contacta al administrador para actualizar tu perfil.
+                        </div>
+                      )}
+                      
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          onClick={generateWhatsAppMessageForUser}
+                          disabled={!user?.telefono || user.telefono.trim() === '' || selectedTasks.length === 0}
+                          className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
+                            !user?.telefono || user.telefono.trim() === '' || selectedTasks.length === 0
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          <Send className="h-4 w-4 mr-1" />
+                          Enviar a mi WhatsApp
+                        </button>
+                        <button
+                          onClick={handleDownloadCalendarForUser}
+                          disabled={selectedTasks.length === 0}
+                          className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
+                            selectedTasks.length === 0
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }`}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Descargar Calendario
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400">
-              No hay tareas asignadas a técnicos
-            </p>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Tasks List View */}
@@ -732,9 +1019,19 @@ const TaskList: React.FC = () => {
                             // Añadir un día completo para compensar el problema
                             const fechaAjustada = new Date(fecha);
                             fechaAjustada.setDate(fecha.getDate() + 1);
-                            return fechaAjustada.toLocaleDateString('es-AR');
-                          })() 
-                        : <span className="text-gray-400 italic">Fecha no programada</span>}
+                            
+                            return fechaAjustada.toLocaleDateString('es-AR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            });
+                          })()
+                        : "Fecha no programada"}
+                      {task.franja_horaria && (
+                        <span className="ml-2 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 py-0.5 px-1.5 rounded">
+                          {task.franja_horaria}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -972,7 +1269,7 @@ const TaskList: React.FC = () => {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
@@ -982,6 +1279,62 @@ const TaskList: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, fechaEjecucion: e.target.value })}
                       className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Franja Horaria - Desde
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <input
+                        type="time"
+                        value={formData.horaInicio}
+                        onChange={(e) => {
+                          const newHoraInicio = e.target.value;
+                          const newFranjaHoraria = actualizarFranjaHoraria(newHoraInicio, formData.horaFin);
+                          setFormData({ 
+                            ...formData, 
+                            horaInicio: newHoraInicio,
+                            franja_horaria: newFranjaHoraria
+                          });
+                        }}
+                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      Franja Horaria - Hasta
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <input
+                        type="time"
+                        value={formData.horaFin}
+                        onChange={(e) => {
+                          const newHoraFin = e.target.value;
+                          const newFranjaHoraria = actualizarFranjaHoraria(formData.horaInicio, newHoraFin);
+                          setFormData({ 
+                            ...formData, 
+                            horaFin: newHoraFin,
+                            franja_horaria: newFranjaHoraria
+                          });
+                        }}
+                        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+                      />
+                    </div>
                   </div>
                 </div>
 

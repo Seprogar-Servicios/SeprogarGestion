@@ -9,6 +9,7 @@ const tareaSchema = new mongoose.Schema({
   fechaCreacion: { type: Date, default: Date.now },
   fechaModificacion: { type: Date, default: Date.now },
   fechaEjecucion: { type: Date },
+  franja_horaria: { type: String },
   creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
   cliente: { type: String },
   numeroTitular: { type: String },
