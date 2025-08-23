@@ -25,6 +25,7 @@ import {
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
+import { formatDireccionToMapsUrl } from '../../utils/mapsUtils';
 
 // Clases comunes para botones
 const buttonBaseClass = "inline-flex items-center justify-center h-10 px-4 py-0 border border-transparent text-sm font-medium rounded-lg shadow-sm transition-colors align-middle";
@@ -478,7 +479,10 @@ const TaskList: React.FC = () => {
       if (task.descripcion) message += `• *Descripcion:* ${task.descripcion}\n`;
       if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
       if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
-      if (task.direccion) message += `• *Direccion:* ${task.direccion}\n`;
+      if (task.direccion) {
+        const mapsUrl = formatDireccionToMapsUrl(task.direccion);
+        message += `• *Direccion:* ${task.direccion}\n  *Ver en Google Maps:* ${mapsUrl}\n`;
+      }
       // Siempre mostrar información sobre la fecha de ejecución
       if (task.fechaEjecucion) {
         // Obtener la fecha original
@@ -604,7 +608,8 @@ const TaskList: React.FC = () => {
         message += `• *Teléfono:* ${task.numeroTitular}\n`;
       }
       if (task.direccion) {
-        message += `• *Dirección:* ${task.direccion}\n`;
+        const mapsUrl = formatDireccionToMapsUrl(task.direccion);
+        message += `• *Dirección:* ${task.direccion}\n  🗺️ *Ver en Google Maps:* ${mapsUrl}\n`;
       }
       
       if (task.fechaEjecucion) {
