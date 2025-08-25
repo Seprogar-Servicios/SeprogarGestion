@@ -164,7 +164,110 @@ function parseTareaMessage(message) {
   }
 }
 
+/**
+ * Parsea un mensaje en formato Expediente
+ * @param {string} message - Contenido del mensaje
+ * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
+ */
+function parseExpedienteMessage(message) {
+  try {
+    // Extraer el número de expediente
+    const expedienteMatch = message.match(/Expediente:\s*(\d+)/i);
+    const numero = expedienteMatch ? expedienteMatch[1] : null;
+    
+    if (!numero) {
+      return null; // Si no hay número de expediente, no podemos continuar
+    }
+    
+    // Extraer cliente (Cuenta)
+    const cuentaMatch = message.match(/Cuenta:\s*([^\n]+)/i);
+    const cliente = cuentaMatch ? cuentaMatch[1].trim() : null;
+    
+    // Extraer NU (Nombre del Usuario)
+    const nuMatch = message.match(/NU:\s*([^\n]+)/i);
+    const nombreUsuario = nuMatch ? nuMatch[1].trim() : null;
+    
+    // Extraer número de teléfono
+    const telefonoMatch = message.match(/Teléfono:\s*([^\n]+)/i);
+    const numeroTitular = telefonoMatch ? telefonoMatch[1].trim() : null;
+    
+    // Extraer servicio (título)
+    const servicioMatch = message.match(/Servicio:\s*([^\n]+)/i);
+    const titulo = servicioMatch ? servicioMatch[1].trim() : null;
+    
+    // Extraer sección Ocurrido
+    const ocurridoMatch = message.match(/Ocurrido:\s*([^\n]+)/i);
+    const ocurrido = ocurridoMatch ? ocurridoMatch[1].trim() : null;
+    
+    // Variables para almacenar los datos extraídos de Ocurrido
+    let descripcion = null;
+    let direccion = null;
+    let fechaEjecucion = null;
+    let franja_horaria = null;
+    
+    // Procesar la sección Ocurrido si existe
+    if (ocurrido) {
+      // Dividir usando //// como separador
+      const partes = ocurrido.split('////').map(parte => parte.trim());
+      
+      // Primera parte es la descripción
+      if (partes.length > 0) {
+        descripcion = partes[0].trim();
+      }
+      
+      // Segunda parte es la dirección
+      if (partes.length > 1) {
+        direccion = partes[1].trim();
+      }
+      
+      // Cuarta parte contiene fecha y franja horaria
+      if (partes.length > 3) {
+        const fechaFranjaStr = partes[3].trim();
+        
+        // Extraer fecha y franja horaria
+        // Formato esperado: "remedios de escalada, 28/08/2025 de 08:00 a 11:00"
+        const fechaFranjaMatch = fechaFranjaStr.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s+de\s+(\d{1,2}:\d{1,2})\s+a\s+(\d{1,2}:\d{1,2})/i);
+        
+        if (fechaFranjaMatch) {
+          // Convertir fecha de formato DD/MM/YYYY a YYYY-MM-DD
+          const fechaParts = fechaFranjaMatch[1].split('/');
+          if (fechaParts.length === 3) {
+            const dia = fechaParts[0].padStart(2, '0');
+            const mes = fechaParts[1].padStart(2, '0');
+            const anio = fechaParts[2];
+            fechaEjecucion = `${anio}-${mes}-${dia}`;
+          }
+          
+          // Extraer franja horaria
+          franja_horaria = `${fechaFranjaMatch[2]} - ${fechaFranjaMatch[3]}`;
+        }
+      }
+    }
+    
+    // Crear objeto de tarea
+    return {
+      numero,
+      titulo,
+      descripcion,
+      cliente,
+      numeroTitular,
+      direccion,
+      fechaEjecucion,
+      franja_horaria,
+      estado: 'pendiente',
+      tecnicos: [],
+      creadoPor: process.env.DEFAULT_USER_ID || null,
+      fechaCreacion: new Date(),
+      fechaModificacion: new Date()
+    };
+  } catch (error) {
+    console.error('Error al parsear mensaje de Expediente:', error);
+    return null;
+  }
+}
+
 module.exports = {
   parsePedidoMessage,
-  parseTareaMessage
+  parseTareaMessage,
+  parseExpedienteMessage
 };
