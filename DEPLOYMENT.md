@@ -6,7 +6,8 @@ Esta guía detalla el proceso completo para desplegar la aplicación Futurgas Ge
 1. [Configuración de MongoDB Atlas](#1-configuración-de-mongodb-atlas)
 2. [Despliegue del Backend en Render](#2-despliegue-del-backend-en-render)
 3. [Despliegue del Frontend en Vercel](#3-despliegue-del-frontend-en-vercel)
-4. [Buenas Prácticas de Producción](#4-buenas-prácticas-de-producción)
+4. [Despliegue del Worker de WhatsApp en Render](#4-despliegue-del-worker-de-whatsapp-en-render)
+5. [Buenas Prácticas de Producción](#5-buenas-prácticas-de-producción)
 
 ## 1. Configuración de MongoDB Atlas
 
@@ -140,6 +141,7 @@ En la sección "Environment" de tu servicio en Render, añade las siguientes var
 - `VAPID_PUBLIC_KEY`: BNViIcnJEK84VIGpr8Sq8mlxsOXFUkrAMIx-z6MSPMP5cXpyiaw96PPMpyey2NDwAoD6QRHbpTWzk6g2xtkIJF0
 - `VAPID_PRIVATE_KEY`: xDySzpYtVG8EgffRDtIUtP5PnEJTzVprn_63hx0QJeQ
 - `CORS_ORIGINS`: https://futurgas-gestion.vercel.app
+- `API_KEY`: Una cadena aleatoria segura para autenticar el worker de WhatsApp (generar con `openssl rand -hex 32`)
 
 Para generar claves JWT seguras si deseas cambiarlas:
 ```bash
@@ -202,13 +204,84 @@ En la sección "Environment Variables" de tu proyecto en Vercel, añade:
 2. Vercel automáticamente construirá y desplegará tu aplicación
 3. Una vez completado, podrás acceder a tu aplicación en la URL proporcionada (ej. https://futurgas-gestion.vercel.app)
 
-## 4. Buenas Prácticas de Producción
+## 4. Despliegue del Worker de WhatsApp en Render
 
-### 4.1 Seguridad
+El worker de WhatsApp es un servicio que se ejecuta en segundo plano y permite la creación automática de tareas a partir de mensajes de WhatsApp. Este servicio se despliega como un Background Worker en Render.
+
+### 4.1 Preparar el repositorio
+
+1. Asegúrate de que el directorio `whatsapp-worker` contiene todos los archivos necesarios:
+   - `Dockerfile`
+   - `index.js`
+   - `package.json`
+   - `src/` con todos los archivos de código
+
+2. Verifica que el archivo `.env.example` incluya todas las variables necesarias, especialmente `API_KEY` y las URLs actualizadas para las rutas del worker.
+
+### 4.2 Crear un nuevo Background Worker en Render
+
+1. Inicia sesión en tu cuenta de [Render](https://dashboard.render.com/)
+2. Haz clic en "New" y selecciona "Background Worker"
+3. Conecta tu repositorio de GitHub o sube el código directamente
+4. Configura el servicio:
+   - **Name**: futurgas-whatsapp-worker
+   - **Environment**: Docker
+   - **Branch**: main (o la rama que uses para producción)
+   - **Root Directory**: whatsapp-worker (si tu repositorio contiene múltiples proyectos)
+   - **Region**: Selecciona la misma región que usaste para el backend
+
+### 4.3 Configurar variables de entorno
+
+Haz clic en "Environment" y añade las siguientes variables:
+
+- `NODE_ENV`: production
+- `API_URL`: URL de tu backend en Render (ej. https://futurgas-backend.onrender.com)
+- `CHECK_DUPLICATE_URL`: /api/worker/tareas/check-duplicate
+- `CREATE_TASK_URL`: /api/worker/tareas
+- `WHATSAPP_GROUPS`: Nombres de los grupos de WhatsApp separados por comas (ej. "Grupo1,Grupo2")
+- `API_KEY`: **La misma clave API_KEY que configuraste en el backend**
+
+> **IMPORTANTE**: La `API_KEY` debe ser exactamente la misma que configuraste en el backend para que la autenticación funcione correctamente.
+
+### 4.4 Configurar almacenamiento persistente
+
+Para mantener la sesión de WhatsApp activa entre reinicios:
+
+1. En la sección "Disks", haz clic en "Add Disk"
+2. Configura el disco:
+   - **Name**: whatsapp-session
+   - **Mount Path**: /app/.wwebjs_auth
+   - **Size**: 1 GB (suficiente para la sesión)
+
+### 4.5 Desplegar el servicio
+
+1. Haz clic en "Create Background Worker"
+2. Render automáticamente desplegará tu worker
+
+### 4.6 Iniciar sesión en WhatsApp
+
+Una vez desplegado el worker:
+
+1. Ve a los logs del worker en Render
+2. Espera a que aparezca el código QR en los logs
+3. Escanea el código QR con tu teléfono usando WhatsApp
+4. Una vez autenticado, el worker comenzará a escuchar mensajes en los grupos configurados
+
+> **Nota**: Si el código QR no aparece claramente en los logs, puedes usar la opción "Shell" de Render para ejecutar `cat .wwebjs_auth/session/qr.png | base64` y obtener el código QR en formato base64, que puedes convertir a imagen usando herramientas online.
+
+## 5. Buenas Prácticas de Producción
+
+### 5.1 Seguridad
 
 1. **HTTPS**: Tanto Render como Vercel usan HTTPS por defecto, así que esto ya está cubierto.
 
 2. **CORS**: Tu backend ya tiene una configuración de CORS, solo necesitas asegurarte de que la variable de entorno `CORS_ORIGINS` incluya el dominio de Vercel:
+
+3. **API_KEY**: Asegúrate de generar una API_KEY segura y mantenerla en secreto:
+   - Genera una clave aleatoria fuerte usando: `openssl rand -hex 32` o `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - Configura exactamente la misma API_KEY en el backend y en el worker de WhatsApp
+   - Nunca compartas esta clave ni la incluyas en repositorios públicos
+   - Considera rotar la clave periódicamente por seguridad
 
 ```javascript
 // Tu configuración actual en server.js ya maneja esto correctamente
