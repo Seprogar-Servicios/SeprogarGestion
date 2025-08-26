@@ -234,11 +234,25 @@ exports.getTareasCalendario = async (req, res) => {
       ];
     } else if (usuario) {
       // Si es admin y especifica un usuario
-      filtro.tecnicos = usuario;
+      // Incluir tareas asignadas al usuario y tareas sin técnicos asignados
+      filtro.$or = [
+        { tecnicos: usuario },
+        { tecnicos: { $size: 0 } },
+        { tecnicos: { $exists: false } }
+      ];
     }
     
     // Otros filtros opcionales
-    if (tecnico) filtro.tecnicos = tecnico;
+    if (tecnico) {
+      // Si ya existe un $or, no sobrescribirlo
+      if (!filtro.$or) {
+        filtro.$or = [
+          { tecnicos: tecnico },
+          { tecnicos: { $size: 0 } },
+          { tecnicos: { $exists: false } }
+        ];
+      }
+    }
     if (cliente) filtro.cliente = { $regex: cliente, $options: 'i' };
     if (estado) filtro.estado = estado;
     
