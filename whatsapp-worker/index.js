@@ -163,6 +163,14 @@ client.on('message_create', async (message) => {
     if (taskData) {
       logger.info('Datos parseados correctamente:', JSON.stringify(taskData, null, 2));
       
+      // Verificar si la tarea ya existe
+      const isDuplicate = await checkDuplicateTask(taskData.numero);
+      
+      if (isDuplicate) {
+        logger.warn(`⚠️ Tarea con número ${taskData.numero} ya existe, ignorando...`);
+        return;
+      }
+      
       // Enviar a la API
       const success = await sendToAPI(taskData);
       if (success) {
@@ -337,18 +345,49 @@ function parseTareaMessage(message) {
   return null;
 }
 
-// Función para enviar datos a la API
-async function sendToAPI(taskData) {
+// Función para verificar si una tarea ya existe
+async function checkDuplicateTask(numero) {
   try {
-    // URL de la API (obtener de variables de entorno)
-    const apiUrl = process.env.API_URL || 'http://localhost:3000/api';
+    const checkUrl = process.env.CHECK_DUPLICATE_URL || 'http://localhost:3000/api/worker/tareas/check-duplicate';
     const apiKey = process.env.API_KEY || '';
     const axios = require('axios');
     
-    logger.info(`Enviando datos a la API: ${apiUrl}/tasks`);
+    logger.info(`Verificando si la tarea ${numero} ya existe...`);
+    
+    const response = await axios.get(`${checkUrl}/${numero}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+    
+    const exists = response.data && response.data.exists;
+    
+    if (exists) {
+      logger.warn(`La tarea con número ${numero} ya existe en el sistema`);
+    } else {
+      logger.info(`La tarea con número ${numero} no existe, se puede crear`);
+    }
+    
+    return exists;
+  } catch (error) {
+    logger.error('Error al verificar tarea duplicada:', error.message);
+    // En caso de error, asumimos que no existe para intentar crearla
+    return false;
+  }
+}
+
+// Función para enviar datos a la API
+async function sendToAPI(taskData) {
+  try {
+    // Usar la URL específica para crear tareas desde el worker
+    const createTaskUrl = process.env.CREATE_TASK_URL || 'http://localhost:3000/api/worker/tareas';
+    const apiKey = process.env.API_KEY || '';
+    const axios = require('axios');
+    
+    logger.info(`Enviando datos a la API: ${createTaskUrl}`);
     
     // Configurar la solicitud con axios
-    const response = await axios.post(`${apiUrl}/tasks`, taskData, {
+    const response = await axios.post(createTaskUrl, taskData, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
