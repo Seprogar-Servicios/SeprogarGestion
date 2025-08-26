@@ -50,29 +50,13 @@ client.on('qr', (qr) => {
   logger.info('QR CODE GENERADO - NECESITA ESCANEAR CON WHATSAPP');
   logger.info('===========================================');
   
-  // Generar QR en terminal
-  qrcode.generate(qr, { small: true });
+  // Mostrar QR grande en ASCII en los logs
+  qrcode.generate(qr, { small: false });
   
-  // Guardar QR como imagen en carpeta pública
-  try {
-    const qrImagePath = path.join(__dirname, 'public', 'qr.png');
-    // Asegurar que la carpeta public existe
-    if (!fs.existsSync(path.join(__dirname, 'public'))) {
-      fs.mkdirSync(path.join(__dirname, 'public'), { recursive: true });
-    }
-    
-    // Guardar QR como imagen
-    require('qrcode').toFile(qrImagePath, qr, (err) => {
-      if (err) {
-        logger.error('Error al guardar QR como imagen:', err);
-      } else {
-        logger.info(`QR guardado como imagen en: ${qrImagePath}`);
-        logger.info('Puedes acceder al QR en: http://localhost:8080/qr.png');
-      }
-    });
-  } catch (error) {
-    logger.error('Error al intentar guardar QR:', error);
-  }
+  // También mostrar el string del QR para usar en generadores online
+  logger.info('STRING DEL QR (copia y pega en qr-code-generator.com):');
+  logger.info(qr);
+  logger.info('===========================================');
 });
 
 // Evento cuando el cliente está listo
@@ -80,6 +64,17 @@ client.on('ready', () => {
   logger.info('===========================================');
   logger.info('SESIÓN INICIADA CORRECTAMENTE - WHATSAPP CONECTADO');
   logger.info('===========================================');
+  
+  
+  // Aplicar permisos correctos a la carpeta de sesión
+  try {
+    const sessionPath = path.resolve('./.wwebjs_auth');
+    const command = `chmod -R 777 ${sessionPath}`;
+    require('child_process').execSync(command);
+    logger.info(`Permisos aplicados correctamente a: ${sessionPath}`);
+  } catch (error) {
+    logger.error(`Error al aplicar permisos: ${error.message}`);
+  }
 });
 
 // Evento cuando se recibe un mensaje

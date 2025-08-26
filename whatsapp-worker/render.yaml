@@ -3,7 +3,7 @@ services:
     name: whatsapp-worker
     env: node
     buildCommand: npm install
-    startCommand: node scripts/showQR.js
+    startCommand: node index.js
     envVars:
       - key: NODE_ENV
         value: production
