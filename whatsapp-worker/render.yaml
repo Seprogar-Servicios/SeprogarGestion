@@ -11,6 +11,10 @@ services:
         value: true
       - key: PUPPETEER_EXECUTABLE_PATH
         value: /usr/bin/chromium
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=256
+      - key: UV_THREADPOOL_SIZE
+        value: 4
     disk:
       name: whatsapp-session
       mountPath: /usr/src/app/.wwebjs_auth
