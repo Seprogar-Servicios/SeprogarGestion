@@ -321,24 +321,22 @@ function parsePedidoMessage(message) {
       numero,
       titulo: `Pedido ${numero} - ${cliente}`,
       
-      // Campos opcionales pero importantes
+      // Campos opcionales pero importantes (según el esquema de validación)
       descripcion: descripcion || 'Sin descripción',
       estado: 'pendiente',
       tecnicos: [], // Array vacío para asignar técnicos después
       cliente: cliente || 'Cliente sin especificar',
       numeroTitular: whatsapp || '',
       direccion: direccion || '',
+      franja_horaria: turno || '',
       
-      // Campos adicionales para el negocio
-      whatsapp,
-      barrio,
-      turno,
-      origen: 'WhatsApp',
-      grupo: 'PEDIDOS PENDIENTES SEGURO',
-      fechaCreacion: new Date().toISOString(),
-      // Omitir fechaEjecucion si no podemos crear una fecha válida
+      // Fecha de ejecución (solo si podemos crear una fecha válida)
       ...(turno && turno !== 'Sin especificar' ? { fechaEjecucion: new Date().toISOString() } : {})
     };
+    
+    // Guardamos información adicional en el log para referencia
+    logger.info(`Barrio: ${barrio}, Turno: ${turno}`);
+
     
     logger.info('Datos extraídos del pedido:', JSON.stringify(taskData, null, 2));
     return taskData;
