@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+
+# Archivos de entorno (excepto ejemplos)
+.env
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+temp/
+*.tmp
+
+# Archivos de compilación
+dist/
+build/
+
+# NO ignorar la carpeta de sesión de WhatsApp
+# .wwebjs_auth/
+
+# Archivos comprimidos
+*.zip
+*.7z
+*.tar
+*.gz
+git remote add origin https://github.com/FedericoRocha/FuturgasGestion.git
