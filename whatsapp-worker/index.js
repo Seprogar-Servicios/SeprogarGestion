@@ -112,12 +112,67 @@ client.on('ready', async () => {
   }
 });
 
-// Evento para cualquier mensaje (debug)
+// Evento para cualquier mensaje (debug y procesamiento principal)
 client.on('message_create', async (message) => {
-  logger.info('🔔 EVENTO message_create detectado');
-  logger.info(`   - Tipo: ${message.type}`);
-  logger.info(`   - De: ${message.from}`);
-  logger.info(`   - Contenido: ${message.body?.substring(0, 50) || 'Sin contenido'}...`);
+  try {
+    logger.info('🔔 EVENTO message_create detectado');
+    logger.info(`   - Tipo: ${message.type}`);
+    logger.info(`   - De: ${message.from}`);
+    logger.info(`   - Contenido: ${message.body?.substring(0, 50) || 'Sin contenido'}...`);
+    
+    // Verificar si el mensaje viene de un grupo permitido
+    const chat = await message.getChat();
+    
+    if (!chat.isGroup) {
+      logger.info('Mensaje recibido fuera de un grupo, ignorando...');
+      return;
+    }
+    
+    const groupName = chat.name;
+    logger.info(`Grupo: "${groupName}"`);
+    logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
+    
+    if (!GRUPOS_PERMITIDOS.includes(groupName)) {
+      logger.info(`❌ Grupo "${groupName}" NO está en la lista de permitidos, ignorando...`);
+      return;
+    }
+    
+    logger.info(`✅ Grupo "${groupName}" está permitido, procesando mensaje...`);
+    
+    const messageContent = message.body.trim();
+    logger.info(`Mensaje completo: ${messageContent}`);
+    
+    let taskData = null;
+    
+    // Determinar el tipo de mensaje y parsearlo
+    if (messageContent.startsWith('Pedido')) {
+      logger.info('Detectado formato de Pedido, procesando...');
+      taskData = parsePedidoMessage(messageContent);
+    } else if (messageContent.startsWith('TAREA:')) {
+      logger.info('Detectado formato de TAREA, procesando...');
+      taskData = parseTareaMessage(messageContent);
+    } else {
+      logger.info('Formato de mensaje no reconocido, ignorando...');
+      return;
+    }
+    
+    if (taskData) {
+      logger.info('Datos parseados correctamente:', JSON.stringify(taskData, null, 2));
+      
+      // Enviar a la API
+      const success = await sendToAPI(taskData);
+      if (success) {
+        logger.info('✅ Tarea creada exitosamente en la API');
+      } else {
+        logger.error('❌ Error al crear la tarea en la API');
+      }
+    } else {
+      logger.error('❌ Error al parsear el mensaje');
+    }
+    
+  } catch (error) {
+    logger.error('Error procesando mensaje:', error);
+  }
 });
 
 // Evento para mensajes recibidos (alternativo)
