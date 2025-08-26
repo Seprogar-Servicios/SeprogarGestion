@@ -21,7 +21,7 @@ setupApiAuth(process.env.API_KEY);
 // Inicializar cliente de WhatsApp con autenticación local
 const client = new Client({
   authStrategy: new LocalAuth({
-    dataPath: './whatsapp-session'
+    dataPath: './.wwebjs_auth'
   }),
   puppeteer: {
     args: [
