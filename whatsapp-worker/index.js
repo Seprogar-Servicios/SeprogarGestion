@@ -49,9 +49,30 @@ client.on('qr', (qr) => {
   logger.info('===========================================');
   logger.info('QR CODE GENERADO - NECESITA ESCANEAR CON WHATSAPP');
   logger.info('===========================================');
-  logger.info('Si ves este mensaje en Render, significa que la sesión no se cargó correctamente.');
-  logger.info('Debes generar la sesión localmente con "node bot.js" y luego subir la carpeta .wwebjs_auth a Render.');
+  
+  // Generar QR en terminal
   qrcode.generate(qr, { small: true });
+  
+  // Guardar QR como imagen en carpeta pública
+  try {
+    const qrImagePath = path.join(__dirname, 'public', 'qr.png');
+    // Asegurar que la carpeta public existe
+    if (!fs.existsSync(path.join(__dirname, 'public'))) {
+      fs.mkdirSync(path.join(__dirname, 'public'), { recursive: true });
+    }
+    
+    // Guardar QR como imagen
+    require('qrcode').toFile(qrImagePath, qr, (err) => {
+      if (err) {
+        logger.error('Error al guardar QR como imagen:', err);
+      } else {
+        logger.info(`QR guardado como imagen en: ${qrImagePath}`);
+        logger.info('Puedes acceder al QR en: http://localhost:8080/qr.png');
+      }
+    });
+  } catch (error) {
+    logger.error('Error al intentar guardar QR:', error);
+  }
 });
 
 // Evento cuando el cliente está listo

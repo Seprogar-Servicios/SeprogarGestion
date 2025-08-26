@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: whatsapp-worker
+    env: node
+    buildCommand: npm install
+    startCommand: node scripts/showQR.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: true
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium
+    disk:
+      name: whatsapp-session
+      mountPath: /usr/src/app/.wwebjs_auth
+      sizeGB: 1
