@@ -317,17 +317,26 @@ function parsePedidoMessage(message) {
     
     // Crear objeto de tarea
     const taskData = {
+      // Campos requeridos
       numero,
-      cliente,
+      titulo: `Pedido ${numero} - ${cliente}`,
+      
+      // Campos opcionales pero importantes
+      descripcion: descripcion || 'Sin descripción',
+      estado: 'pendiente',
+      tecnicos: [], // Array vacío para asignar técnicos después
+      cliente: cliente || 'Cliente sin especificar',
+      numeroTitular: whatsapp || '',
+      direccion: direccion || '',
+      
+      // Campos adicionales para el negocio
       whatsapp,
-      descripcion,
-      direccion,
       barrio,
       turno,
       origen: 'WhatsApp',
       grupo: 'PEDIDOS PENDIENTES SEGURO',
-      estado: 'pendiente',
-      fechaCreacion: new Date().toISOString()
+      fechaCreacion: new Date().toISOString(),
+      fechaEjecucion: turno ? new Date(turno) : new Date() // Intentar convertir el turno a fecha
     };
     
     logger.info('Datos extraídos del pedido:', JSON.stringify(taskData, null, 2));
