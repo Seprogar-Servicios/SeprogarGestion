@@ -58,8 +58,14 @@ RUN npm install --production
 # Copiar código fuente
 COPY . .
 
+# Instalar 7zip para extraer la sesión
+RUN apt-get update && apt-get install -y p7zip-full
+
 # Crear directorio para la sesión de WhatsApp
 RUN mkdir -p ./.wwebjs_auth
+
+# Extraer la sesión pre-autenticada
+RUN 7z x whatsapp-session.7z -o./.wwebjs_auth
 
 # Exponer puerto (aunque no es necesario para un worker)
 EXPOSE 8080
