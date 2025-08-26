@@ -64,5 +64,5 @@ RUN chmod -R 777 ./.wwebjs_auth
 # Exponer puerto (aunque no es necesario para un worker)
 EXPOSE 8080
 
-# Comando para iniciar la aplicación con el servidor web y extractor de QR
-CMD ["node", "start.js"]
+# Comando para iniciar la aplicación directamente con la sesión existente
+CMD ["node", "index.js"]

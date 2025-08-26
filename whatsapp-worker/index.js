@@ -18,10 +18,14 @@ logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
 // Configurar autenticación API
 setupApiAuth(process.env.API_KEY);
 
+// Verificar ruta de la sesión
+const sessionPath = './.wwebjs_auth';
+logger.info(`Usando sesión de WhatsApp en: ${require('path').resolve(sessionPath)}`);
+
 // Inicializar cliente de WhatsApp con autenticación local
 const client = new Client({
   authStrategy: new LocalAuth({
-    dataPath: './.wwebjs_auth'
+    dataPath: sessionPath
   }),
   puppeteer: {
     args: [
@@ -33,19 +37,24 @@ const client = new Client({
       '--no-zygote',
       '--disable-gpu'
     ],
-    headless: true
+    headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
   }
 });
 
 // Evento cuando se genera el código QR para autenticación
 client.on('qr', (qr) => {
-  logger.info('QR Code generado. Escanee con WhatsApp:');
+  logger.info('===========================================');
+  logger.info('QR CODE GENERADO - NECESITA ESCANEAR CON WHATSAPP');
+  logger.info('===========================================');
   qrcode.generate(qr, { small: true });
 });
 
 // Evento cuando el cliente está listo
 client.on('ready', () => {
-  logger.info('Cliente de WhatsApp conectado y listo!');
+  logger.info('===========================================');
+  logger.info('SESIÓN INICIADA CORRECTAMENTE - WHATSAPP CONECTADO');
+  logger.info('===========================================');
 });
 
 // Evento cuando se recibe un mensaje
@@ -107,7 +116,10 @@ client.on('message', async (message) => {
 
 // Manejar errores de autenticación
 client.on('auth_failure', (error) => {
-  logger.error('Error de autenticación:', error);
+  logger.error('===========================================');
+  logger.error('ERROR DE AUTENTICACIÓN - SESIÓN NO VÁLIDA');
+  logger.error('===========================================');
+  logger.error(error);
 });
 
 // Manejar desconexiones
