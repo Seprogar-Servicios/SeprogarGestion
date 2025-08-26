@@ -112,10 +112,26 @@ client.on('ready', async () => {
   }
 });
 
+// Evento para cualquier mensaje (debug)
+client.on('message_create', async (message) => {
+  logger.info('🔔 EVENTO message_create detectado');
+  logger.info(`   - Tipo: ${message.type}`);
+  logger.info(`   - De: ${message.from}`);
+  logger.info(`   - Contenido: ${message.body?.substring(0, 50) || 'Sin contenido'}...`);
+});
+
+// Evento para mensajes recibidos (alternativo)
+client.on('message_received', async (message) => {
+  logger.info('📨 EVENTO message_received detectado');
+});
+
 // Evento cuando se recibe un mensaje
 client.on('message', async (message) => {
   try {
     logger.info('=== MENSAJE RECIBIDO ===');
+    logger.info(`Tipo de mensaje: ${message.type}`);
+    logger.info(`De: ${message.from}`);
+    logger.info(`Contenido: ${message.body}`);
     
     // Verificar si el mensaje viene de un grupo permitido
     const chat = await message.getChat();
