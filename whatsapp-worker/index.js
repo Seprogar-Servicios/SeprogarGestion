@@ -77,11 +77,10 @@ client.on('qr', (qr) => {
 });
 
 // Evento cuando el cliente está listo
-client.on('ready', () => {
+client.on('ready', async () => {
   logger.info('===========================================');
   logger.info('SESIÓN INICIADA CORRECTAMENTE - WHATSAPP CONECTADO');
   logger.info('===========================================');
-  
   
   // Aplicar permisos correctos a la carpeta de sesión
   try {
@@ -92,25 +91,50 @@ client.on('ready', () => {
   } catch (error) {
     logger.error(`Error al aplicar permisos: ${error.message}`);
   }
+  
+  // Mostrar información de los chats
+  try {
+    const chats = await client.getChats();
+    const groups = chats.filter(chat => chat.isGroup);
+    logger.info(`📱 Total de chats: ${chats.length}`);
+    logger.info(`👥 Total de grupos: ${groups.length}`);
+    
+    if (groups.length > 0) {
+      logger.info('📋 Grupos disponibles:');
+      groups.forEach(group => {
+        logger.info(`  - "${group.name}"`);
+      });
+    }
+    
+    logger.info('🔍 Escuchando mensajes...');
+  } catch (error) {
+    logger.error('Error al obtener información de chats:', error);
+  }
 });
 
 // Evento cuando se recibe un mensaje
 client.on('message', async (message) => {
   try {
+    logger.info('=== MENSAJE RECIBIDO ===');
+    
     // Verificar si el mensaje viene de un grupo permitido
     const chat = await message.getChat();
     
     if (!chat.isGroup) {
-      logger.debug('Mensaje recibido fuera de un grupo, ignorando...');
+      logger.info('Mensaje recibido fuera de un grupo, ignorando...');
       return;
     }
     
     const groupName = chat.name;
+    logger.info(`Grupo: "${groupName}"`);
+    logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
     
     if (!GRUPOS_PERMITIDOS.includes(groupName)) {
-      logger.debug(`Mensaje recibido del grupo "${groupName}" que no está en la lista de permitidos, ignorando...`);
+      logger.info(`❌ Grupo "${groupName}" NO está en la lista de permitidos, ignorando...`);
       return;
     }
+    
+    logger.info(`✅ Grupo "${groupName}" está permitido, procesando mensaje...`);
     
     const messageContent = message.body.trim();
     logger.info(`Mensaje recibido del grupo "${groupName}": ${messageContent.substring(0, 50)}...`);
