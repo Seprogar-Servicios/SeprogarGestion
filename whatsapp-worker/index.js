@@ -4,10 +4,14 @@ const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { parsePedidoMessage, parseTareaMessage } = require('./src/parsers');
-const { checkDuplicateTask, createTask } = require('./src/api');
-const logger = require('./src/utils/logger');
-const { setupApiAuth } = require('./src/auth');
+
+// Configuración de logger simple
+const logger = {
+  info: (message, ...args) => console.log(`[INFO] ${message}`, ...args),
+  warn: (message, ...args) => console.warn(`[WARN] ${message}`, ...args),
+  error: (message, ...args) => console.error(`[ERROR] ${message}`, ...args),
+  debug: (message, ...args) => console.debug(`[DEBUG] ${message}`, ...args)
+};
 
 // Lista de grupos permitidos desde variables de entorno
 const GRUPOS_PERMITIDOS = process.env.GRUPOS_PERMITIDOS 
@@ -16,9 +20,6 @@ const GRUPOS_PERMITIDOS = process.env.GRUPOS_PERMITIDOS
 
 logger.info('Iniciando servicio de WhatsApp...');
 logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
-
-// Configurar autenticación API
-setupApiAuth(process.env.API_KEY);
 
 // Configuración de ruta para la autenticación local
 const AUTH_FOLDER = path.join(__dirname, '.wwebjs_auth');
@@ -145,14 +146,17 @@ client.on('message_create', async (message) => {
     let taskData = null;
     
     // Determinar el tipo de mensaje y parsearlo
-    if (messageContent.startsWith('Pedido')) {
+    const cleanContent = messageContent.replace(/^["']/, '').trim(); // Eliminar comillas iniciales
+    
+    if (cleanContent.startsWith('Pedido')) {
       logger.info('Detectado formato de Pedido, procesando...');
-      taskData = parsePedidoMessage(messageContent);
-    } else if (messageContent.startsWith('TAREA:')) {
+      taskData = parsePedidoMessage(cleanContent);
+    } else if (cleanContent.startsWith('TAREA:')) {
       logger.info('Detectado formato de TAREA, procesando...');
-      taskData = parseTareaMessage(messageContent);
+      taskData = parseTareaMessage(cleanContent);
     } else {
       logger.info('Formato de mensaje no reconocido, ignorando...');
+      logger.info(`Contenido limpio: "${cleanContent}"`);
       return;
     }
     
@@ -263,6 +267,111 @@ client.on('disconnected', (reason) => {
     client.initialize();
   }, 5000);
 });
+
+// Función para parsear mensajes de pedido
+function parsePedidoMessage(message) {
+  try {
+    // Eliminar comillas si existen
+    const cleanMessage = message.replace(/^["']|["']$/g, '').trim();
+    
+    // Extraer número de pedido
+    const numeroMatch = cleanMessage.match(/Pedido\s+(\d+)/i);
+    const numero = numeroMatch ? numeroMatch[1] : null;
+    
+    if (!numero) {
+      logger.error('No se pudo extraer el número de pedido');
+      return null;
+    }
+    
+    // Extraer cliente
+    const clienteMatch = cleanMessage.match(/Cliente:\s+([^\n]+)/i);
+    const cliente = clienteMatch ? clienteMatch[1].trim() : 'Sin especificar';
+    
+    // Extraer WhatsApp
+    const whatsappMatch = cleanMessage.match(/Whatsapp\s+titular:\s+([^\n]+)/i);
+    const whatsapp = whatsappMatch ? whatsappMatch[1].trim() : 'Sin especificar';
+    
+    // Extraer descripción
+    const descripcionMatch = cleanMessage.match(/Descripción\s+del\s+servicio:\s+([\s\S]*?)(?=Dirección|$)/i);
+    const descripcion = descripcionMatch ? descripcionMatch[1].trim() : 'Sin especificar';
+    
+    // Extraer dirección
+    const direccionMatch = cleanMessage.match(/Dirección\s+póliza:\s+([^\n]+)/i);
+    const direccion = direccionMatch ? direccionMatch[1].trim() : 'Sin especificar';
+    
+    // Extraer barrio
+    const barrioMatch = cleanMessage.match(/Barrio:\s+([^\n]+)/i);
+    const barrio = barrioMatch ? barrioMatch[1].trim() : 'Sin especificar';
+    
+    // Extraer turno
+    const turnoMatch = cleanMessage.match(/TURNO\s+confirmado\s+fecha\s+([^\n]+)/i);
+    const turno = turnoMatch ? turnoMatch[1].trim() : 'Sin especificar';
+    
+    // Crear objeto de tarea
+    const taskData = {
+      numero,
+      cliente,
+      whatsapp,
+      descripcion,
+      direccion,
+      barrio,
+      turno,
+      origen: 'WhatsApp',
+      grupo: 'PEDIDOS PENDIENTES SEGURO',
+      estado: 'pendiente',
+      fechaCreacion: new Date().toISOString()
+    };
+    
+    logger.info('Datos extraídos del pedido:', JSON.stringify(taskData, null, 2));
+    return taskData;
+  } catch (error) {
+    logger.error('Error al parsear mensaje de pedido:', error);
+    return null;
+  }
+}
+
+// Función para parsear mensajes de tarea
+function parseTareaMessage(message) {
+  // Implementar según formato de TAREA
+  logger.info('Formato TAREA no implementado aún');
+  return null;
+}
+
+// Función para enviar datos a la API
+async function sendToAPI(taskData) {
+  try {
+    // URL de la API (obtener de variables de entorno)
+    const apiUrl = process.env.API_URL || 'http://localhost:3000/api';
+    const apiKey = process.env.API_KEY || '';
+    const axios = require('axios');
+    
+    logger.info(`Enviando datos a la API: ${apiUrl}/tasks`);
+    
+    // Configurar la solicitud con axios
+    const response = await axios.post(`${apiUrl}/tasks`, taskData, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+    
+    logger.info(`Tarea creada exitosamente en la API con ID: ${response.data._id || response.data.id || 'desconocido'}`);
+    return true;
+  } catch (error) {
+    if (error.response) {
+      // La solicitud fue hecha y el servidor respondió con un código de estado fuera del rango 2xx
+      logger.error(`Error al crear tarea en la API: ${error.response.status}`);
+      logger.error(`Detalles: ${JSON.stringify(error.response.data)}`);
+    } else if (error.request) {
+      // La solicitud fue hecha pero no se recibió respuesta
+      logger.error('Error: No se recibió respuesta de la API');
+    } else {
+      // Ocurrió un error al configurar la solicitud
+      logger.error('Error al configurar la solicitud:', error.message);
+    }
+    return false;
+  }
+}
 
 // Inicializar el cliente
 client.initialize();
