@@ -28,6 +28,11 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
     }
   }, [dispatch, isAdmin]);
 
+  // Filtrar solo técnicos (usuarios con rol 'usuario')
+  const tecnicos = Array.isArray(users) 
+    ? users.filter((user: any) => user.rol === 'usuario')
+    : [];
+
   const estadoOptions = [
     { value: '', label: 'Todos los estados' },
     { value: 'pendiente', label: 'Pendiente' },
@@ -39,7 +44,8 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
   useEffect(() => {
     const newFilters = { ...filters };
     
-    if (selectedTecnico) {
+    // Solo aplicar filtro de técnico si hay técnicos disponibles y se seleccionó uno
+    if (selectedTecnico && tecnicos.length > 0) {
       newFilters.tecnico = selectedTecnico;
     } else {
       delete newFilters.tecnico;
@@ -52,12 +58,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
     }
     
     onFiltersChange(newFilters);
-  }, [selectedTecnico, selectedEstado]);
-
-  // Filtrar solo técnicos (usuarios con rol 'usuario')
-  const tecnicos = Array.isArray(users) 
-    ? users.filter((user: any) => user.rol === 'usuario')
-    : [];
+  }, [selectedTecnico, selectedEstado, tecnicos.length]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">

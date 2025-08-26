@@ -71,9 +71,14 @@ const TaskCalendar: React.FC = () => {
         }
         
         // Verificar si el técnico seleccionado está asignado a esta tarea
-        const tecnicoFound = task.tecnicos.some((tecnico: any) => 
-          tecnico._id === filters.tecnico || tecnico === filters.tecnico
-        );
+        const tecnicoFound = task.tecnicos.some((tecnico: any) => {
+          // Manejar tanto objetos completos como IDs de técnicos
+          if (typeof tecnico === 'object' && tecnico !== null) {
+            return tecnico._id === filters.tecnico;
+          } else {
+            return tecnico === filters.tecnico;
+          }
+        });
         
         if (!tecnicoFound) return false;
       }
@@ -83,6 +88,7 @@ const TaskCalendar: React.FC = () => {
         return false;
       }
       
+      // Si no hay fecha de ejecución, no mostrar en el calendario
       if (!task.fechaEjecucion) {
         return false;
       }
@@ -90,33 +96,37 @@ const TaskCalendar: React.FC = () => {
       try {
         // Convertir la fecha de la tarea a objeto Date
         // Asegurarnos de que la fecha se interprete correctamente para Argentina (UTC-3)
-        // Si la fecha viene en formato YYYY-MM-DD (sin tiempo), necesitamos asegurarnos
-        // de que se interprete correctamente en la zona horaria local
         let taskDate;
         
-        // Verificar que fechaEjecucion existe y es un string válido
-        if (!task.fechaEjecucion) {
-          return false;
-        }
-        
-        if (typeof task.fechaEjecucion === 'string' && task.fechaEjecucion.includes('T')) {
-          // Si la fecha incluye componente de tiempo (formato ISO)
-          taskDate = new Date(task.fechaEjecucion);
+        if (typeof task.fechaEjecucion === 'string') {
+          if (task.fechaEjecucion.includes('T')) {
+            // Si la fecha incluye componente de tiempo (formato ISO)
+            // Crear la fecha y ajustar para la zona horaria local
+            taskDate = new Date(task.fechaEjecucion);
+          } else {
+            // Si la fecha es solo YYYY-MM-DD sin componente de tiempo
+            // Crear la fecha explícitamente para evitar problemas de zona horaria
+            const [year, month, day] = task.fechaEjecucion.split('-').map(Number);
+            
+            // Crear la fecha a las 12:00 del día para evitar problemas de zona horaria
+            taskDate = new Date(year, month - 1, day, 12, 0, 0);
+          }
+        } else if (Object.prototype.toString.call(task.fechaEjecucion) === '[object Date]') {
+          // Si ya es un objeto Date
+          taskDate = new Date(task.fechaEjecucion as any);
         } else {
-          // Si la fecha es solo YYYY-MM-DD sin componente de tiempo
-          // Crear la fecha explícitamente para evitar problemas de zona horaria
-          const [year, month, day] = task.fechaEjecucion.split('-').map(Number);
-          taskDate = new Date(year, month - 1, day); // month es 0-indexed en JS
+          // Si no es ni string ni Date, no podemos procesarlo
+          return false;
         }
         
         // Verificar que la fecha es válida
         if (isNaN(taskDate.getTime())) {
+          console.warn('Fecha inválida en tarea:', task);
           return false;
         }
         
-        // Comparar si es el mismo día
-        const result = isSameDay(taskDate, date);
-        return result;
+        // Comparar si es el mismo día usando date-fns que maneja correctamente las zonas horarias
+        return isSameDay(taskDate, date);
       } catch (error) {
         return false;
       }
