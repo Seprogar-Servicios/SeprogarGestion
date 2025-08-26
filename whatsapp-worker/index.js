@@ -282,6 +282,58 @@ client.on('disconnected', (reason) => {
   }, 5000);
 });
 
+// Función para extraer y formatear la fecha de un texto de turno
+function extraerFechaDelTurno(turnoText) {
+  try {
+    // Buscar patrones de fecha en el texto del turno (dd/mm/yyyy o dd-mm-yyyy)
+    const fechaMatch = turnoText.match(/([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
+    
+    if (!fechaMatch) {
+      logger.warn(`No se encontró fecha en el texto del turno: ${turnoText}`);
+      return null;
+    }
+    
+    // Extraer la fecha encontrada
+    const fechaStr = fechaMatch[1];
+    const fechaParts = fechaStr.split(/[\/\-]/);
+    
+    if (fechaParts.length !== 3) {
+      logger.warn(`Formato de fecha incorrecto: ${fechaStr}`);
+      return null;
+    }
+    
+    let dia = parseInt(fechaParts[0], 10);
+    let mes = parseInt(fechaParts[1], 10) - 1; // Meses en JS son 0-11
+    let anio = parseInt(fechaParts[2], 10);
+    
+    // Si el año tiene 2 dígitos, asumimos 20XX
+    if (anio < 100) {
+      anio += 2000;
+    }
+    
+    // Crear fecha con la zona horaria local
+    const fecha = new Date(anio, mes, dia);
+    
+    if (isNaN(fecha.getTime())) {
+      logger.warn(`Fecha inválida: ${fechaStr}`);
+      return null;
+    }
+    
+    // Formato YYYY-MM-DD sin componente de tiempo para evitar problemas de zona horaria
+    const anioStr = fecha.getFullYear();
+    const mesStr = (fecha.getMonth() + 1).toString().padStart(2, '0');
+    const diaStr = fecha.getDate().toString().padStart(2, '0');
+    
+    const fechaFormateada = `${anioStr}-${mesStr}-${diaStr}`;
+    logger.info(`Fecha extraída del turno: ${fechaFormateada}`);
+    
+    return fechaFormateada;
+  } catch (error) {
+    logger.error('Error al extraer fecha del turno:', error);
+    return null;
+  }
+}
+
 // Función para parsear mensajes de pedido
 function parsePedidoMessage(message) {
   try {
@@ -337,7 +389,10 @@ function parsePedidoMessage(message) {
       franja_horaria: turno || '',
       
       // Fecha de ejecución (solo si podemos crear una fecha válida)
-      ...(turno && turno !== 'Sin especificar' ? { fechaEjecucion: new Date().toISOString() } : {})
+      ...(turno && turno !== 'Sin especificar' ? { 
+        // Extraer la fecha del turno si es posible
+        fechaEjecucion: extraerFechaDelTurno(turno) 
+      } : {})
     };
     
     // Guardamos información adicional en el log para referencia
@@ -354,9 +409,110 @@ function parsePedidoMessage(message) {
 
 // Función para parsear mensajes de tarea
 function parseTareaMessage(message) {
-  // Implementar según formato de TAREA
-  logger.info('Formato TAREA no implementado aún');
-  return null;
+  try {
+    // Eliminar comillas si existen
+    const cleanMessage = message.replace(/^["']|["']$/g, '').trim();
+    
+    // Extraer número de tarea
+    const numeroMatch = cleanMessage.match(/TAREA:\s*(\d+)/i);
+    const numero = numeroMatch ? numeroMatch[1] : null;
+    
+    if (!numero) {
+      logger.error('No se pudo extraer el número de tarea');
+      return null;
+    }
+    
+    // Extraer título
+    const tituloMatch = cleanMessage.match(/TAREA:\s*\d+\s*-\s*([^\n]+)/i);
+    const titulo = tituloMatch ? tituloMatch[1].trim() : `Tarea ${numero}`;
+    
+    // Extraer cliente
+    const clienteMatch = cleanMessage.match(/Cliente:\s*([^\n]+)/i);
+    const cliente = clienteMatch ? clienteMatch[1].trim() : 'Sin especificar';
+    
+    // Extraer dirección
+    const direccionMatch = cleanMessage.match(/Dirección:\s*([^\n]+)/i);
+    const direccion = direccionMatch ? direccionMatch[1].trim() : 'Sin especificar';
+    
+    // Extraer teléfono
+    const telefonoMatch = cleanMessage.match(/Teléfono:\s*([^\n]+)/i);
+    const telefono = telefonoMatch ? telefonoMatch[1].trim() : '';
+    
+    // Extraer descripción
+    const descripcionMatch = cleanMessage.match(/Descripción:\s*([^\n]+)/i);
+    const descripcion = descripcionMatch ? descripcionMatch[1].trim() : 'Sin descripción';
+    
+    // Extraer fecha
+    const fechaMatch = cleanMessage.match(/Fecha:\s*([^\n]+)/i);
+    let fechaEjecucion = null;
+    
+    if (fechaMatch) {
+      const fechaStr = fechaMatch[1].trim();
+      // Buscar patrones de fecha (dd/mm/yyyy o dd-mm-yyyy)
+      const fechaFormatoMatch = fechaStr.match(/([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
+      
+      if (fechaFormatoMatch) {
+        const fechaParts = fechaFormatoMatch[1].split(/[\/\-]/);
+        
+        if (fechaParts.length === 3) {
+          let dia = parseInt(fechaParts[0], 10);
+          let mes = parseInt(fechaParts[1], 10) - 1; // Meses en JS son 0-11
+          let anio = parseInt(fechaParts[2], 10);
+          
+          // Si el año tiene 2 dígitos, asumimos 20XX
+          if (anio < 100) {
+            anio += 2000;
+          }
+          
+          try {
+            // Crear fecha con la zona horaria local
+            const fecha = new Date(anio, mes, dia);
+            
+            if (!isNaN(fecha.getTime())) {
+              // Formato YYYY-MM-DD sin componente de tiempo para evitar problemas de zona horaria
+              const anioStr = fecha.getFullYear();
+              const mesStr = (fecha.getMonth() + 1).toString().padStart(2, '0');
+              const diaStr = fecha.getDate().toString().padStart(2, '0');
+              
+              fechaEjecucion = `${anioStr}-${mesStr}-${diaStr}`;
+              logger.info(`Fecha convertida para Argentina: ${fechaEjecucion}`);
+            }
+          } catch (e) {
+            logger.error('Error al convertir fecha:', e);
+          }
+        }
+      }
+    }
+    
+    // Extraer franja horaria
+    const franjaMatch = cleanMessage.match(/Horario:\s*([^\n]+)/i);
+    const franjaHoraria = franjaMatch ? franjaMatch[1].trim() : '';
+    
+    // Crear objeto de tarea
+    const taskData = {
+      // Campos requeridos
+      numero,
+      titulo,
+      
+      // Campos opcionales pero importantes
+      descripcion,
+      estado: 'pendiente',
+      tecnicos: [], // Array vacío para asignar técnicos después
+      cliente,
+      numeroTitular: telefono,
+      direccion,
+      
+      // Campos opcionales con validación
+      ...(fechaEjecucion ? { fechaEjecucion } : {}),
+      ...(franjaHoraria ? { franja_horaria: franjaHoraria } : {})
+    };
+    
+    logger.info('Datos extraídos de la tarea:', JSON.stringify(taskData, null, 2));
+    return taskData;
+  } catch (error) {
+    logger.error('Error al parsear mensaje de tarea:', error);
+    return null;
+  }
 }
 
 // Función para parsear mensajes de expediente
@@ -436,9 +592,21 @@ function parseExpedienteMessage(message) {
       }
       
       try {
+        // Crear fecha con la zona horaria local
         const fecha = new Date(anio, mes, dia);
+        
         if (!isNaN(fecha.getTime())) {
-          fechaEjecucion = fecha.toISOString();
+          // Ajustar para la zona horaria de Argentina (UTC-3)
+          // Al usar toISOString() se convierte a UTC, lo que puede causar cambios de día
+          // Creamos una fecha en formato YYYY-MM-DD que no dependa de la zona horaria
+          const anioStr = fecha.getFullYear();
+          const mesStr = (fecha.getMonth() + 1).toString().padStart(2, '0');
+          const diaStr = fecha.getDate().toString().padStart(2, '0');
+          
+          // Formato YYYY-MM-DD sin componente de tiempo para evitar problemas de zona horaria
+          fechaEjecucion = `${anioStr}-${mesStr}-${diaStr}`;
+          
+          logger.info(`Fecha convertida para Argentina: ${fechaEjecucion}`);
         }
       } catch (e) {
         logger.error('Error al convertir fecha:', e);

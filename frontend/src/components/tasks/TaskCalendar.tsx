@@ -81,7 +81,20 @@ const TaskCalendar: React.FC = () => {
       
       try {
         // Convertir la fecha de la tarea a objeto Date
-        const taskDate = new Date(task.fechaEjecucion);
+        // Asegurarnos de que la fecha se interprete correctamente para Argentina (UTC-3)
+        // Si la fecha viene en formato YYYY-MM-DD (sin tiempo), necesitamos asegurarnos
+        // de que se interprete correctamente en la zona horaria local
+        let taskDate;
+        
+        if (task.fechaEjecucion.includes('T')) {
+          // Si la fecha incluye componente de tiempo (formato ISO)
+          taskDate = new Date(task.fechaEjecucion);
+        } else {
+          // Si la fecha es solo YYYY-MM-DD sin componente de tiempo
+          // Crear la fecha explícitamente para evitar problemas de zona horaria
+          const [year, month, day] = task.fechaEjecucion.split('-').map(Number);
+          taskDate = new Date(year, month - 1, day); // month es 0-indexed en JS
+        }
         
         // Verificar que la fecha es válida
         if (isNaN(taskDate.getTime())) {
