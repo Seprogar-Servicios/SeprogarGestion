@@ -86,7 +86,12 @@ const TaskCalendar: React.FC = () => {
         // de que se interprete correctamente en la zona horaria local
         let taskDate;
         
-        if (task.fechaEjecucion.includes('T')) {
+        // Verificar que fechaEjecucion existe y es un string válido
+        if (!task.fechaEjecucion) {
+          return false;
+        }
+        
+        if (typeof task.fechaEjecucion === 'string' && task.fechaEjecucion.includes('T')) {
           // Si la fecha incluye componente de tiempo (formato ISO)
           taskDate = new Date(task.fechaEjecucion);
         } else {

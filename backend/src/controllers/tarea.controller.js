@@ -62,10 +62,25 @@ exports.getTareas = async (req, res) => {
     if (usuario) filtro.tecnicos = usuario;
     if (estado) filtro.estado = estado;
     if (cliente) filtro.cliente = { $regex: cliente, $options: 'i' };
+    // Manejo de filtros de fecha para fechaEjecucion como string
     if (fechaDesde || fechaHasta) {
-      filtro.fechaEjecucion = {};
-      if (fechaDesde) filtro.fechaEjecucion.$gte = new Date(fechaDesde);
-      if (fechaHasta) filtro.fechaEjecucion.$lte = new Date(fechaHasta);
+      // Ahora fechaEjecucion es un string en formato YYYY-MM-DD
+      // Necesitamos comparar como strings
+      if (fechaDesde && fechaHasta) {
+        // Si tenemos ambas fechas, usamos una expresión regular para encontrar fechas en ese rango
+        const fechaDesdeStr = fechaDesde.split('T')[0]; // Asegurarnos de tener solo YYYY-MM-DD
+        const fechaHastaStr = fechaHasta.split('T')[0]; // Asegurarnos de tener solo YYYY-MM-DD
+        filtro.fechaEjecucion = { 
+          $gte: fechaDesdeStr,
+          $lte: fechaHastaStr
+        };
+      } else if (fechaDesde) {
+        const fechaDesdeStr = fechaDesde.split('T')[0];
+        filtro.fechaEjecucion = { $gte: fechaDesdeStr };
+      } else if (fechaHasta) {
+        const fechaHastaStr = fechaHasta.split('T')[0];
+        filtro.fechaEjecucion = { $lte: fechaHastaStr };
+      }
     }
     const tareas = await Tarea.find(filtro)
       .populate('tecnicos', 'nombre email telefono')
@@ -185,33 +200,25 @@ exports.getTareasCalendario = async (req, res) => {
     const { desde, hasta, usuario, tecnico, cliente, estado } = req.query;
     const filtro = {};
     
-    // Filtro por fechas
+    // Filtro por fechas - ahora fechaEjecucion es un string en formato YYYY-MM-DD
     if (desde || hasta) {
       filtro.fechaEjecucion = {};
       if (desde) {
-        // Asegurar que la fecha es válida
         try {
-          const desdeDate = new Date(desde);
-          if (!isNaN(desdeDate.getTime())) {
-            filtro.fechaEjecucion.$gte = desdeDate;
-            console.log('Filtro desde:', desde, desdeDate);
-          } else {
-            console.error('Fecha desde inválida:', desde);
-          }
+          // Extraer solo la parte YYYY-MM-DD
+          const fechaDesdeStr = desde.split('T')[0];
+          filtro.fechaEjecucion.$gte = fechaDesdeStr;
+          console.log('Filtro desde (string):', fechaDesdeStr);
         } catch (error) {
           console.error('Error al procesar fecha desde:', error);
         }
       }
       if (hasta) {
-        // Asegurar que la fecha es válida
         try {
-          const hastaDate = new Date(hasta);
-          if (!isNaN(hastaDate.getTime())) {
-            filtro.fechaEjecucion.$lte = hastaDate;
-            console.log('Filtro hasta:', hasta, hastaDate);
-          } else {
-            console.error('Fecha hasta inválida:', hasta);
-          }
+          // Extraer solo la parte YYYY-MM-DD
+          const fechaHastaStr = hasta.split('T')[0];
+          filtro.fechaEjecucion.$lte = fechaHastaStr;
+          console.log('Filtro hasta (string):', fechaHastaStr);
         } catch (error) {
           console.error('Error al procesar fecha hasta:', error);
         }
