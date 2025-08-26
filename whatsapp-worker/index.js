@@ -336,7 +336,8 @@ function parsePedidoMessage(message) {
       origen: 'WhatsApp',
       grupo: 'PEDIDOS PENDIENTES SEGURO',
       fechaCreacion: new Date().toISOString(),
-      fechaEjecucion: turno ? new Date(turno) : new Date() // Intentar convertir el turno a fecha
+      // Omitir fechaEjecucion si no podemos crear una fecha válida
+      ...(turno && turno !== 'Sin especificar' ? { fechaEjecucion: new Date().toISOString() } : {})
     };
     
     logger.info('Datos extraídos del pedido:', JSON.stringify(taskData, null, 2));
