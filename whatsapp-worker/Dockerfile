@@ -58,11 +58,18 @@ RUN npm install --production
 # Copiar código fuente (incluida la carpeta .wwebjs_auth con la sesión)
 COPY . .
 
+# Crear carpeta public para guardar QR si es necesario
+RUN mkdir -p ./public && chmod -R 777 ./public
+
 # Asegurar permisos correctos para la carpeta de sesión
 RUN chmod -R 777 ./.wwebjs_auth
 
 # Exponer puerto (aunque no es necesario para un worker)
 EXPOSE 8080
 
-# Comando para iniciar la aplicación directamente con la sesión existente
-CMD ["node", "index.js"]
+# Script de inicio que verifica la sesión y luego inicia la aplicación
+COPY ./scripts/start.sh ./
+RUN chmod +x ./start.sh
+
+# Comando para iniciar la aplicación con verificación de sesión
+CMD ["./start.sh"]

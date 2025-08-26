@@ -12,3 +12,6 @@
 [0825/220312.810:INFO:CONSOLE(0)] "Document-Policy HTTP header: Unrecognized document policy feature name include-js-call-stacks-in-crash-reports.", source: https://web.whatsapp.com/ (0)
 [0825/220314.021:INFO:CONSOLE(114)] "Event handler of 'x-storagemutated-1' event must be added on the initial evaluation of worker script.", source: https://static.whatsapp.net/rsrc.php/v4/yn/r/482BZEa-4J7.js (114)
 [0825/220348.602:INFO:CONSOLE(114)] "Event handler of 'x-storagemutated-1' event must be added on the initial evaluation of worker script.", source: https://static.whatsapp.net/rsrc.php/v4/yn/r/482BZEa-4J7.js (114)
+[0825/220850.545:INFO:CONSOLE(901)] "Failed to parse video contentType: video/mp4; codecs=avc1.42000a", source: https://static.whatsapp.net/rsrc.php/v4isjl4/yC/l/es_LA-j/zrv8HCjUwX0.js (901)
+[0825/220850.545:INFO:CONSOLE(901)] "Failed to parse video contentType: video/mp4; codecs=hev1.1.6.L93.B0", source: https://static.whatsapp.net/rsrc.php/v4isjl4/yC/l/es_LA-j/zrv8HCjUwX0.js (901)
+[0825/220851.151:INFO:CONSOLE(114)] "Event handler of 'x-storagemutated-1' event must be added on the initial evaluation of worker script.", source: https://static.whatsapp.net/rsrc.php/v4/yn/r/482BZEa-4J7.js (114)
