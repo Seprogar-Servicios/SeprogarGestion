@@ -6,10 +6,27 @@ exports.createTarea = async (req, res) => {
   const { error } = tareaSchema.validate(req.body);
   if (error) return res.status(400).json({ message: error.details[0].message });
   
+  // Procesar la fecha de ejecución para evitar problemas de zona horaria
+  let datosAjustados = { ...req.body };
+  
+  if (datosAjustados.fechaEjecucion && typeof datosAjustados.fechaEjecucion === 'string') {
+    // Si la fecha viene en formato YYYY-MM-DD (sin tiempo)
+    if (!datosAjustados.fechaEjecucion.includes('T')) {
+      // Mantener el formato de string para evitar conversión automática a UTC
+      console.log('Worker - Fecha de ejecución recibida (string):', datosAjustados.fechaEjecucion);
+    } else {
+      // Si viene en formato ISO, extraer solo la parte de la fecha
+      console.log('Worker - Fecha de ejecución recibida (ISO):', datosAjustados.fechaEjecucion);
+      // Extraer solo la parte YYYY-MM-DD
+      datosAjustados.fechaEjecucion = datosAjustados.fechaEjecucion.split('T')[0];
+      console.log('Worker - Fecha de ejecución ajustada:', datosAjustados.fechaEjecucion);
+    }
+  }
+  
   try {
     // Crear la tarea sin asignar creadoPor
     const tarea = new Tarea({
-      ...req.body,
+      ...datosAjustados,
       // Usar un ID fijo para el sistema o null
       creadoPor: null,
       fechaCreacion: new Date(),

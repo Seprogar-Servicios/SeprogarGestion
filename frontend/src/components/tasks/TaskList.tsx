@@ -108,6 +108,18 @@ const TaskList: React.FC = () => {
       
       // Crear objeto con los datos del formulario incluyendo franja_horaria pero excluyendo horaInicio y horaFin
       const { horaInicio, horaFin, ...restFormData } = formData;
+      
+      // Ajustar la fecha de ejecución para evitar problemas de zona horaria
+      let fechaEjecucionAjustada = restFormData.fechaEjecucion;
+      
+      if (fechaEjecucionAjustada) {
+        // Si la fecha viene en formato YYYY-MM-DD (sin tiempo)
+        // La dejamos tal cual para que se maneje como string en el backend
+        // y no se convierta automáticamente a Date con zona horaria UTC
+        console.log('Fecha de ejecución original:', fechaEjecucionAjustada);
+        console.log('Fecha de ejecución ajustada:', fechaEjecucionAjustada);
+      }
+      
       const taskData = {
         ...restFormData,
         franja_horaria

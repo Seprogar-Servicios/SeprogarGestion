@@ -11,8 +11,22 @@ exports.createTarea = async (req, res) => {
   const { error } = tareaSchema.validate(req.body);
   if (error) return res.status(400).json({ message: error.details[0].message });
   try {
+    // Procesar la fecha de ejecución para evitar problemas de zona horaria
+    let datosAjustados = { ...req.body };
+    
+    if (datosAjustados.fechaEjecucion && typeof datosAjustados.fechaEjecucion === 'string') {
+      // Si la fecha viene en formato YYYY-MM-DD (sin tiempo)
+      if (!datosAjustados.fechaEjecucion.includes('T')) {
+        // Mantener el formato de string para evitar conversión automática a UTC
+        console.log('Fecha de ejecución recibida (string):', datosAjustados.fechaEjecucion);
+      } else {
+        // Si viene en formato ISO, convertir a Date
+        console.log('Fecha de ejecución recibida (ISO):', datosAjustados.fechaEjecucion);
+      }
+    }
+    
     const tarea = new Tarea({
-      ...req.body,
+      ...datosAjustados,
       creadoPor: req.user._id,
       fechaCreacion: new Date(),
       fechaModificacion: new Date(),

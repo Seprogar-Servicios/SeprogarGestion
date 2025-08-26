@@ -8,7 +8,9 @@ const tareaSchema = new mongoose.Schema({
   tecnicos: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' }],
   fechaCreacion: { type: Date, default: Date.now },
   fechaModificacion: { type: Date, default: Date.now },
-  fechaEjecucion: { type: Date },
+  // Cambiamos el tipo a String para evitar problemas de zona horaria
+  // Esto nos permite almacenar fechas en formato YYYY-MM-DD sin conversión automática a UTC
+  fechaEjecucion: { type: String },
   franja_horaria: { type: String },
   creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
   cliente: { type: String },
