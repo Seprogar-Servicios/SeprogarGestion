@@ -15,9 +15,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Iniciar servidor web
-const server = app.listen(PORT, () => {
-  console.log(`Servidor web iniciado en http://localhost:${PORT}`);
+// Iniciar servidor web - escuchar en todas las interfaces para que sea accesible desde Internet
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor web iniciado en http://0.0.0.0:${PORT}`);
+  console.log('Accede a la URL de Render para ver el código QR');
 });
 
 // Crear directorio public si no existe
