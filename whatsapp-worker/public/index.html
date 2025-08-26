@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp QR Code</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            color: #128C7E;
+            margin-bottom: 20px;
+        }
+        .qr-container {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: white;
+            display: inline-block;
+        }
+        img {
+            max-width: 300px;
+            height: auto;
+        }
+        p {
+            color: #555;
+            margin: 15px 0;
+        }
+        .refresh-btn {
+            background-color: #128C7E;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        .refresh-btn:hover {
+            background-color: #0e7369;
+        }
+        .status {
+            margin-top: 15px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WhatsApp QR Code</h1>
+        <p>Escanea este código QR con tu WhatsApp para iniciar sesión</p>
+        
+        <div class="qr-container">
+            <img id="qr-image" src="qr-code.png" alt="WhatsApp QR Code">
+        </div>
+        
+        <p>Si el código no funciona, prueba con esta versión alternativa:</p>
+        
+        <div class="qr-container">
+            <img id="qr-alt" src="qr-text.png" alt="WhatsApp QR Code Alternative">
+        </div>
+        
+        <button class="refresh-btn" onclick="refreshQR()">Actualizar QR</button>
+        
+        <p class="status" id="status">Última actualización: <span id="timestamp"></span></p>
+    </div>
+
+    <script>
+        // Actualizar timestamp
+        function updateTimestamp() {
+            const now = new Date();
+            document.getElementById('timestamp').textContent = now.toLocaleString();
+        }
+        
+        // Refrescar QR
+        function refreshQR() {
+            const qrImage = document.getElementById('qr-image');
+            const qrAlt = document.getElementById('qr-alt');
+            
+            // Añadir parámetro para evitar caché
+            const timestamp = new Date().getTime();
+            qrImage.src = `qr-code.png?t=${timestamp}`;
+            qrAlt.src = `qr-text.png?t=${timestamp}`;
+            
+            updateTimestamp();
+            document.getElementById('status').textContent = 'Actualizando...';
+            
+            // Verificar si las imágenes se cargaron correctamente
+            setTimeout(() => {
+                document.getElementById('status').textContent = 'Última actualización: ' + new Date().toLocaleString();
+            }, 1000);
+        }
+        
+        // Inicializar
+        updateTimestamp();
+        
+        // Refrescar automáticamente cada 30 segundos
+        setInterval(refreshQR, 30000);
+    </script>
+</body>
+</html>
