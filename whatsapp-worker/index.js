@@ -2,6 +2,8 @@ require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const { parsePedidoMessage, parseTareaMessage } = require('./src/parsers');
 const { checkDuplicateTask, createTask } = require('./src/api');
 const logger = require('./src/utils/logger');
@@ -18,14 +20,14 @@ logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
 // Configurar autenticación API
 setupApiAuth(process.env.API_KEY);
 
-// Verificar ruta de la sesión
-const sessionPath = './.wwebjs_auth';
-logger.info(`Usando sesión de WhatsApp en: ${require('path').resolve(sessionPath)}`);
+// Configuración de ruta para la autenticación local
+const AUTH_FOLDER = path.join(__dirname, '.wwebjs_auth');
+logger.info(`Usando carpeta de autenticación: ${AUTH_FOLDER}`);
 
-// Inicializar cliente de WhatsApp con autenticación local
+// Inicializar cliente de WhatsApp con LocalAuth
 const client = new Client({
   authStrategy: new LocalAuth({
-    dataPath: sessionPath
+    dataPath: AUTH_FOLDER
   }),
   puppeteer: {
     args: [
@@ -47,6 +49,8 @@ client.on('qr', (qr) => {
   logger.info('===========================================');
   logger.info('QR CODE GENERADO - NECESITA ESCANEAR CON WHATSAPP');
   logger.info('===========================================');
+  logger.info('Si ves este mensaje en Render, significa que la sesión no se cargó correctamente.');
+  logger.info('Debes generar la sesión localmente con "node bot.js" y luego subir la carpeta .wwebjs_auth a Render.');
   qrcode.generate(qr, { small: true });
 });
 

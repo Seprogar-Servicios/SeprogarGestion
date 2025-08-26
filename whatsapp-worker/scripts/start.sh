@@ -4,48 +4,33 @@
 echo "Iniciando WhatsApp Worker en entorno: $NODE_ENV"
 echo "Directorio actual: $(pwd)"
 
-# Verificar si existe la carpeta de sesión
-if [ -d "./.wwebjs_auth/session/Default" ]; then
-  echo "Carpeta de sesión encontrada, verificando integridad..."
-  
-  # Ejecutar script de verificación de sesión
-  node ./scripts/checkSession.js
-  
-  # Verificar resultado
-  if [ $? -eq 0 ]; then
-    echo "Verificación de sesión exitosa, iniciando aplicación..."
-    node index.js
-  else
-    echo "La verificación de sesión falló, se requiere generar una nueva sesión"
-    echo "Escanea el código QR cuando aparezca para crear una nueva sesión"
-    node ./scripts/generateSession.js
-    
-    # Verificar si la generación de sesión fue exitosa
-    if [ $? -eq 0 ]; then
-      echo "Sesión generada correctamente, iniciando aplicación..."
-      node index.js
-    else
-      echo "Error al generar la sesión. Revisa los logs para más detalles."
-      exit 1
-    fi
-  fi
+# Descomprimir sesión desde variable de entorno si existe
+if [ -n "$WWEBJS_AUTH_ZIP_BASE64" ]; then
+  echo "🔄 Encontrada variable de entorno con sesión. Descomprimiendo..."
+  echo "$WWEBJS_AUTH_ZIP_BASE64" | base64 -d > wwebjs_auth.zip
+  mkdir -p ./.wwebjs_auth
+  unzip -o wwebjs_auth.zip -d ./
+  rm wwebjs_auth.zip
+  chmod -R 777 ./.wwebjs_auth
+  echo "✅ Sesión descomprimida correctamente"
+fi
+
+# Verificar si existe la carpeta .wwebjs_auth con contenido
+if [ -d "./.wwebjs_auth" ] && [ "$(ls -A ./.wwebjs_auth)" ]; then
+  echo "✅ Carpeta de sesión encontrada, iniciando aplicación..."
+  # Asegurar permisos correctos
+  chmod -R 777 ./.wwebjs_auth
+  node index.js
 else
-  echo "No se encontró carpeta de sesión, generando nueva sesión..."
-  echo "Escanea el código QR cuando aparezca para crear una nueva sesión"
+  echo "❌ No se encontró una sesión válida."
+  echo "⚠️ Debes generar primero una sesión localmente con 'node bot.js'"
+  echo "⚠️ y luego subir la carpeta .wwebjs_auth completa a este servidor."
   
-  # Crear estructura de carpetas si no existe
+  # Crear estructura de carpetas por si acaso
   mkdir -p ./.wwebjs_auth
   chmod -R 777 ./.wwebjs_auth
   
-  # Generar nueva sesión
-  node ./scripts/generateSession.js
-  
-  # Verificar si la generación de sesión fue exitosa
-  if [ $? -eq 0 ]; then
-    echo "Sesión generada correctamente, iniciando aplicación..."
-    node index.js
-  else
-    echo "Error al generar la sesión. Revisa los logs para más detalles."
-    exit 1
-  fi
+  echo "🔄 Intentando iniciar la aplicación de todos modos..."
+  echo "🚨 Es posible que se genere un código QR que necesites escanear."
+  node index.js
 fi

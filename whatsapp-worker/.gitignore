@@ -23,9 +23,6 @@ build/
 
 # Mantener la estructura de la sesión de WhatsApp pero ignorar archivos temporales
 # NO eliminar estas carpetas - son necesarias para la sesión
-!.wwebjs_auth/
-!.wwebjs_auth/session/
-!.wwebjs_cache/
 
 # Ignorar archivos temporales y de bloqueo dentro de la sesión
 .wwebjs_auth/**/*.log

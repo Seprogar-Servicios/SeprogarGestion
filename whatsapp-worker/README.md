@@ -24,10 +24,22 @@ Este servicio se conecta a WhatsApp Web mediante la librería `whatsapp-web.js` 
    cp .env.example .env
    ```
 4. Editar el archivo `.env` con los valores correctos
-5. Iniciar el servicio:
+
+### Generación de sesión local
+
+1. Ejecutar el script para generar el código QR:
    ```
-   npm start
+   node bot.js
    ```
+2. Escanear el código QR con tu teléfono
+3. Una vez autenticado, se creará la carpeta `.wwebjs_auth` con los archivos de sesión
+4. Esta carpeta de sesión puede ser usada para desplegar en Render sin necesidad de escanear el QR allí
+
+### Iniciar el servicio
+
+```
+npm start
+```
 
 ## Variables de entorno
 
@@ -42,6 +54,12 @@ Este servicio se conecta a WhatsApp Web mediante la librería `whatsapp-web.js` 
 | `LOG_LEVEL` | Nivel de logs (DEBUG, INFO, WARN, ERROR) | `INFO` |
 
 ## Despliegue en Render
+
+### Opción 1: Usando sesión generada localmente (recomendado)
+
+1. Primero, genera la sesión localmente siguiendo los pasos de "Generación de sesión local"
+2. Asegúrate de que se haya creado la carpeta `.wwebjs_auth` con los archivos de sesión
+3. Comprime la carpeta `.wwebjs_auth` completa y súbela al despliegue de Render (no se recomienda subir estos archivos al repositorio)
 
 ### Paso 1: Crear un nuevo servicio
 
@@ -76,15 +94,23 @@ Para mantener la sesión de WhatsApp activa, necesitas configurar un disco persi
 
 1. En la sección "Disks", haz clic en "Add Disk"
 2. Configura:
-   - **Mount Path**: `/usr/src/app/whatsapp-session`
+   - **Mount Path**: `/usr/src/app/.wwebjs_auth`
    - **Size**: `1 GB` (o más si es necesario)
 
 ### Paso 5: Desplegar
 
 1. Haz clic en "Create Background Worker"
 2. Espera a que se complete el despliegue
-3. Una vez desplegado, verás el código QR en los logs
-4. Escanea el código QR con tu WhatsApp para iniciar sesión
+3. El servicio debería iniciarse usando la sesión que generaste localmente
+
+### Opción 2: Generar sesión en Render (alternativa)
+
+Si no puedes generar la sesión localmente:
+
+1. Despliega el servicio sin la sesión
+2. Observa los logs para ver el código QR
+3. Escanea el código QR con tu WhatsApp para iniciar sesión
+4. La sesión se guardará en el disco persistente
 
 ### Paso 6: Monitoreo
 
@@ -115,7 +141,7 @@ Para que el worker pueda comunicarse con el backend, es necesario configurar la 
 ## Notas importantes
 
 - La primera vez que se ejecuta el servicio, se debe escanear un código QR para autenticar WhatsApp
-- La sesión se guarda en el directorio `whatsapp-session`, por lo que no es necesario volver a escanear el código QR en cada reinicio
+- La sesión se guarda en el directorio `.wwebjs_auth` usando LocalAuth, por lo que no es necesario volver a escanear el código QR en cada reinicio
 - Si cambias de dispositivo o cierras sesión en WhatsApp, deberás volver a escanear el código QR
 - El servicio solo procesará mensajes de los grupos especificados en `GRUPOS_PERMITIDOS`
 - Los mensajes deben seguir exactamente los formatos especificados para ser procesados correctamente

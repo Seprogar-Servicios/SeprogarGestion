@@ -1,70 +1,62 @@
-const { Client } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const path = require('path');
 
-// Ruta de la sesión
-// Usa la variable de entorno SESSION_PATH si existe (útil para Render)
-// Si no, guarda localmente en ./.wwebjs_auth/session.json
-const SESSION_PATH = process.env.SESSION_PATH || path.join(__dirname, '.wwebjs_auth', 'session.json');
+// Configuración de rutas para la sesión local
+const AUTH_FOLDER = path.join(__dirname, '.wwebjs_auth');
 
-let sessionData = {};
-if (fs.existsSync(SESSION_PATH)) {
-    sessionData = require(SESSION_PATH);
+// Crear carpeta .wwebjs_auth si no existe
+if (!fs.existsSync(AUTH_FOLDER)) {
+    fs.mkdirSync(AUTH_FOLDER, { recursive: true });
+    console.log(`📁 Carpeta creada: ${AUTH_FOLDER}`);
 }
 
-// Crear cliente WhatsApp
+// Crear cliente de WhatsApp usando LocalAuth
 const client = new Client({
-    puppeteer: { 
+    authStrategy: new LocalAuth({
+        dataPath: AUTH_FOLDER
+    }),
+    puppeteer: {
         headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-        ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
-    },
-    session: sessionData
+        args: ['--no-sandbox']
+    }
 });
 
-// Evento QR
-client.on('qr', qr => {
+console.log(`📁 Usando carpeta de autenticación: ${AUTH_FOLDER}`);
+
+// Evento cuando se genera el QR
+client.on('qr', (qr) => {
     console.log('====================');
     console.log('ESCANEA ESTE QR CON TU TELÉFONO');
     console.log('====================');
     qrcode.generate(qr, { small: true });
 });
 
-// Evento autenticación
-client.on('authenticated', (session) => {
+// Evento cuando se autentica y genera la sesión
+client.on('authenticated', () => {
     console.log('✅ AUTENTICADO CORRECTAMENTE!');
-
-    // Crear carpeta si no existe
-    const dir = path.dirname(SESSION_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-    // Guardar sesión
-    fs.writeFileSync(SESSION_PATH, JSON.stringify(session));
-    console.log('Datos de sesión guardados en', SESSION_PATH);
+    console.log('📄 La sesión se ha guardado automáticamente en la carpeta .wwebjs_auth');
+    console.log('🔄 Ahora puedes subir esta carpeta a Render');
 });
 
-// Evento error de autenticación
+// Evento cuando hay un error de autenticación
 client.on('auth_failure', (error) => {
     console.error('❌ ERROR DE AUTENTICACIÓN:', error);
 });
 
-// Evento de carga
-client.on('loading_screen', (percent, message) => {
-    console.log(`Cargando: ${percent}% - ${message}`);
-});
-
-// Cliente listo
+// Evento cuando el cliente está listo
 client.on('ready', () => {
     console.log('✅ Cliente listo! WhatsApp conectado y listo para usar');
+    console.log('🚀 Sesión lista para ser usada en Render');
 });
 
+// Evento para errores generales
+client.on('disconnected', (reason) => {
+    console.log('❌ Cliente desconectado:', reason);
+});
+
+console.log('🚀 Iniciando cliente de WhatsApp...');
+
+// Inicializar el cliente
 client.initialize();
