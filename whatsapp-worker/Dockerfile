@@ -59,7 +59,7 @@ RUN npm install --production
 COPY . .
 
 # Crear directorio para la sesión de WhatsApp
-RUN mkdir -p ./whatsapp-session
+RUN mkdir -p ./.wwebjs_auth
 
 # Exponer puerto (aunque no es necesario para un worker)
 EXPOSE 8080
