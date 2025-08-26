@@ -64,6 +64,9 @@ RUN mkdir -p ./public && chmod -R 777 ./public
 # Asegurar permisos correctos para la carpeta de sesión
 RUN chmod -R 777 ./.wwebjs_auth
 
+# Configurar volumen para la carpeta public
+VOLUME ["/usr/src/app/public"]
+
 # Exponer puerto (aunque no es necesario para un worker)
 EXPOSE 8080
 

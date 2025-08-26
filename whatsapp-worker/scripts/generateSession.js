@@ -193,7 +193,7 @@ const client = new Client({
 });
 
 // Evento cuando se genera el código QR para autenticación
-client.on('qr', (qr) => {
+client.on('qr', async (qr) => {
   logger.info('===========================================');
   logger.info('QR CODE GENERADO - NECESITA ESCANEAR CON WHATSAPP');
   logger.info('=========================================');
@@ -201,10 +201,20 @@ client.on('qr', (qr) => {
   // Mostrar QR en terminal
   qrcode.generate(qr, { small: true });
   
+  // Guardar como imagen PNG
+  const qrImagePath = path.join(publicDir, 'whatsapp_qr.png');
+  try {
+    await qrcodeWeb.toFile(qrImagePath, qr);
+    logger.info(`QR guardado como imagen en: ${qrImagePath}`);
+    logger.info(`Abre este archivo desde tu host para escanear el código`);
+  } catch (err) {
+    logger.error('Error al guardar imagen QR:', err);
+  }
+  
   // Generar imagen del QR para la web
   qrcodeWeb.toDataURL(qr, (err, url) => {
     if (err) {
-      logger.error('Error al generar imagen QR:', err);
+      logger.error('Error al generar imagen QR para web:', err);
       return;
     }
     
