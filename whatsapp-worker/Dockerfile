@@ -46,33 +46,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Crear directorio de la aplicación
+# Directorio de la aplicación
 WORKDIR /usr/src/app
 
-# Copiar archivos de dependencias
+# Copiar package.json y package-lock.json
 COPY package*.json ./
 
 # Instalar dependencias
 RUN npm install --production
 
-# Copiar código fuente (incluida la carpeta .wwebjs_auth con la sesión)
+# Copiar el resto del código fuente, pero **NO incluimos la sesión**
 COPY . .
 
-# Crear carpeta public para guardar QR si es necesario
+# Crear carpeta public (opcional)
 RUN mkdir -p ./public && chmod -R 777 ./public
-
-# Asegurar permisos correctos para la carpeta de sesión
-RUN chmod -R 777 ./.wwebjs_auth
-
-# Configurar volumen para la carpeta public
-VOLUME ["/usr/src/app/public"]
 
 # Exponer puerto (aunque no es necesario para un worker)
 EXPOSE 8080
 
-# Script de inicio que verifica la sesión y luego inicia la aplicación
+# Script de inicio
 COPY ./scripts/start.sh ./
 RUN chmod +x ./start.sh
 
-# Comando para iniciar la aplicación con verificación de sesión
+# Comando de inicio
 CMD ["./start.sh"]
+
+# NOTA: no copiamos .wwebjs_auth, se usará el Persistent Disk montado
