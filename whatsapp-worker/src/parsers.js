@@ -36,16 +36,17 @@ function parsePedidoMessage(message) {
       const startIndex = message.indexOf(descripcionStartMatch[0]) + descripcionStartMatch[0].length;
       
       // Buscar dónde termina la descripción (en "Dirección" o "Barrio")
-      const direccionIndex = message.indexOf('Dirección', startIndex);
+      const direccionPolizaIndex = message.indexOf('Dirección póliza:', startIndex);
+      const direccionPedidoIndex = message.indexOf('Dirección pedido:', startIndex);
       const barrioIndex = message.indexOf('Barrio:', startIndex);
       
       let endIndex;
-      if (direccionIndex !== -1 && barrioIndex !== -1) {
-        endIndex = Math.min(direccionIndex, barrioIndex);
-      } else if (direccionIndex !== -1) {
-        endIndex = direccionIndex;
-      } else if (barrioIndex !== -1) {
-        endIndex = barrioIndex;
+      // Determinar el índice más cercano entre las posibles etiquetas
+      const indices = [direccionPolizaIndex, direccionPedidoIndex, barrioIndex]
+        .filter(index => index !== -1);
+      
+      if (indices.length > 0) {
+        endIndex = Math.min(...indices);
       } else {
         // Si no encuentra ninguno, buscar el siguiente campo o usar el final del mensaje
         const turnoIndex = message.indexOf('TURNO', startIndex);
@@ -55,14 +56,18 @@ function parsePedidoMessage(message) {
       descripcion = message.substring(startIndex, endIndex).trim();
     }
     
-    // Extraer dirección
-    const direccionMatch = message.match(/Dirección póliza:\s*([^\n]+)/i);
+    // Extraer dirección (puede ser "Dirección póliza" o "Dirección pedido")
+    let direccionMatch = message.match(/Dirección póliza:\s*([^\n]+)/i);
+    if (!direccionMatch) {
+      direccionMatch = message.match(/Dirección pedido:\s*([^\n]+)/i);
+    }
     const direccion = direccionMatch ? direccionMatch[1].trim() : null;
     
     // Extraer fecha de ejecución y franja horaria
     let fechaEjecucion = null;
     let franja_horaria = null;
     
+    // Buscar el patrón de TURNO en cualquier parte del mensaje
     const turnoMatch = message.match(/TURNO confirmado fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/i);
     
     if (turnoMatch) {
