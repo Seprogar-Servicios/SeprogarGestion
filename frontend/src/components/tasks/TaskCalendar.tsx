@@ -38,36 +38,10 @@ const TaskCalendar: React.FC = () => {
       calendarFilters.usuario = user._id;
     }
     
-    console.log(`Solicitando tareas del calendario para ${format(currentDate, 'MMMM yyyy', { locale: es })}`);
     dispatch(fetchCalendarTasks(calendarFilters));
   }, [dispatch, currentDate, filters, user]);
   
-  // Efecto para verificar las tareas del worker después de cada actualización
-  useEffect(() => {
-    if (tasks && Array.isArray(tasks)) {
-      const workerTasks = tasks.filter(task => {
-        // Identificar tareas del worker por origen o formato de fecha
-        if (task.origen === 'whatsapp') return true;
-        
-        if (task.fechaEjecucion && 
-            typeof task.fechaEjecucion === 'string' && 
-            /^\d{4}-\d{2}-\d{2}$/.test(task.fechaEjecucion)) {
-          return true;
-        }
-        
-        return false;
-      });
-      
-      console.log(`Tareas totales: ${tasks.length}, Tareas del worker: ${workerTasks.length}`);
-      
-      // Verificar si hay duplicados
-      const taskIds = tasks.map(t => t._id);
-      const uniqueIds = new Set(taskIds);
-      if (taskIds.length !== uniqueIds.size) {
-        console.warn(`¡Atención! Se detectaron ${taskIds.length - uniqueIds.size} tareas duplicadas`);
-      }
-    }
-  }, [tasks]);
+  // El efecto de depuración ha sido eliminado
   
 
   const handleFiltersChange = (newFilters: TaskFilters) => {
@@ -118,15 +92,7 @@ const TaskCalendar: React.FC = () => {
         return false;
       }
       
-      // Verificar si es una tarea del worker (para depuración)
-      const isWorkerTask = task.origen === 'whatsapp' || 
-                          (typeof task.fechaEjecucion === 'string' && 
-                           /^\d{4}-\d{2}-\d{2}$/.test(task.fechaEjecucion));
-      
-      // Si es una tarea del worker, mostrar información adicional para depuración
-      if (isWorkerTask) {
-        console.log(`Procesando tarea del worker: ${task.titulo}, ID: ${task._id}, Fecha: ${task.fechaEjecucion}`);
-      }
+      // Verificar si es una tarea del worker (sin logs de depuración)
       
       try {
         // Convertir la fecha de la tarea a objeto Date
@@ -141,7 +107,6 @@ const TaskCalendar: React.FC = () => {
             
             // Verificar si la fecha es válida
             if (isNaN(taskDate.getTime())) {
-              console.warn('Fecha ISO inválida:', task.fechaEjecucion);
               return false;
             }
           } else if (task.fechaEjecucion.includes('-')) {
@@ -158,11 +123,9 @@ const TaskCalendar: React.FC = () => {
               
               // Verificar si la fecha es válida
               if (isNaN(taskDate.getTime())) {
-                console.warn('Fecha YYYY-MM-DD inválida:', task.fechaEjecucion);
                 return false;
               }
             } else {
-              console.warn('Formato de fecha con guiones inválido:', task.fechaEjecucion);
               return false;
             }
           } else if (task.fechaEjecucion.includes('/')) {
@@ -183,15 +146,12 @@ const TaskCalendar: React.FC = () => {
               
               // Verificar si la fecha es válida
               if (isNaN(taskDate.getTime())) {
-                console.warn('Fecha DD/MM/YYYY inválida:', task.fechaEjecucion);
                 return false;
               }
             } else {
-              console.warn('Formato de fecha con barras inválido:', task.fechaEjecucion);
               return false;
             }
           } else {
-            console.warn('Formato de fecha no reconocido:', task.fechaEjecucion);
             return false; // Formato de fecha no reconocido
           }
         } else if (Object.prototype.toString.call(task.fechaEjecucion) === '[object Date]') {
@@ -200,25 +160,21 @@ const TaskCalendar: React.FC = () => {
           
           // Verificar si la fecha es válida
           if (isNaN(taskDate.getTime())) {
-            console.warn('Objeto Date inválido en tarea:', task);
             return false;
           }
         } else {
           // Si no es ni string ni Date, no podemos procesarlo
-          console.warn('Tipo de fecha no soportado:', typeof task.fechaEjecucion, task);
           return false;
         }
         
         // Verificar que la fecha es válida
         if (isNaN(taskDate.getTime())) {
-          console.warn('Fecha inválida en tarea:', task);
           return false;
         }
         
         // Comparar si es el mismo día usando date-fns que maneja correctamente las zonas horarias
         return isSameDay(taskDate, date);
       } catch (error) {
-        console.error('Error procesando fecha:', error, task);
         return false;
       }
     });

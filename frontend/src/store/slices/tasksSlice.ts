@@ -336,8 +336,6 @@ const tasksSlice = createSlice({
         
         // Combinar las tareas del worker existentes con las nuevas tareas no-worker
         state.tasks = [...workerTasks, ...newNonWorkerTasks];
-        
-        console.log(`Manteniendo ${workerTasks.length} tareas del worker y añadiendo ${newNonWorkerTasks.length} tareas nuevas`);
       })
       .addCase(fetchCalendarTasks.rejected, (state, action) => {
         state.loading = false;
