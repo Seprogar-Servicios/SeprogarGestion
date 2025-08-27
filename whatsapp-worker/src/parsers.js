@@ -9,7 +9,13 @@
  */
 function parsePedidoMessage(message) {
   try {
-    // Extraer el número de pedido
+    // Limpiar el mensaje: eliminar asteriscos y normalizar saltos de línea
+    message = message
+      .replace(/\*/g, '') // Eliminar asteriscos
+      .replace(/\n\s*\n/g, '\n') // Normalizar múltiples saltos de línea
+      .trim();
+      
+    // Extraer el número de pedido (con o sin asteriscos)
     const numeroMatch = message.match(/Pedido\s+(\d+)/i);
     const numero = numeroMatch ? numeroMatch[1] : null;
     
@@ -28,32 +34,22 @@ function parsePedidoMessage(message) {
     const numeroTitularMatch = message.match(/[Ww]hatsapp\s+titular:\s*([^\n]+)/i);
     const numeroTitular = numeroTitularMatch ? numeroTitularMatch[1].trim() : null;
     
-    // Extraer descripción del servicio (desde "Descripción del servicio:" hasta "Dirección" o "Barrio")
+    // Extraer la descripción del servicio
     let descripcion = null;
-    const descripcionStartMatch = message.match(/Descripción del servicio:\s*([^\n]+)/i);
+    const descripcionMatch = message.match(/Descripción del servicio:\s*([^\n]+)/i);
+    if (descripcionMatch) {
+      descripcion = descripcionMatch[1].trim();
+    }
     
-    if (descripcionStartMatch) {
-      const startIndex = message.indexOf(descripcionStartMatch[0]) + descripcionStartMatch[0].length;
-      
-      // Buscar dónde termina la descripción (en "Dirección" o "Barrio")
-      const direccionPolizaIndex = message.indexOf('Dirección póliza:', startIndex);
-      const direccionPedidoIndex = message.indexOf('Dirección pedido:', startIndex);
-      const barrioIndex = message.indexOf('Barrio:', startIndex);
-      
-      let endIndex;
-      // Determinar el índice más cercano entre las posibles etiquetas
-      const indices = [direccionPolizaIndex, direccionPedidoIndex, barrioIndex]
-        .filter(index => index !== -1);
-      
-      if (indices.length > 0) {
-        endIndex = Math.min(...indices);
-      } else {
-        // Si no encuentra ninguno, buscar el siguiente campo o usar el final del mensaje
-        const turnoIndex = message.indexOf('TURNO', startIndex);
-        endIndex = turnoIndex !== -1 ? turnoIndex : message.length;
+    // Si no se encontró descripción, intentar con un patrón más flexible
+    if (!descripcion || descripcion === '') {
+      const lineas = message.split('\n');
+      for (let i = 0; i < lineas.length; i++) {
+        if (lineas[i].toLowerCase().includes('descripción del servicio')) {
+          descripcion = lineas[i].split(':')[1]?.trim() || '';
+          break;
+        }
       }
-      
-      descripcion = message.substring(startIndex, endIndex).trim();
     }
     
     // Extraer dirección (puede ser "Dirección póliza" o "Dirección pedido")
@@ -67,12 +63,18 @@ function parsePedidoMessage(message) {
     let fechaEjecucion = null;
     let franja_horaria = null;
     
-    // Buscar el patrón de TURNO en cualquier parte del mensaje - mucho más flexible con espacios y formatos
+    // Buscar el patrón de TURNO en cualquier parte del mensaje - extremadamente flexible
+    // Primero intentar con el formato estándar
     let turnoMatch = message.match(/TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i);
     
     // Si no encuentra el formato estándar, intentar con un formato alternativo
     if (!turnoMatch) {
       turnoMatch = message.match(/TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*-[^\n]*(\d{1,2}:\d{2})/i);
+    }
+    
+    // Si aún no encuentra, buscar cualquier patrón de fecha y hora que pueda ser un turno
+    if (!turnoMatch) {
+      turnoMatch = message.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i);
     }
     
     if (turnoMatch) {
