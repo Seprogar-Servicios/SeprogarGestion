@@ -24,8 +24,8 @@ function parsePedidoMessage(message) {
     const clienteMatch = message.match(/Cliente:\s*([^\n]+)/i);
     const cliente = clienteMatch ? clienteMatch[1].trim() : null;
     
-    // Extraer número de WhatsApp del titular
-    const numeroTitularMatch = message.match(/Whatsapp titular:\s*([^\n]+)/i);
+    // Extraer número de WhatsApp del titular (más flexible con mayúsculas/minúsculas)
+    const numeroTitularMatch = message.match(/[Ww]hatsapp\s+titular:\s*([^\n]+)/i);
     const numeroTitular = numeroTitularMatch ? numeroTitularMatch[1].trim() : null;
     
     // Extraer descripción del servicio (desde "Descripción del servicio:" hasta "Dirección" o "Barrio")
@@ -67,8 +67,13 @@ function parsePedidoMessage(message) {
     let fechaEjecucion = null;
     let franja_horaria = null;
     
-    // Buscar el patrón de TURNO en cualquier parte del mensaje
-    const turnoMatch = message.match(/TURNO confirmado fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/i);
+    // Buscar el patrón de TURNO en cualquier parte del mensaje - mucho más flexible con espacios y formatos
+    let turnoMatch = message.match(/TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i);
+    
+    // Si no encuentra el formato estándar, intentar con un formato alternativo
+    if (!turnoMatch) {
+      turnoMatch = message.match(/TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*-[^\n]*(\d{1,2}:\d{2})/i);
+    }
     
     if (turnoMatch) {
       // Convertir fecha de formato DD/MM/YYYY a YYYY-MM-DD
