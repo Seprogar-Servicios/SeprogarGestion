@@ -5,6 +5,9 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
+// Importar los parsers desde el módulo dedicado
+const { parsePedidoMessage, parseTareaMessage, parseExpedienteMessage } = require('./src/parsers');
+
 // Configuración de logger simple
 const logger = {
   info: (message, ...args) => console.log(`[INFO] ${message}`, ...args),
@@ -146,17 +149,42 @@ client.on('message_create', async (message) => {
     let taskData = null;
     
     // Determinar el tipo de mensaje y parsearlo
-    const cleanContent = messageContent.replace(/^["']/, '').trim(); // Eliminar comillas iniciales
+    // Aplicar limpieza previa para extraer contenido de logs y normalizar formato
+    let cleanContent = messageContent;
     
-    if (cleanContent.startsWith('Pedido')) {
+    // Extraer contenido limpio de logs si existe
+    if (cleanContent.includes('[INFO]')) {
+      const cleanContentMatch = cleanContent.match(/\[INFO\] Contenido limpio: "([\s\S]*)"/i);
+      if (cleanContentMatch && cleanContentMatch[1]) {
+        cleanContent = cleanContentMatch[1];
+        logger.info('Contenido limpio extraído de logs');
+      } else {
+        // Si no hay contenido limpio, intentar extraer el mensaje completo
+        const fullMessageMatch = cleanContent.match(/\[INFO\] Mensaje completo: "([\s\S]*)"/i);
+        if (fullMessageMatch && fullMessageMatch[1]) {
+          cleanContent = fullMessageMatch[1];
+          logger.info('Mensaje completo extraído de logs');
+        }
+      }
+    }
+    
+    // Eliminar asteriscos y normalizar saltos de línea
+    cleanContent = cleanContent.replace(/\*/g, '').trim();
+    
+    // Eliminar comillas iniciales y finales si existen
+    cleanContent = cleanContent.replace(/^["']|["']$/g, '').trim();
+    
+    logger.info(`Contenido limpio para detección: ${cleanContent.substring(0, 50)}...`);
+    
+    if (cleanContent.trim().startsWith('Pedido')) {
       logger.info('Detectado formato de Pedido, procesando...');
-      taskData = parsePedidoMessage(cleanContent);
-    } else if (cleanContent.startsWith('TAREA:')) {
+      taskData = parsePedidoMessage(messageContent); // Pasamos el mensaje original al parser que ya tiene la lógica de limpieza
+    } else if (cleanContent.trim().startsWith('TAREA:')) {
       logger.info('Detectado formato de TAREA, procesando...');
-      taskData = parseTareaMessage(cleanContent);
-    } else if (cleanContent.startsWith('Expediente:')) {
+      taskData = parseTareaMessage(messageContent);
+    } else if (cleanContent.trim().startsWith('Expediente:')) {
       logger.info('Detectado formato de Expediente, procesando...');
-      taskData = parseExpedienteMessage(cleanContent);
+      taskData = parseExpedienteMessage(messageContent);
     } else {
       logger.info('Formato de mensaje no reconocido, ignorando...');
       logger.info(`Contenido limpio: "${cleanContent}"`);
@@ -228,13 +256,40 @@ client.on('message', async (message) => {
     let taskData = null;
     
     // Determinar el tipo de mensaje y parsearlo
-    if (messageContent.startsWith('Pedido')) {
+    // Aplicar limpieza previa para extraer contenido de logs y normalizar formato
+    let cleanContent = messageContent;
+    
+    // Extraer contenido limpio de logs si existe
+    if (cleanContent.includes('[INFO]')) {
+      const cleanContentMatch = cleanContent.match(/\[INFO\] Contenido limpio: "([\s\S]*)"/i);
+      if (cleanContentMatch && cleanContentMatch[1]) {
+        cleanContent = cleanContentMatch[1];
+        logger.info('Contenido limpio extraído de logs');
+      } else {
+        // Si no hay contenido limpio, intentar extraer el mensaje completo
+        const fullMessageMatch = cleanContent.match(/\[INFO\] Mensaje completo: "([\s\S]*)"/i);
+        if (fullMessageMatch && fullMessageMatch[1]) {
+          cleanContent = fullMessageMatch[1];
+          logger.info('Mensaje completo extraído de logs');
+        }
+      }
+    }
+    
+    // Eliminar asteriscos y normalizar saltos de línea
+    cleanContent = cleanContent.replace(/\*/g, '').trim();
+    
+    // Eliminar comillas iniciales y finales si existen
+    cleanContent = cleanContent.replace(/^["']|["']$/g, '').trim();
+    
+    logger.info(`Contenido limpio para detección: ${cleanContent.substring(0, 50)}...`);
+    
+    if (cleanContent.trim().startsWith('Pedido')) {
       logger.info('Detectado formato de Pedido, procesando...');
-      taskData = parsePedidoMessage(messageContent);
-    } else if (messageContent.startsWith('TAREA:')) {
+      taskData = parsePedidoMessage(messageContent); // Pasamos el mensaje original al parser que ya tiene la lógica de limpieza
+    } else if (cleanContent.trim().startsWith('TAREA:')) {
       logger.info('Detectado formato de TAREA, procesando...');
       taskData = parseTareaMessage(messageContent);
-    } else if (messageContent.startsWith('Expediente:')) {
+    } else if (cleanContent.trim().startsWith('Expediente:')) {
       logger.info('Detectado formato de Expediente, procesando...');
       taskData = parseExpedienteMessage(messageContent);
     } else {
@@ -330,320 +385,6 @@ function extraerFechaDelTurno(turnoText) {
     return fechaFormateada;
   } catch (error) {
     logger.error('Error al extraer fecha del turno:', error);
-    return null;
-  }
-}
-
-// Función para parsear mensajes de pedido
-function parsePedidoMessage(message) {
-  try {
-    // Eliminar comillas si existen
-    const cleanMessage = message.replace(/^["']|["']$/g, '').trim();
-    
-    // Extraer número de pedido
-    const numeroMatch = cleanMessage.match(/Pedido\s+(\d+)/i);
-    const numero = numeroMatch ? numeroMatch[1] : null;
-    
-    if (!numero) {
-      logger.error('No se pudo extraer el número de pedido');
-      return null;
-    }
-    
-    // Extraer cliente
-    const clienteMatch = cleanMessage.match(/Cliente:\s+([^\n]+)/i);
-    const cliente = clienteMatch ? clienteMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer WhatsApp
-    const whatsappMatch = cleanMessage.match(/Whatsapp\s+titular:\s+([^\n]+)/i);
-    const whatsapp = whatsappMatch ? whatsappMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer descripción
-    const descripcionMatch = cleanMessage.match(/Descripción\s+del\s+servicio:\s+([\s\S]*?)(?=Dirección|$)/i);
-    const descripcion = descripcionMatch ? descripcionMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer dirección
-    const direccionMatch = cleanMessage.match(/Dirección\s+póliza:\s+([^\n]+)/i);
-    const direccion = direccionMatch ? direccionMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer barrio
-    const barrioMatch = cleanMessage.match(/Barrio:\s+([^\n]+)/i);
-    const barrio = barrioMatch ? barrioMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer turno
-    const turnoMatch = cleanMessage.match(/TURNO\s+confirmado\s+fecha\s+([^\n]+)/i);
-    const turno = turnoMatch ? turnoMatch[1].trim() : 'Sin especificar';
-    
-    // Crear objeto de tarea
-    const taskData = {
-      // Campos requeridos
-      numero,
-      titulo: `Pedido ${numero} - ${cliente}`,
-      
-      // Campos opcionales pero importantes (según el esquema de validación)
-      descripcion: descripcion || 'Sin descripción',
-      estado: 'pendiente',
-      tecnicos: [], // Array vacío para asignar técnicos después
-      cliente: cliente || 'Cliente sin especificar',
-      numeroTitular: whatsapp || '',
-      direccion: direccion || '',
-      franja_horaria: turno || '',
-      
-      // Fecha de ejecución (solo si podemos crear una fecha válida)
-      ...(turno && turno !== 'Sin especificar' ? { 
-        // Extraer la fecha del turno si es posible
-        fechaEjecucion: extraerFechaDelTurno(turno) 
-      } : {})
-    };
-    
-    // Guardamos información adicional en el log para referencia
-    logger.info(`Barrio: ${barrio}, Turno: ${turno}`);
-
-    
-    logger.info('Datos extraídos del pedido:', JSON.stringify(taskData, null, 2));
-    return taskData;
-  } catch (error) {
-    logger.error('Error al parsear mensaje de pedido:', error);
-    return null;
-  }
-}
-
-// Función para parsear mensajes de tarea
-function parseTareaMessage(message) {
-  try {
-    // Eliminar comillas si existen
-    const cleanMessage = message.replace(/^["']|["']$/g, '').trim();
-    
-    // Extraer número de tarea
-    const numeroMatch = cleanMessage.match(/TAREA:\s*(\d+)/i);
-    const numero = numeroMatch ? numeroMatch[1] : null;
-    
-    if (!numero) {
-      logger.error('No se pudo extraer el número de tarea');
-      return null;
-    }
-    
-    // Extraer título
-    const tituloMatch = cleanMessage.match(/TAREA:\s*\d+\s*-\s*([^\n]+)/i);
-    const titulo = tituloMatch ? tituloMatch[1].trim() : `Tarea ${numero}`;
-    
-    // Extraer cliente
-    const clienteMatch = cleanMessage.match(/Cliente:\s*([^\n]+)/i);
-    const cliente = clienteMatch ? clienteMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer dirección
-    const direccionMatch = cleanMessage.match(/Dirección:\s*([^\n]+)/i);
-    const direccion = direccionMatch ? direccionMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer teléfono
-    const telefonoMatch = cleanMessage.match(/Teléfono:\s*([^\n]+)/i);
-    const telefono = telefonoMatch ? telefonoMatch[1].trim() : '';
-    
-    // Extraer descripción
-    const descripcionMatch = cleanMessage.match(/Descripción:\s*([^\n]+)/i);
-    const descripcion = descripcionMatch ? descripcionMatch[1].trim() : 'Sin descripción';
-    
-    // Extraer fecha
-    const fechaMatch = cleanMessage.match(/Fecha:\s*([^\n]+)/i);
-    let fechaEjecucion = null;
-    
-    if (fechaMatch) {
-      const fechaStr = fechaMatch[1].trim();
-      // Buscar patrones de fecha (dd/mm/yyyy o dd-mm-yyyy)
-      const fechaFormatoMatch = fechaStr.match(/([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
-      
-      if (fechaFormatoMatch) {
-        const fechaParts = fechaFormatoMatch[1].split(/[\/\-]/);
-        
-        if (fechaParts.length === 3) {
-          let dia = parseInt(fechaParts[0], 10);
-          let mes = parseInt(fechaParts[1], 10) - 1; // Meses en JS son 0-11
-          let anio = parseInt(fechaParts[2], 10);
-          
-          // Si el año tiene 2 dígitos, asumimos 20XX
-          if (anio < 100) {
-            anio += 2000;
-          }
-          
-          try {
-            // Crear fecha con la zona horaria local
-            const fecha = new Date(anio, mes, dia);
-            
-            if (!isNaN(fecha.getTime())) {
-              // Formato YYYY-MM-DD sin componente de tiempo para evitar problemas de zona horaria
-              const anioStr = fecha.getFullYear();
-              const mesStr = (fecha.getMonth() + 1).toString().padStart(2, '0');
-              const diaStr = fecha.getDate().toString().padStart(2, '0');
-              
-              fechaEjecucion = `${anioStr}-${mesStr}-${diaStr}`;
-              logger.info(`Fecha convertida para Argentina: ${fechaEjecucion}`);
-            }
-          } catch (e) {
-            logger.error('Error al convertir fecha:', e);
-          }
-        }
-      }
-    }
-    
-    // Extraer franja horaria
-    const franjaMatch = cleanMessage.match(/Horario:\s*([^\n]+)/i);
-    const franjaHoraria = franjaMatch ? franjaMatch[1].trim() : '';
-    
-    // Crear objeto de tarea
-    const taskData = {
-      // Campos requeridos
-      numero,
-      titulo,
-      
-      // Campos opcionales pero importantes
-      descripcion,
-      estado: 'pendiente',
-      tecnicos: [], // Array vacío para asignar técnicos después
-      cliente,
-      numeroTitular: telefono,
-      direccion,
-      
-      // Campos opcionales con validación
-      ...(fechaEjecucion ? { fechaEjecucion } : {}),
-      ...(franjaHoraria ? { franja_horaria: franjaHoraria } : {})
-    };
-    
-    logger.info('Datos extraídos de la tarea:', JSON.stringify(taskData, null, 2));
-    return taskData;
-  } catch (error) {
-    logger.error('Error al parsear mensaje de tarea:', error);
-    return null;
-  }
-}
-
-// Función para parsear mensajes de expediente
-function parseExpedienteMessage(message) {
-  try {
-    // Eliminar comillas si existen
-    const cleanMessage = message.replace(/^["']|["']$/g, '').trim();
-    
-    // Extraer número de expediente
-    const numeroMatch = cleanMessage.match(/Expediente:\s+(\d+)/i);
-    const numero = numeroMatch ? numeroMatch[1] : null;
-    
-    if (!numero) {
-      logger.error('No se pudo extraer el número de expediente');
-      return null;
-    }
-    
-    // Extraer cuenta/cliente
-    const clienteMatch = cleanMessage.match(/Cuenta:\s+([^\n]+)/i);
-    const cliente = clienteMatch ? clienteMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer NU (nombre usuario)
-    const nuMatch = cleanMessage.match(/NU:\s+([^\n]+)/i);
-    const nombreUsuario = nuMatch ? nuMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer teléfono
-    const telefonoMatch = cleanMessage.match(/Teléfono:\s+([^\n]+)/i);
-    const telefono = telefonoMatch ? telefonoMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer servicio (descripción)
-    const servicioMatch = cleanMessage.match(/Servicio:\s+([^\n]+)/i);
-    const servicio = servicioMatch ? servicioMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer ocurrido (contiene dirección y fecha/hora)
-    const ocurridoMatch = cleanMessage.match(/Ocurrido:\s+([\s\S]*?)$/i);
-    const ocurrido = ocurridoMatch ? ocurridoMatch[1].trim() : 'Sin especificar';
-    
-    // Extraer dirección del campo ocurrido
-    // Asumimos que la dirección está antes de la fecha (que suele tener formato dd/mm/yyyy)
-    let direccion = '';
-    let fechaHora = '';
-    
-    if (ocurrido !== 'Sin especificar') {
-      // Buscar la última ocurrencia de una fecha con formato dd/mm/yyyy
-      const fechaMatch = ocurrido.match(/([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{2}|[0-9]{1,2}-[0-9]{1,2}-[0-9]{4}|[0-9]{1,2}-[0-9]{1,2}-[0-9]{2})/);
-      
-      if (fechaMatch) {
-        const fechaIndex = ocurrido.lastIndexOf(fechaMatch[0]);
-        if (fechaIndex > 0) {
-          // Todo lo que está antes de la fecha es la dirección
-          direccion = ocurrido.substring(0, fechaIndex).trim();
-          // Todo lo que está después (incluyendo la fecha) es la fecha/hora
-          fechaHora = ocurrido.substring(fechaIndex).trim();
-        } else {
-          direccion = ocurrido;
-        }
-      } else {
-        // Si no hay fecha, asumimos que todo es dirección
-        direccion = ocurrido;
-      }
-    }
-    
-    // Extraer fecha de ejecución
-    let fechaEjecucion = null;
-    const fechaMatch = fechaHora.match(/([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4}|[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{2}|[0-9]{1,2}-[0-9]{1,2}-[0-9]{4}|[0-9]{1,2}-[0-9]{1,2}-[0-9]{2})/);
-    
-    if (fechaMatch) {
-      // Convertir la fecha a formato ISO
-      const fechaParts = fechaMatch[0].split(/[\/\-]/);
-      let dia = parseInt(fechaParts[0], 10);
-      let mes = parseInt(fechaParts[1], 10) - 1; // Meses en JS son 0-11
-      let anio = parseInt(fechaParts[2], 10);
-      
-      // Si el año tiene 2 dígitos, asumimos 20XX
-      if (anio < 100) {
-        anio += 2000;
-      }
-      
-      try {
-        // Crear fecha con la zona horaria local
-        const fecha = new Date(anio, mes, dia);
-        
-        if (!isNaN(fecha.getTime())) {
-          // Ajustar para la zona horaria de Argentina (UTC-3)
-          // Al usar toISOString() se convierte a UTC, lo que puede causar cambios de día
-          // Creamos una fecha en formato YYYY-MM-DD que no dependa de la zona horaria
-          const anioStr = fecha.getFullYear();
-          const mesStr = (fecha.getMonth() + 1).toString().padStart(2, '0');
-          const diaStr = fecha.getDate().toString().padStart(2, '0');
-          
-          // Formato YYYY-MM-DD sin componente de tiempo para evitar problemas de zona horaria
-          fechaEjecucion = `${anioStr}-${mesStr}-${diaStr}`;
-          
-          logger.info(`Fecha convertida para Argentina: ${fechaEjecucion}`);
-        }
-      } catch (e) {
-        logger.error('Error al convertir fecha:', e);
-      }
-    }
-    
-    // Extraer franja horaria
-    let franjaHoraria = '';
-    const horaMatch = fechaHora.match(/([0-9]{1,2}:[0-9]{2})\s+a\s+([0-9]{1,2}:[0-9]{2})/i);
-    
-    if (horaMatch) {
-      franjaHoraria = `${horaMatch[1]} a ${horaMatch[2]}`;
-    }
-    
-    // Crear objeto de tarea
-    const taskData = {
-      // Campos requeridos
-      numero,
-      titulo: `Expediente ${numero} - ${cliente}`,
-      
-      // Campos opcionales pero importantes (según el esquema de validación)
-      descripcion: `${servicio}\n${ocurrido}`,
-      estado: 'pendiente',
-      tecnicos: [], // Array vacío para asignar técnicos después
-      cliente: cliente || 'Cliente sin especificar',
-      numeroTitular: telefono || '',
-      direccion: direccion || '',
-      
-      // Campos opcionales con validación
-      ...(fechaEjecucion ? { fechaEjecucion } : {}),
-      ...(franjaHoraria ? { franja_horaria: franjaHoraria } : {})
-    };
-    
-    logger.info('Datos extraídos del expediente:', JSON.stringify(taskData, null, 2));
-    return taskData;
-  } catch (error) {
-    logger.error('Error al parsear mensaje de expediente:', error);
     return null;
   }
 }

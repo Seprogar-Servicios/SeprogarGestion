@@ -9,6 +9,21 @@
  */
 function parsePedidoMessage(message) {
   try {
+    // Verificar si el mensaje contiene logs del sistema
+    if (message.includes('[INFO]')) {
+      // Buscar el mensaje limpio si está disponible
+      const cleanContentMatch = message.match(/\[INFO\] Contenido limpio: "([\s\S]*)"/i);
+      if (cleanContentMatch && cleanContentMatch[1]) {
+        message = cleanContentMatch[1];
+      } else {
+        // Si no hay contenido limpio, intentar extraer el mensaje completo
+        const fullMessageMatch = message.match(/\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i);
+        if (fullMessageMatch && fullMessageMatch[1]) {
+          message = fullMessageMatch[1];
+        }
+      }
+    }
+    
     // Limpiar el mensaje: eliminar asteriscos y normalizar saltos de línea
     message = message
       .replace(/\*/g, '') // Eliminar asteriscos
@@ -52,6 +67,15 @@ function parsePedidoMessage(message) {
       }
     }
     
+    // Si aún no se encontró descripción, buscar en el mensaje completo
+    if (!descripcion || descripcion === '') {
+      // Buscar cualquier texto entre "Descripción del servicio:" y la siguiente línea
+      const fullDescMatch = message.match(/Descripción del servicio:([\s\S]*?)(?=Dirección|Barrio|TURNO|$)/i);
+      if (fullDescMatch && fullDescMatch[1]) {
+        descripcion = fullDescMatch[1].trim();
+      }
+    }
+    
     // Extraer dirección (puede ser "Dirección póliza" o "Dirección pedido")
     let direccionMatch = message.match(/Dirección póliza:\s*([^\n]+)/i);
     if (!direccionMatch) {
@@ -75,6 +99,26 @@ function parsePedidoMessage(message) {
     // Si aún no encuentra, buscar cualquier patrón de fecha y hora que pueda ser un turno
     if (!turnoMatch) {
       turnoMatch = message.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i);
+    }
+    
+    // Formato específico de producción: "franja horaria 8 a 12 hs"
+    if (!turnoMatch) {
+      const turnoFranjaMatch = message.match(/TURNO[^\n]*fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+franja\s+horaria\s+(\d{1,2})\s+a\s+(\d{1,2})\s+hs/i);
+      if (turnoFranjaMatch) {
+        // Convertir fecha de formato DD/MM/YYYY a YYYY-MM-DD
+        const fechaParts = turnoFranjaMatch[1].split('/');
+        if (fechaParts.length === 3) {
+          const dia = fechaParts[0].padStart(2, '0');
+          const mes = fechaParts[1].padStart(2, '0');
+          const anio = fechaParts[2];
+          fechaEjecucion = `${anio}-${mes}-${dia}`;
+        }
+        
+        // Extraer franja horaria en formato "8 a 12 hs"
+        const horaInicio = turnoFranjaMatch[2].padStart(2, '0') + ':00';
+        const horaFin = turnoFranjaMatch[3].padStart(2, '0') + ':00';
+        franja_horaria = `${horaInicio} - ${horaFin}`;
+      }
     }
     
     if (turnoMatch) {
