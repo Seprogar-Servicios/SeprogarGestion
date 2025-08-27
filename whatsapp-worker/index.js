@@ -428,10 +428,19 @@ async function sendToAPI(taskData) {
     const apiKey = process.env.API_KEY || '';
     const axios = require('axios');
     
+    // Crear una copia de los datos para no modificar el objeto original
+    const dataToSend = { ...taskData };
+    
+    // Eliminar el campo creadoPor que está causando el error de validación
+    if (dataToSend.creadoPor !== undefined) {
+      delete dataToSend.creadoPor;
+      logger.info('Campo creadoPor eliminado para cumplir con la validación de la API');
+    }
+    
     logger.info(`Enviando datos a la API: ${createTaskUrl}`);
     
     // Configurar la solicitud con axios
-    const response = await axios.post(createTaskUrl, taskData, {
+    const response = await axios.post(createTaskUrl, dataToSend, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
