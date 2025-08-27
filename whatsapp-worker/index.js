@@ -431,16 +431,30 @@ async function sendToAPI(taskData) {
     // Crear una copia de los datos para no modificar el objeto original
     const dataToSend = { ...taskData };
     
-    // Eliminar el campo creadoPor que está causando el error de validación
-    if (dataToSend.creadoPor !== undefined) {
-      delete dataToSend.creadoPor;
-      logger.info('Campo creadoPor eliminado para cumplir con la validación de la API');
+    // Lista de campos permitidos según el esquema de validación del backend
+    const camposPermitidos = [
+      'numero', 'titulo', 'descripcion', 'estado', 'tecnicos',
+      'fechaEjecucion', 'franja_horaria', 'cliente', 'numeroTitular', 'direccion'
+    ];
+    
+    // Filtrar solo los campos permitidos
+    const datosLimpios = {};
+    camposPermitidos.forEach(campo => {
+      if (dataToSend[campo] !== undefined) {
+        datosLimpios[campo] = dataToSend[campo];
+      }
+    });
+    
+    // Registrar los campos eliminados
+    const camposEliminados = Object.keys(dataToSend).filter(campo => !camposPermitidos.includes(campo));
+    if (camposEliminados.length > 0) {
+      logger.info(`Campos eliminados para cumplir con la validación de la API: ${camposEliminados.join(', ')}`);
     }
     
     logger.info(`Enviando datos a la API: ${createTaskUrl}`);
     
     // Configurar la solicitud con axios
-    const response = await axios.post(createTaskUrl, dataToSend, {
+    const response = await axios.post(createTaskUrl, datosLimpios, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
