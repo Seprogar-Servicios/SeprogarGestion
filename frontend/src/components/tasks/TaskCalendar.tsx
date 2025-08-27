@@ -101,32 +101,74 @@ const TaskCalendar: React.FC = () => {
           if (task.fechaEjecucion.includes('T')) {
             // Si la fecha incluye componente de tiempo (formato ISO)
             taskDate = new Date(task.fechaEjecucion);
+            
+            // Verificar si la fecha es válida
+            if (isNaN(taskDate.getTime())) {
+              console.warn('Fecha ISO inválida:', task.fechaEjecucion);
+              return false;
+            }
           } else if (task.fechaEjecucion.includes('-')) {
-            // Si la fecha es formato YYYY-MM-DD sin componente de tiempo
-            const [year, month, day] = task.fechaEjecucion.split('-').map(Number);
-            // Crear la fecha a las 12:00 del día para evitar problemas de zona horaria
-            taskDate = new Date(year, month - 1, day, 12, 0, 0);
+            // Si la fecha es formato YYYY-MM-DD sin componente de tiempo (formato del worker)
+            const parts = task.fechaEjecucion.split('-');
+            
+            if (parts.length === 3) {
+              const year = parseInt(parts[0], 10);
+              const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
+              const day = parseInt(parts[2], 10);
+              
+              // Crear la fecha a las 12:00 del día para evitar problemas de zona horaria
+              taskDate = new Date(year, month, day, 12, 0, 0);
+              
+              // Verificar si la fecha es válida
+              if (isNaN(taskDate.getTime())) {
+                console.warn('Fecha YYYY-MM-DD inválida:', task.fechaEjecucion);
+                return false;
+              }
+            } else {
+              console.warn('Formato de fecha con guiones inválido:', task.fechaEjecucion);
+              return false;
+            }
           } else if (task.fechaEjecucion.includes('/')) {
-            // Si la fecha es formato DD/MM/YYYY
+            // Si la fecha es formato DD/MM/YYYY (formato común en mensajes de WhatsApp)
             const parts = task.fechaEjecucion.split('/');
             
             if (parts.length === 3) {
+              // Intentar interpretar como DD/MM/YYYY
               const day = parseInt(parts[0], 10);
               const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
               const year = parseInt(parts[2], 10);
+              
+              // Ajustar año si viene en formato corto (22 -> 2022)
+              const fullYear = year < 100 ? 2000 + year : year;
+              
               // Crear la fecha a las 12:00 del día para evitar problemas de zona horaria
-              taskDate = new Date(year, month, day, 12, 0, 0);
+              taskDate = new Date(fullYear, month, day, 12, 0, 0);
+              
+              // Verificar si la fecha es válida
+              if (isNaN(taskDate.getTime())) {
+                console.warn('Fecha DD/MM/YYYY inválida:', task.fechaEjecucion);
+                return false;
+              }
             } else {
-              return false; // Formato de fecha no reconocido
+              console.warn('Formato de fecha con barras inválido:', task.fechaEjecucion);
+              return false;
             }
           } else {
+            console.warn('Formato de fecha no reconocido:', task.fechaEjecucion);
             return false; // Formato de fecha no reconocido
           }
         } else if (Object.prototype.toString.call(task.fechaEjecucion) === '[object Date]') {
           // Si ya es un objeto Date
           taskDate = new Date(task.fechaEjecucion as Date);
+          
+          // Verificar si la fecha es válida
+          if (isNaN(taskDate.getTime())) {
+            console.warn('Objeto Date inválido en tarea:', task);
+            return false;
+          }
         } else {
           // Si no es ni string ni Date, no podemos procesarlo
+          console.warn('Tipo de fecha no soportado:', typeof task.fechaEjecucion, task);
           return false;
         }
         
