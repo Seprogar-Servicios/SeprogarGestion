@@ -63,9 +63,8 @@ const TaskCalendar: React.FC = () => {
       
       // Aplicar filtro por técnico si está seleccionado y no está vacío
       if (filters.tecnico && filters.tecnico !== '') {
-        // Si la tarea no tiene técnicos asignados, mostrarla cuando no hay filtro de técnico
+        // Si la tarea no tiene técnicos asignados, no mostrarla cuando hay filtro de técnico
         if (!task.tecnicos || !Array.isArray(task.tecnicos) || task.tecnicos.length === 0) {
-          // Si estamos filtrando por un técnico específico, no mostrar tareas sin técnicos
           return false;
         }
         
@@ -95,24 +94,37 @@ const TaskCalendar: React.FC = () => {
       try {
         // Convertir la fecha de la tarea a objeto Date
         // Asegurarnos de que la fecha se interprete correctamente para Argentina (UTC-3)
-        let taskDate;
+        let taskDate: Date;
         
         if (typeof task.fechaEjecucion === 'string') {
+          // Detectar formato de fecha
           if (task.fechaEjecucion.includes('T')) {
             // Si la fecha incluye componente de tiempo (formato ISO)
-            // Crear la fecha y ajustar para la zona horaria local
             taskDate = new Date(task.fechaEjecucion);
-          } else {
-            // Si la fecha es solo YYYY-MM-DD sin componente de tiempo
-            // Crear la fecha explícitamente para evitar problemas de zona horaria
+          } else if (task.fechaEjecucion.includes('-')) {
+            // Si la fecha es formato YYYY-MM-DD sin componente de tiempo
             const [year, month, day] = task.fechaEjecucion.split('-').map(Number);
-            
             // Crear la fecha a las 12:00 del día para evitar problemas de zona horaria
             taskDate = new Date(year, month - 1, day, 12, 0, 0);
+          } else if (task.fechaEjecucion.includes('/')) {
+            // Si la fecha es formato DD/MM/YYYY
+            const parts = task.fechaEjecucion.split('/');
+            
+            if (parts.length === 3) {
+              const day = parseInt(parts[0], 10);
+              const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
+              const year = parseInt(parts[2], 10);
+              // Crear la fecha a las 12:00 del día para evitar problemas de zona horaria
+              taskDate = new Date(year, month, day, 12, 0, 0);
+            } else {
+              return false; // Formato de fecha no reconocido
+            }
+          } else {
+            return false; // Formato de fecha no reconocido
           }
         } else if (Object.prototype.toString.call(task.fechaEjecucion) === '[object Date]') {
           // Si ya es un objeto Date
-          taskDate = new Date(task.fechaEjecucion as any);
+          taskDate = new Date(task.fechaEjecucion as Date);
         } else {
           // Si no es ni string ni Date, no podemos procesarlo
           return false;
@@ -127,10 +139,10 @@ const TaskCalendar: React.FC = () => {
         // Comparar si es el mismo día usando date-fns que maneja correctamente las zonas horarias
         return isSameDay(taskDate, date);
       } catch (error) {
+        console.error('Error procesando fecha:', error, task);
         return false;
       }
     });
-    
     
     return tasksForDate;
   };
