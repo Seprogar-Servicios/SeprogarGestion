@@ -45,8 +45,16 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
     const newFilters = { ...filters };
     
     // Solo aplicar filtro de técnico si hay técnicos disponibles y se seleccionó uno
-    if (selectedTecnico && tecnicos.length > 0) {
-      newFilters.tecnico = selectedTecnico;
+    if (selectedTecnico && selectedTecnico !== '') {
+      // Verificar si hay técnicos disponibles
+      if (tecnicos.length > 0) {
+        newFilters.tecnico = selectedTecnico;
+      } else {
+        // Si no hay técnicos disponibles, no aplicar filtro
+        delete newFilters.tecnico;
+        // Resetear la selección de técnico
+        setSelectedTecnico('');
+      }
     } else {
       delete newFilters.tecnico;
     }
@@ -82,7 +90,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
               onChange={(e) => setSelectedTecnico(e.target.value)}
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <option value="">Todos los técnicos</option>
+              <option value="">{tecnicos.length > 0 ? 'Todos los técnicos' : 'No hay técnicos'}</option>
               {tecnicos.map((tecnico: any) => (
                 <option key={tecnico._id} value={tecnico._id}>
                   {tecnico.nombre}

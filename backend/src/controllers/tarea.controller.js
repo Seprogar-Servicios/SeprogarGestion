@@ -249,7 +249,19 @@ exports.getTareasCalendario = async (req, res) => {
         filtro.$or = [
           { tecnicos: tecnico },
           { tecnicos: { $size: 0 } },
-          { tecnicos: { $exists: false } }
+          { tecnicos: { $exists: false } },
+          { tecnicos: null }
+        ];
+      }
+    } else {
+      // Si no se especifica técnico, asegurarse de incluir tareas sin técnicos
+      // Solo si no hay otro filtro $or ya aplicado (por ejemplo, por usuario)
+      if (!filtro.$or) {
+        filtro.$or = [
+          { tecnicos: { $exists: true } }, // Tareas con técnicos (cualquiera)
+          { tecnicos: { $size: 0 } },      // Tareas con array vacío de técnicos
+          { tecnicos: { $exists: false } }, // Tareas sin campo técnicos
+          { tecnicos: null }               // Tareas con técnicos null
         ];
       }
     }

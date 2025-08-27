@@ -61,10 +61,9 @@ const TaskCalendar: React.FC = () => {
         return false;
       }
       
-      // Aplicar filtro por técnico si está seleccionado
-      if (filters.tecnico) {
-        // Si no hay técnicos asignados o el array está vacío, mostrar la tarea
-        // solo si no se está filtrando por un técnico específico
+      // Aplicar filtro por técnico si está seleccionado y no está vacío
+      if (filters.tecnico && filters.tecnico !== '') {
+        // Si la tarea no tiene técnicos asignados, mostrarla cuando no hay filtro de técnico
         if (!task.tecnicos || !Array.isArray(task.tecnicos) || task.tecnicos.length === 0) {
           // Si estamos filtrando por un técnico específico, no mostrar tareas sin técnicos
           return false;
