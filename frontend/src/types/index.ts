@@ -27,6 +27,7 @@ export interface Task {
   cliente?: string;
   numeroTitular?: string;
   direccion?: string;
+  origen?: 'manual' | 'whatsapp' | string;
 }
 
 // Material types

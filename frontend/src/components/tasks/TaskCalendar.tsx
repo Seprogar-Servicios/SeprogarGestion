@@ -38,9 +38,36 @@ const TaskCalendar: React.FC = () => {
       calendarFilters.usuario = user._id;
     }
     
-    
+    console.log(`Solicitando tareas del calendario para ${format(currentDate, 'MMMM yyyy', { locale: es })}`);
     dispatch(fetchCalendarTasks(calendarFilters));
   }, [dispatch, currentDate, filters, user]);
+  
+  // Efecto para verificar las tareas del worker después de cada actualización
+  useEffect(() => {
+    if (tasks && Array.isArray(tasks)) {
+      const workerTasks = tasks.filter(task => {
+        // Identificar tareas del worker por origen o formato de fecha
+        if (task.origen === 'whatsapp') return true;
+        
+        if (task.fechaEjecucion && 
+            typeof task.fechaEjecucion === 'string' && 
+            /^\d{4}-\d{2}-\d{2}$/.test(task.fechaEjecucion)) {
+          return true;
+        }
+        
+        return false;
+      });
+      
+      console.log(`Tareas totales: ${tasks.length}, Tareas del worker: ${workerTasks.length}`);
+      
+      // Verificar si hay duplicados
+      const taskIds = tasks.map(t => t._id);
+      const uniqueIds = new Set(taskIds);
+      if (taskIds.length !== uniqueIds.size) {
+        console.warn(`¡Atención! Se detectaron ${taskIds.length - uniqueIds.size} tareas duplicadas`);
+      }
+    }
+  }, [tasks]);
   
 
   const handleFiltersChange = (newFilters: TaskFilters) => {
@@ -89,6 +116,16 @@ const TaskCalendar: React.FC = () => {
       // Si no hay fecha de ejecución, no mostrar en el calendario
       if (!task.fechaEjecucion) {
         return false;
+      }
+      
+      // Verificar si es una tarea del worker (para depuración)
+      const isWorkerTask = task.origen === 'whatsapp' || 
+                          (typeof task.fechaEjecucion === 'string' && 
+                           /^\d{4}-\d{2}-\d{2}$/.test(task.fechaEjecucion));
+      
+      // Si es una tarea del worker, mostrar información adicional para depuración
+      if (isWorkerTask) {
+        console.log(`Procesando tarea del worker: ${task.titulo}, ID: ${task._id}, Fecha: ${task.fechaEjecucion}`);
       }
       
       try {

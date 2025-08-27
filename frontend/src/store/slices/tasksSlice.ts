@@ -295,8 +295,53 @@ const tasksSlice = createSlice({
         state.error = action.payload as string;
       })
       // Calendar tasks
+      .addCase(fetchCalendarTasks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchCalendarTasks.fulfilled, (state, action) => {
-        state.tasks = action.payload;
+        state.loading = false;
+        
+        // Identificar tareas del worker por origen o por formato de fecha
+        const workerTasks = state.tasks.filter(task => {
+          // Si tiene origen explícito 'whatsapp'
+          if (task.origen === 'whatsapp') return true;
+          
+          // Si no tiene origen pero tiene formato de fecha YYYY-MM-DD (típico del worker)
+          if (task.fechaEjecucion && 
+              typeof task.fechaEjecucion === 'string' && 
+              /^\d{4}-\d{2}-\d{2}$/.test(task.fechaEjecucion)) {
+            return true;
+          }
+          
+          return false;
+        });
+        
+        // Obtener las nuevas tareas que no son del worker
+        const newNonWorkerTasks = action.payload.filter(task => {
+          // Si tiene origen explícito diferente a 'whatsapp'
+          if (task.origen && task.origen !== 'whatsapp') return true;
+          
+          // Si no tiene origen pero tampoco tiene el formato de fecha típico del worker
+          if (!task.origen && 
+              (!task.fechaEjecucion || 
+               typeof task.fechaEjecucion !== 'string' || 
+               !/^\d{4}-\d{2}-\d{2}$/.test(task.fechaEjecucion))) {
+            return true;
+          }
+          
+          // Si la tarea ya existe en workerTasks, no la incluimos aquí
+          return !workerTasks.some(wTask => wTask._id === task._id);
+        });
+        
+        // Combinar las tareas del worker existentes con las nuevas tareas no-worker
+        state.tasks = [...workerTasks, ...newNonWorkerTasks];
+        
+        console.log(`Manteniendo ${workerTasks.length} tareas del worker y añadiendo ${newNonWorkerTasks.length} tareas nuevas`);
+      })
+      .addCase(fetchCalendarTasks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
