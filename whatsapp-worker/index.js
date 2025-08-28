@@ -400,25 +400,51 @@ async function checkDuplicateTask(numero) {
     
     logger.info(`Verificando si la tarea ${numero} ya existe...`);
     
-    const response = await axios.get(`${checkUrl}/${numero}`, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
+    // Intentar verificar con el endpoint específico
+    try {
+      const response = await axios.get(`${checkUrl}/${numero}`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+      
+      const exists = response.data && response.data.exists;
+      
+      if (exists) {
+        logger.warn(`La tarea con número ${numero} ya existe en el sistema`);
+      } else {
+        logger.info(`La tarea con número ${numero} no existe, se puede crear`);
       }
-    });
-    
-    const exists = response.data && response.data.exists;
-    
-    if (exists) {
-      logger.warn(`La tarea con número ${numero} ya existe en el sistema`);
-    } else {
-      logger.info(`La tarea con número ${numero} no existe, se puede crear`);
+      
+      return exists;
+    } catch (checkError) {
+      // Si falla la verificación específica, intentar buscar la tarea directamente
+      logger.warn(`Error al verificar con endpoint específico: ${checkError.message}`);
+      logger.info(`Intentando verificar existencia de tarea ${numero} por método alternativo...`);
+      
+      const tasksUrl = process.env.GET_TASKS_URL || 'http://localhost:3000/api/worker/tareas';
+      const tasksResponse = await axios.get(`${tasksUrl}?numero=${numero}`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+      
+      // Si encontramos al menos una tarea con ese número, consideramos que existe
+      const exists = tasksResponse.data && Array.isArray(tasksResponse.data) && tasksResponse.data.length > 0;
+      
+      if (exists) {
+        logger.warn(`La tarea con número ${numero} ya existe en el sistema (verificación alternativa)`);
+      } else {
+        logger.info(`La tarea con número ${numero} no existe, se puede crear (verificación alternativa)`);
+      }
+      
+      return exists;
     }
-    
-    return exists;
   } catch (error) {
     logger.error('Error al verificar tarea duplicada:', error.message);
-    // En caso de error, asumimos que no existe para intentar crearla
-    return false;
+    // En caso de error en ambos métodos, asumimos que existe para prevenir duplicados
+    logger.warn(`Por precaución, asumiendo que la tarea ${numero} ya existe para evitar duplicados`);
+    return true;
   }
 }
 
@@ -453,6 +479,14 @@ async function sendToAPI(taskData) {
       logger.info(`Campos eliminados para cumplir con la validación de la API: ${camposEliminados.join(', ')}`);
     }
     
+    // Verificar nuevamente si la tarea ya existe justo antes de enviarla
+    // Esto es una doble verificación para evitar errores de duplicación
+    const isDuplicate = await checkDuplicateTask(datosLimpios.numero);
+    if (isDuplicate) {
+      logger.warn(`⚠️ Cancelando envío: La tarea con número ${datosLimpios.numero} ya existe (verificación final)`);
+      return false;
+    }
+    
     logger.info(`Enviando datos a la API: ${createTaskUrl}`);
     
     // Configurar la solicitud con axios
@@ -466,16 +500,26 @@ async function sendToAPI(taskData) {
     logger.info(`Tarea creada exitosamente en la API con ID: ${response.data._id || response.data.id || 'desconocido'}`);
     return true;
   } catch (error) {
+    // Detectar errores de duplicación
+    const isDuplicateError = 
+      (error.response && 
+       error.response.status === 500 && 
+       error.response.data && 
+       (error.response.data.error?.includes('duplicate key error') || 
+        error.response.data.error?.includes('dup key')));
+    
+    if (isDuplicateError) {
+      logger.warn(`⚠️ Error de duplicación detectado para la tarea ${taskData.numero}`);
+      logger.warn('La tarea ya existe en la base de datos, ignorando...');
+      // No es realmente un error, la tarea ya existe
+      return true;
+    }
+    
     if (error.response) {
-      // La solicitud fue hecha y el servidor respondió con un código de estado fuera del rango 2xx
       logger.error(`Error al crear tarea en la API: ${error.response.status}`);
       logger.error(`Detalles: ${JSON.stringify(error.response.data)}`);
-    } else if (error.request) {
-      // La solicitud fue hecha pero no se recibió respuesta
-      logger.error('Error: No se recibió respuesta de la API');
     } else {
-      // Ocurrió un error al configurar la solicitud
-      logger.error('Error al configurar la solicitud:', error.message);
+      logger.error('Error al crear tarea en la API:', error.message);
     }
     return false;
   }
