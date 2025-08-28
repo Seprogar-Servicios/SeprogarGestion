@@ -310,9 +310,11 @@ client.on('message', async (message) => {
       return;
     }
     
-    // Crear la tarea
-    const createdTask = await createTask(taskData);
-    logger.info(`Tarea creada exitosamente: ${createdTask.titulo} (ID: ${createdTask._id})`);
+    // Crear la tarea usando la función sendToAPI
+    const success = await sendToAPI(taskData);
+    if (success) {
+      logger.info(`Tarea creada exitosamente: ${taskData.titulo}`);
+    }
     
   } catch (error) {
     logger.error('Error al procesar mensaje:', error);

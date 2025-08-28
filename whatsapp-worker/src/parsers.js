@@ -46,8 +46,30 @@ function parsePedidoMessage(message) {
     const cliente = clienteMatch ? clienteMatch[1].trim() : null;
     
     // Extraer número de WhatsApp del titular (más flexible con mayúsculas/minúsculas)
+    let numeroTitular = '';
+    
+    // Patrón principal: "Whatsapp titular: 123456789"
     const numeroTitularMatch = message.match(/[Ww]hatsapp\s+titular:\s*([^\n]+)/i);
-    const numeroTitular = numeroTitularMatch ? numeroTitularMatch[1].trim() : null;
+    if (numeroTitularMatch && numeroTitularMatch[1].trim()) {
+      numeroTitular = numeroTitularMatch[1].trim();
+    } else {
+      // Patrón alternativo: "teléfono de la persona que los recibe: 123456789"
+      const telefonoMatch = message.match(/tel[eé]fono[^:]*:\s*([^\n]+)/i);
+      if (telefonoMatch && telefonoMatch[1].trim()) {
+        numeroTitular = telefonoMatch[1].trim();
+      }
+    }
+    
+    // Si aún no se encontró, buscar cualquier número de teléfono en el mensaje
+    if (!numeroTitular) {
+      const anyPhoneMatch = message.match(/(?:tel[eé]fono|celular|contacto|llamar)[^\d]*(\d{8,})/i);
+      if (anyPhoneMatch) {
+        numeroTitular = anyPhoneMatch[1].trim();
+      } else {
+        // Si no se encuentra ningún número, usar un string vacío
+        numeroTitular = '';
+      }
+    }
     
     // Extraer la descripción del servicio
     let descripcion = null;
@@ -135,16 +157,16 @@ function parsePedidoMessage(message) {
       franja_horaria = `${turnoMatch[2]} - ${turnoMatch[3]}`;
     }
     
-    // Crear objeto de tarea
+    // Crear objeto de tarea con tipos garantizados
     return {
-      numero,
-      titulo,
-      cliente,
-      numeroTitular,
-      descripcion,
-      direccion,
-      fechaEjecucion,
-      franja_horaria,
+      numero: numero || '',
+      titulo: titulo || '',
+      cliente: cliente || '',
+      numeroTitular: numeroTitular || '', // Garantizar que sea string
+      descripcion: descripcion || '',
+      direccion: direccion || '',
+      fechaEjecucion: fechaEjecucion || '',
+      franja_horaria: franja_horaria || '',
       estado: 'pendiente',
       tecnicos: [],
       creadoPor: process.env.DEFAULT_USER_ID || null,
