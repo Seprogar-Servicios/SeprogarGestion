@@ -14,6 +14,7 @@ import DataImportExport from './components/admin/DataImportExport';
 import ProfilePage from './components/user/ProfilePage';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import Analytics from './components/analytics/Analytics';
 // import MaterialManagement from './components/admin/MaterialManagement';
 import './App.css';
 
@@ -53,6 +54,11 @@ function App() {
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/specialties" element={<SpecialtyManagement />} />
               <Route path="/admin/importar-exportar" element={<DataImportExport />} />
+              <Route path="/admin/analytics" element={
+                <ProtectedRoute requiredRole="admin">
+                  <Analytics />
+                </ProtectedRoute>
+              } />
               {/* <Route path="/admin/materials" element={<MaterialManagement />} /> */}
               
               {/* Admin only routes - temporarily commented out */}

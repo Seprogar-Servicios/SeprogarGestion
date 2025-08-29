@@ -11,7 +11,8 @@ import {
   LogOut,
   Briefcase,
   UserCircle,
-  Database
+  Database,
+  BarChart
 } from 'lucide-react';
 
 const Layout: React.FC = () => {
@@ -37,6 +38,7 @@ const Layout: React.FC = () => {
   const adminNavigation = [
     { name: 'Usuarios', href: '/admin/users', icon: Users },
     { name: 'Especialidades', href: '/admin/specialties', icon: Briefcase },
+    { name: 'Análisis', href: '/admin/analytics', icon: BarChart },
     { name: 'Importar/Exportar', href: '/admin/importar-exportar', icon: Database },
   ];
 

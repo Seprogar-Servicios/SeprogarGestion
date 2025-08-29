@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTasks, setFilters } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
@@ -11,10 +12,12 @@ import {
   Users, 
   AlertCircle,
   TrendingUp,
-  Activity
+  Activity,
+  ArrowUpRight
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { tasks, loading: tasksLoading } = useAppSelector((state) => state.tasks);
@@ -126,16 +129,34 @@ const Dashboard: React.FC = () => {
           return (
             <div
               key={stat.name}
-              className="relative bg-white dark:bg-gray-800 pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden
-              transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg"
+              className={`relative bg-white dark:bg-gray-800 pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden
+              transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg 
+              ${(stat.name === 'Usuarios' || stat.name === 'Tareas Totales' || 
+                (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes'))) ? 
+                'cursor-pointer hover:border-2 hover:border-blue-400 dark:hover:border-blue-500' : ''}`}
+              onClick={() => {
+                if (stat.name === 'Usuarios') {
+                  navigate('/admin/users');
+                } else if (stat.name === 'Tareas Totales') {
+                  navigate('/tasks');
+                } else if (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes')) {
+                  navigate('/admin/analytics');
+                }
+              }}
             >
               <dt>
                 <div className={`absolute ${stat.color} rounded-md p-3`}>
                   <Icon className="h-6 w-6 text-white" />
                 </div>
-                <p className="ml-16 text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                  {stat.name}
-                </p>
+                <div className="ml-16 flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                    {stat.name}
+                  </p>
+                  {(stat.name === 'Usuarios' || stat.name === 'Tareas Totales' || 
+                    (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes'))) && (
+                    <ArrowUpRight className="h-4 w-4 text-blue-500 dark:text-blue-400" />
+                  )}
+                </div>
               </dt>
               <dd className="ml-16 pb-6 flex items-baseline sm:pb-7">
                 <p className="text-2xl font-semibold text-gray-900 dark:text-white">
