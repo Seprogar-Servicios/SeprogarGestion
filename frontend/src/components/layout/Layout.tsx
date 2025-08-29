@@ -158,19 +158,27 @@ const Layout: React.FC = () => {
 
           {/* User profile and logout */}
           <div className="p-4 mt-auto border-t border-blue-500/10">
-            <div className="flex items-center mb-4 px-2 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
-              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-400/20 flex items-center justify-center text-blue-200">
-                <UserCircle className="h-6 w-6" />
+            <button 
+              onClick={() => {
+                navigate('/profile');
+                if (window.innerWidth < 1024) setSidebarOpen(false);
+              }}
+              className="w-full text-left"
+            >
+              <div className="flex items-center mb-4 px-2 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-400/20 flex items-center justify-center text-blue-200">
+                  <UserCircle className="h-6 w-6" />
+                </div>
+                <div className="ml-3 min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white truncate">
+                    {user?.nombre || 'Usuario'}
+                  </p>
+                  <p className="text-xs text-blue-200/70 truncate">
+                    {user?.rol === 'admin' ? 'Administrador' : 'Usuario'}
+                  </p>
+                </div>
               </div>
-              <div className="ml-3 min-w-0 flex-1">
-                <p className="text-sm font-medium text-white truncate">
-                  {user?.nombre || 'Usuario'}
-                </p>
-                <p className="text-xs text-blue-200/70 truncate">
-                  {user?.rol === 'admin' ? 'Administrador' : 'Usuario'}
-                </p>
-              </div>
-            </div>
+            </button>
             
             <button
               onClick={handleLogout}
