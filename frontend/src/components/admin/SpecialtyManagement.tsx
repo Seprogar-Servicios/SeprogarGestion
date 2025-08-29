@@ -177,102 +177,164 @@ const SpecialtyManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Especialidades</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Administra las especialidades técnicas del sistema
-          </p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center">
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-4">
+              <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Gestión de Especialidades</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+                Administra las especialidades técnicas del sistema
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setEditingEspecialidad(null);
+              resetForm();
+              setShowCreateModal(true);
+            }}
+            className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Especialidad
+          </button>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Especialidad
-        </button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Buscar especialidades..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
-        />
+      {/* Search and Filters */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1 w-full">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Buscar especialidades
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar por nombre o descripción..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Especialidades Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {loading ? (
           [...Array(6)].map((_, i) => (
-            <div key={i} className="animate-pulse bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20">
+                <div className="animate-pulse h-6 w-3/4 bg-gray-200 dark:bg-gray-600 rounded"></div>
+              </div>
+              <div className="p-5">
+                <div className="animate-pulse h-4 w-full bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
+                <div className="animate-pulse h-3 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              </div>
             </div>
           ))
-        ) : (
-          filteredEspecialidades?.map((especialidad) => (
-            <div key={especialidad._id} className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center">
-                    <Briefcase className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-                  </div>
+        ) : filteredEspecialidades.length > 0 ? (
+          filteredEspecialidades.map((especialidad) => (
+            <div key={especialidad._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {especialidad.nombre}
+                  </h3>
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => openEditModal(especialidad)}
-                      className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                      className="p-1.5 text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                      title="Editar especialidad"
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteEspecialidad(especialidad._id)}
-                      className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                      className="p-1.5 text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200"
+                      title="Eliminar especialidad"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
-
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                  {especialidad.nombre}
-                </h3>
-
-                {especialidad.descripcion && (
-                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-3">
+              </div>
+              <div className="p-5">
+                <div className="flex items-center mb-4">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg mr-3">
+                    <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    {especialidad.nombre}
+                  </span>
+                </div>
+                
+                {especialidad.descripcion ? (
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
                     {especialidad.descripcion}
                   </p>
+                ) : (
+                  <p className="text-gray-400 dark:text-gray-500 text-sm italic mb-4">
+                    Sin descripción
+                  </p>
                 )}
-
-                <div className="pt-2 text-xs text-gray-400 dark:text-gray-500 border-t border-gray-200 dark:border-gray-700">
-                  Creada: {new Date(especialidad.createdAt).toLocaleDateString()}
+                
+                <div className="pt-3 mt-4 border-t border-gray-100 dark:border-gray-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="font-medium">Creada:</span>{' '}
+                    {new Date(especialidad.createdAt).toLocaleDateString('es-AR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
                 </div>
               </div>
             </div>
           ))
-        )}
+        ) : null}
       </div>
 
-      {filteredEspecialidades?.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <Briefcase className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {searchTerm ? 'No se encontraron especialidades' : 'No hay especialidades registradas'}
-          </p>
-          {!searchTerm && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="mt-4 inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Agregar primera especialidad
-            </button>
-          )}
+      {filteredEspecialidades.length === 0 && !loading && (
+        <div className="col-span-full">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 p-8 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+              <Briefcase className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
+              {searchTerm ? 'No se encontraron especialidades' : 'No hay especialidades registradas'}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {searchTerm 
+                ? 'No hay especialidades que coincidan con tu búsqueda. Intenta con otros términos.'
+                : 'Comienza creando tu primera especialidad para organizar las tareas técnicas.'}
+            </p>
+            <div className="mt-6">
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors"
+              >
+                <Plus className="-ml-1 mr-2 h-5 w-5" />
+                {searchTerm ? 'Limpiar búsqueda' : 'Nueva especialidad'}
+              </button>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-900 transition-colors"
+                >
+                  Limpiar búsqueda
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

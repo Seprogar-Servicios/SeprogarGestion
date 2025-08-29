@@ -34,7 +34,10 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
     }
     
     if (showOnlyFutureTasks) {
-      newFilters.fechaDesde = format(new Date(), 'yyyy-MM-dd');
+      // Usar la fecha actual sin hora para asegurar que se incluyan todas las tareas de hoy
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      newFilters.fechaDesde = format(today, 'yyyy-MM-dd');
     } else if (fechaDesde) {
       newFilters.fechaDesde = fechaDesde;
     } else {
@@ -77,7 +80,10 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
                 }
                 
                 if (showOnlyFutureTasks) {
-                  newFilters.fechaDesde = format(new Date(), 'yyyy-MM-dd');
+                  // Usar la fecha actual sin hora para asegurar que se incluyan todas las tareas de hoy
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  newFilters.fechaDesde = format(today, 'yyyy-MM-dd');
                 } else if (fechaDesde) {
                   newFilters.fechaDesde = fechaDesde;
                 } else {
@@ -115,7 +121,10 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
               }
               
               if (e.target.checked) {
-                newFilters.fechaDesde = format(new Date(), 'yyyy-MM-dd');
+                // Usar la fecha actual sin hora para asegurar que se incluyan todas las tareas de hoy
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                newFilters.fechaDesde = format(today, 'yyyy-MM-dd');
               } else if (fechaDesde) {
                 newFilters.fechaDesde = fechaDesde;
               } else {

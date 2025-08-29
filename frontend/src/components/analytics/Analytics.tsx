@@ -177,21 +177,27 @@ const Analytics: React.FC = () => {
   return (
     <div className="py-6 animate-fadeIn">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Panel de Análisis
-          </h1>
-          <div className="flex items-center space-x-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent inline-block">
+              Panel de Análisis
+            </h1>
+            <div className="h-1 w-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mt-1"></div>
+            <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm">
+              Visualiza y analiza las métricas de rendimiento del sistema
+            </p>
+          </div>
+          <div className="flex items-center space-x-3 flex-wrap gap-2">
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 px-4 py-2 rounded-lg transition-all duration-200"
+              className="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow transform hover:scale-105"
             >
-              <Filter className="h-5 w-5 text-blue-500 mr-2" />
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              <Filter className="h-5 w-5 mr-2" />
+              <span className="text-sm font-medium">
                 {showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
               </span>
             </button>
-            <div className="flex items-center bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg">
+            <div className="flex items-center bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-4 py-2 rounded-lg shadow-sm border border-blue-100 dark:border-blue-800/30">
               <TrendingUp className="h-5 w-5 text-blue-500 mr-2" />
               <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
                 Datos actualizados: {new Date().toLocaleDateString('es-ES')}
@@ -330,17 +336,17 @@ const Analytics: React.FC = () => {
             return (
               <div 
                 key={stat.title}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 transition-all duration-300 hover:shadow-lg hover:scale-105 animate-fadeIn"
+                className="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-md p-4 transition-all duration-300 hover:shadow-lg hover:scale-105 animate-fadeIn border border-gray-100 dark:border-gray-700"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className={`${stat.color} rounded-full p-2`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`bg-gradient-to-br ${stat.color.replace('bg-', 'from-')} ${stat.color.replace('bg-', 'to-')}/80 rounded-lg p-2.5 shadow-inner transform transition-transform duration-300 hover:scale-110`}>
                     <Icon className="h-5 w-5 text-white" />
                   </div>
-                  <span className={`text-xs font-medium ${stat.textColor}`}>{stat.title}</span>
+                  <span className={`text-xs font-medium ${stat.textColor} bg-opacity-20 px-2 py-0.5 rounded-full`}>{stat.title}</span>
                 </div>
                 <div className="flex items-baseline">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</span>
+                  <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">{stat.value}</span>
                   {stat.subtext && (
                     <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{stat.subtext}</span>
                   )}
@@ -355,45 +361,65 @@ const Analytics: React.FC = () => {
         <div className="py-4">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Gráfico de tareas por tiempo */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 border-t-4 border-blue-500 animate-fadeIn" style={{ animationDelay: '200ms' }}>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-blue-500" />
-                Tareas por Período
-              </h2>
-              <div className="h-80">
+            <div className="bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-800 dark:to-blue-900/10 shadow-lg rounded-xl p-6 border border-blue-100 dark:border-blue-800/30 animate-fadeIn group hover:shadow-xl transition-all duration-300" style={{ animationDelay: '200ms' }}>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent flex items-center">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 mr-3 group-hover:scale-110 transition-transform duration-300">
+                    <Calendar className="h-5 w-5 text-blue-500" />
+                  </div>
+                  Tareas por Período
+                </h2>
+                <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+              </div>
+              <div className="h-80 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 shadow-inner">
                 <TasksByTimeChart tasks={filteredTasks} />
               </div>
             </div>
             
             {/* Gráfico de tareas por estado */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 border-t-4 border-green-500 animate-fadeIn" style={{ animationDelay: '300ms' }}>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                <CheckCircle className="h-5 w-5 mr-2 text-green-500" />
-                Distribución por Estado
-              </h2>
-              <div className="h-80">
+            <div className="bg-gradient-to-br from-white to-green-50/30 dark:from-gray-800 dark:to-green-900/10 shadow-lg rounded-xl p-6 border border-green-100 dark:border-green-800/30 animate-fadeIn group hover:shadow-xl transition-all duration-300" style={{ animationDelay: '300ms' }}>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-semibold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent flex items-center">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 mr-3 group-hover:scale-110 transition-transform duration-300">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  </div>
+                  Distribución por Estado
+                </h2>
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
+              </div>
+              <div className="h-80 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 shadow-inner">
                 <TasksByStatusChart tasks={filteredTasks} />
               </div>
             </div>
             
             {/* Gráfico de tareas por usuario */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 border-t-4 border-purple-500 animate-fadeIn" style={{ animationDelay: '400ms' }}>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                <UsersIcon className="h-5 w-5 mr-2 text-purple-500" />
-                Tareas por Usuario
-              </h2>
-              <div className="h-80">
+            <div className="bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-800 dark:to-purple-900/10 shadow-lg rounded-xl p-6 border border-purple-100 dark:border-purple-800/30 animate-fadeIn group hover:shadow-xl transition-all duration-300" style={{ animationDelay: '400ms' }}>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent flex items-center">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 mr-3 group-hover:scale-110 transition-transform duration-300">
+                    <UsersIcon className="h-5 w-5 text-purple-500" />
+                  </div>
+                  Tareas por Usuario
+                </h2>
+                <div className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse"></div>
+              </div>
+              <div className="h-80 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 shadow-inner">
                 <TasksByUserChart tasks={filteredTasks} users={users} />
               </div>
             </div>
             
             {/* Gráfico adicional: Tiempo promedio de completado */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 border-t-4 border-yellow-500 animate-fadeIn" style={{ animationDelay: '500ms' }}>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                <Clock className="h-5 w-5 mr-2 text-yellow-500" />
-                Tiempo Promedio de Completado
-              </h2>
-              <div className="h-80">
+            <div className="bg-gradient-to-br from-white to-yellow-50/30 dark:from-gray-800 dark:to-yellow-900/10 shadow-lg rounded-xl p-6 border border-yellow-100 dark:border-yellow-800/30 animate-fadeIn group hover:shadow-xl transition-all duration-300" style={{ animationDelay: '500ms' }}>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-semibold bg-gradient-to-r from-yellow-600 to-yellow-500 bg-clip-text text-transparent flex items-center">
+                  <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 mr-3 group-hover:scale-110 transition-transform duration-300">
+                    <Clock className="h-5 w-5 text-yellow-500" />
+                  </div>
+                  Tiempo Promedio de Completado
+                </h2>
+                <div className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse"></div>
+              </div>
+              <div className="h-80 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 shadow-inner">
                 <TasksCompletionTimeChart tasks={filteredTasks} />
               </div>
             </div>

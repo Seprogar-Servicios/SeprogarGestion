@@ -27,6 +27,7 @@ const initialState: TasksState = {
 // Helper function to calculate date ranges for upcoming tasks
 const getUpcomingDateRange = (filter: string) => {
   const now = new Date();
+  // Establecer la hora a 00:00:00 para el día actual
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
   switch (filter) {
@@ -42,13 +43,17 @@ const getUpcomingDateRange = (filter: string) => {
       };
     case 'nextWeek':
       return {
-        fechaDesde: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+        fechaDesde: today.toISOString(),
         fechaHasta: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
       };
     case 'nextMonth':
+      // Crear fecha para el primer día del próximo mes
+      const firstDayNextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      // Crear fecha para el último día del próximo mes
+      const lastDayNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
       return {
-        fechaDesde: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        fechaHasta: new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()).toISOString()
+        fechaDesde: firstDayNextMonth.toISOString(),
+        fechaHasta: lastDayNextMonth.toISOString()
       };
     default:
       return {};
@@ -77,7 +82,14 @@ export const fetchTasks = createAsyncThunk(
           if (key === 'tecnico') {
             params.append('usuario', value);
           } else {
-            params.append(key, value);
+            // Asegurarse de que fechaDesde se aplique correctamente
+            if (key === 'fechaDesde') {
+              // Convertir la fecha a formato ISO para que el backend la procese correctamente
+              const fechaDesde = new Date(value);
+              params.append(key, fechaDesde.toISOString());
+            } else {
+              params.append(key, value);
+            }
           }
         }
       });

@@ -54,101 +54,130 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-gray-100 dark:bg-gray-900">
-      {/* Sidebar */}
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex-shrink-0 overflow-y-auto`}>
-        <div className="flex items-center justify-between h-16 px-4 bg-[#0056a2] dark:bg-[#003b6f]">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="h-8 w-8 rounded-lg flex items-center justify-center overflow-hidden">
-                <img src="/futurgas.png" alt="Futurgas Logo" className="h-7 w-7 object-contain" />
-              </div>
-            </div>
-            <div className="ml-3">
-              <h1 className="text-white font-semibold">FuturgasGestión</h1>
-            </div>
-          </div>
-          <button
-            className="lg:hidden text-white"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
+      {/* Mobile menu button */}
+      <button
+        onClick={() => setSidebarOpen(true)}
+        className="fixed bottom-4 right-4 z-40 lg:hidden p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-colors"
+      >
+        <Menu className="h-6 w-6" />
+      </button>
 
-        <nav className="mt-5 px-2">
-          <div className="space-y-1">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => navigate(item.href)}
-                  className="w-full group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  <Icon className="mr-4 h-6 w-6" />
-                  {item.name}
-                </button>
-              );
-            })}
-            
-            {/* Admin Section */}
-            {user?.rol === 'admin' && (
-              <>
-                <div className="pt-4 pb-2">
-                  <h3 className="px-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Administración
-                  </h3>
-                </div>
-                {adminNavigation.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.name}
-                      onClick={() => navigate(item.href)}
-                      className={`w-full group flex items-center px-2 py-2 text-base font-medium rounded-md ${
-                        isActive(item.href) 
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' 
-                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                      } transition-colors`}
-                    >
-                      <Icon className="mr-4 h-6 w-6" />
-                      {item.name}
-                    </button>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        </nav>
-
-        <div className="absolute bottom-0 w-full p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {user?.nombre.charAt(0).toUpperCase()}
-                </span>
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-900 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex-shrink-0 overflow-y-auto border-r border-blue-500/20 dark:border-gray-700`}>
+        <div className="flex flex-col h-full">
+          {/* Logo and close button */}
+          <div className="flex items-center justify-between h-20 px-6 py-4 bg-blue-700 dark:bg-gray-900/50">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0 bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+                <img src="/futurgas.png" alt="Futurgas Logo" className="h-8 w-8 object-contain" />
               </div>
-              <div className="ml-3">
-                <button 
-                  onClick={() => navigate('/profile')} 
-                  className="text-left hover:text-[#0056a2] dark:hover:text-[#f7941d]"
-                >
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:underline">
-                    {user?.nombre}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                    {user?.rol}
-                  </p>
-                </button>
-              </div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                FuturgasGestión
+              </h1>
             </div>
             <button
-              onClick={handleLogout}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="lg:hidden text-blue-100 hover:text-white"
+              onClick={() => setSidebarOpen(false)}
             >
-              <LogOut className="h-5 w-5" />
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+            <div className="space-y-1.5">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.href);
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => {
+                      navigate(item.href);
+                      if (window.innerWidth < 1024) setSidebarOpen(false);
+                    }}
+                    className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                      active
+                        ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
+                        : 'text-blue-100 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <Icon 
+                      className={`mr-3 h-5 w-5 flex-shrink-0 ${
+                        active ? 'text-blue-200' : 'text-blue-200/70'
+                      }`} 
+                    />
+                    <span className="text-left">{item.name}</span>
+                    {active && (
+                      <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Admin Section */}
+            {user?.rol === 'admin' && (
+              <div className="pt-6 mt-6 border-t border-blue-500/10">
+                <h3 className="px-4 mb-3 text-xs font-semibold text-blue-200/70 uppercase tracking-wider">
+                  Administración
+                </h3>
+                <div className="space-y-1.5">
+                  {adminNavigation.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => {
+                          navigate(item.href);
+                          if (window.innerWidth < 1024) setSidebarOpen(false);
+                        }}
+                        className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                          active
+                            ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
+                            : 'text-blue-100 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <Icon 
+                          className={`mr-3 h-5 w-5 flex-shrink-0 ${
+                            active ? 'text-blue-200' : 'text-blue-200/70'
+                          }`} 
+                        />
+                        <span className="text-left">{item.name}</span>
+                        {active && (
+                          <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </nav>
+
+          {/* User profile and logout */}
+          <div className="p-4 mt-auto border-t border-blue-500/10">
+            <div className="flex items-center mb-4 px-2 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
+              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-400/20 flex items-center justify-center text-blue-200">
+                <UserCircle className="h-6 w-6" />
+              </div>
+              <div className="ml-3 min-w-0 flex-1">
+                <p className="text-sm font-medium text-white truncate">
+                  {user?.nombre || 'Usuario'}
+                </p>
+                <p className="text-xs text-blue-200/70 truncate">
+                  {user?.rol === 'admin' ? 'Administrador' : 'Usuario'}
+                </p>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-blue-100 hover:text-white rounded-lg hover:bg-white/10 transition-colors group"
+            >
+              <LogOut className="mr-2 h-4 w-4 text-blue-200 group-hover:text-white" />
+              Cerrar sesión
             </button>
           </div>
         </div>

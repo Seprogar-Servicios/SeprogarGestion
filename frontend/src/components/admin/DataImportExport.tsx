@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppSelector } from '../../store';
-import { Download, FileText, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { Download, FileText, CheckCircle, AlertCircle, Info, Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 
@@ -226,27 +226,47 @@ const DataImportExport: React.FC = () => {
   };
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Importar / Exportar Datos</h2>
+    <div className="space-y-6 h-full flex flex-col animate-fadeIn" style={{ minHeight: '85vh' }}>
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-6 mb-6 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center">
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
+              <Download className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Gestión de Datos
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+                Importa y exporta datos del sistema de manera segura
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
       
-      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-        <nav className="-mb-px flex space-x-8">
+      {/* Tab Navigation */}
+      <div className="mb-8">
+        <nav className="flex space-x-1 p-1 bg-gray-100 dark:bg-gray-700 rounded-lg">
           <button
             onClick={() => setActiveTab('import')}
             className={`${activeTab === 'import' 
-              ? 'border-[#0056a2] text-[#0056a2] dark:border-[#1e90ff] dark:text-[#1e90ff]' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-500'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200`}
+              ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400' 
+              : 'text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-600'
+            } px-6 py-3 text-sm font-medium rounded-md transition-all duration-200 flex items-center`}
           >
+            <FileText className="w-4 h-4 mr-2" />
             Importar Datos
           </button>
           <button
             onClick={() => setActiveTab('export')}
             className={`${activeTab === 'export' 
-              ? 'border-[#0056a2] text-[#0056a2] dark:border-[#1e90ff] dark:text-[#1e90ff]' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-500'
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200`}
+              ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-800 dark:text-blue-400' 
+              : 'text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-600'
+            } px-6 py-3 text-sm font-medium rounded-md transition-all duration-200 flex items-center`}
           >
+            <Download className="w-4 h-4 mr-2" />
             Exportar Datos
           </button>
         </nav>
@@ -254,13 +274,19 @@ const DataImportExport: React.FC = () => {
 
       {activeTab === 'import' ? (
         <div className="space-y-6">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 p-4 rounded-r-md">
+          {/* Import Instructions Card */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-50/80 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-xl p-5 mb-6 shadow-sm">
             <div className="flex">
               <div className="flex-shrink-0">
-                <FileText className="h-5 w-5 text-blue-400" />
+                <div className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
-              <div className="ml-3">
-                <p className="text-sm text-blue-700 dark:text-blue-200">
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Instrucciones de importación
+                </h3>
+                <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
                   Para importar datos, descarga la plantilla, completa la información y súbela aquí. 
                   Los datos se importarán en el siguiente orden: Especialidades → Usuarios → Tareas.
                 </p>
@@ -268,138 +294,222 @@ const DataImportExport: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6">
-            <button
-              onClick={downloadTemplate}
-              disabled={isLoading}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#0056a2] dark:bg-[#1e90ff] hover:bg-[#003b6f] dark:hover:bg-[#4aa8ff] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200"
-            >
-              <Download className="-ml-1 mr-2 h-5 w-5" />
-              Descargar Plantilla
-            </button>
+          {/* Template Download Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6 hover:shadow-md transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-600">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-start space-x-3">
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded-lg">
+                  <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Plantilla de importación</h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Descarga la plantilla para completar con los datos a importar
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={downloadTemplate}
+                disabled={isLoading}
+                className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-200 transform hover:scale-105"
+              >
+                <Download className="-ml-1 mr-2 h-5 w-5" />
+                Descargar Plantilla
+              </button>
+            </div>
           </div>
 
-          <div className="mt-6 space-y-4">
-            <div className="flex flex-col space-y-2">
-              <label className="text-sm font-medium">Seleccionar archivo Excel</label>
-              <div className="flex items-center">
-                <input
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={handleFileChange}
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-[#0056a2] file:text-white
-                    hover:file:bg-[#003b6f]
-                    dark:file:bg-[#1e90ff] dark:hover:file:bg-[#4aa8ff]"
-                  disabled={isLoading}
-                />
+          {/* File Upload Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-600">
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3">
+                <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded-lg">
+                  <Upload className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Importar archivo</h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Selecciona el archivo Excel con los datos a importar
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Archivo Excel (.xlsx, .xls)
+                </label>
+                <div className="mt-1 flex items-center">
+                  <label className="w-full">
+                    <div className="flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg transition-all duration-200 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer">
+                      <div className="space-y-1 text-center">
+                        <div className="flex text-sm text-gray-600 dark:text-gray-400 justify-center">
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            stroke="currentColor"
+                            fill="none"
+                            viewBox="0 0 48 48"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                          <span className="relative cursor-pointer rounded-md font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                            Sube un archivo
+                          </span>
+                          <p className="pl-1">o arrástralo aquí</p>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          XLSX, XLS hasta 10MB
+                        </p>
+                      </div>
+                      <input
+                        id="file-upload"
+                        name="file-upload"
+                        type="file"
+                        className="sr-only"
+                        accept=".xlsx, .xls"
+                        onChange={handleFileChange}
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
             
             {selectedFile && (
-              <div className="flex flex-col space-y-2">
-                <div className="flex items-center text-sm">
-                  <FileText className="w-4 h-4 mr-1" />
-                  {selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)
-                </div>
-                
-                <div className="flex space-x-2">
-                  <button
-                    onClick={validateFile}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                    disabled={isLoading}
-                  >
-                    Validar archivo
-                  </button>
-                  
-                  <div className="relative group">
-                    <button
-                      onClick={importData}
-                      disabled={!validationReport?.data?.isValid || validationReport?.data?.allDataIsDuplicate || isLoading}
-                      className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                        !validationReport?.data?.isValid || validationReport?.data?.allDataIsDuplicate || isLoading
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-                      }`}
-                    >
-                      {isLoading ? 'Importando...' : 'Importar Datos'}
-                    </button>
-                    {validationReport?.data?.allDataIsDuplicate && (
-                      <div className="absolute z-10 invisible group-hover:visible w-64 p-2 -mt-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-md shadow-lg">
-                        No hay datos nuevos para importar. Todos los datos ya existen en el sistema.
+              <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {selectedFile.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {Math.round(selectedFile.size / 1024)} KB
+                    </p>
+                    
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        onClick={validateFile}
+                        disabled={isLoading}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-200 transform hover:scale-105"
+                      >
+                        <CheckCircle className="-ml-1 mr-2 h-4 w-4" />
+                        Validar archivo
+                      </button>
+                      
+                      <div className="relative group">
+                        <button
+                          onClick={importData}
+                          disabled={!validationReport?.data?.isValid || validationReport?.data?.allDataIsDuplicate || isLoading}
+                          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                            !validationReport?.data?.isValid || validationReport?.data?.allDataIsDuplicate || isLoading
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 focus:ring-green-500 transform hover:scale-105'
+                          }`}
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                              Importando...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="-ml-1 mr-2 h-4 w-4" />
+                              Importar Datos
+                            </>
+                          )}
+                        </button>
+                        {validationReport?.data?.allDataIsDuplicate && (
+                          <div className="absolute z-10 invisible group-hover:visible w-64 p-3 mt-2 text-sm text-gray-600 bg-white dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                            <div className="flex items-center">
+                              <Info className="h-4 w-4 mr-2 text-blue-500" />
+                              No hay datos nuevos para importar. Todos los datos ya existen en el sistema.
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                      
+                      <button
+                        onClick={() => setSelectedFile(null)}
+                        disabled={isLoading}
+                        className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-200"
+                      >
+                        <X className="-ml-1 mr-2 h-4 w-4" />
+                        Cancelar
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
             {validationReport && (
-              <div className={`mt-4 p-4 rounded-md ${validationReport.data.isValid ? 'bg-green-50 dark:bg-green-900/30' : 'bg-yellow-50 dark:bg-yellow-900/20'}`}>
-                <div className="flex">
-                  <div className="flex-shrink-0">
+              <div className={`mt-6 p-5 rounded-lg border shadow-sm transition-all duration-300 animate-fadeIn ${validationReport.data.isValid ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'}`}>
+                <div className="flex items-start">
+                  <div className={`flex-shrink-0 p-2 rounded-full ${validationReport.data.isValid ? 'bg-green-100 dark:bg-green-800/40' : 'bg-yellow-100 dark:bg-yellow-800/40'}`}>
                     {validationReport.data.isValid ? (
-                      <CheckCircle className="h-5 w-5 text-green-400" />
+                      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                     ) : (
-                      <AlertCircle className="h-5 w-5 text-yellow-400" />
+                      <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
                     )}
                   </div>
-                  <div className="ml-3">
-                    <h3 className={`text-sm font-medium ${validationReport.data.isValid ? 'text-green-800 dark:text-green-200' : 'text-yellow-800 dark:text-yellow-200'}`}>
-                      {validationReport.data.allDataIsDuplicate 
-                        ? 'Todos los datos ya existen en el sistema' 
-                        : validationReport.data.isValid ? 'Archivo válido' : 'Advertencias'}
+                  <div className="ml-4 flex-1">
+                    <h3 className={`text-base font-medium ${validationReport.data.isValid ? 'text-green-800 dark:text-green-300' : 'text-yellow-800 dark:text-yellow-300'}`}>
+                      {validationReport.data.isValid
+                        ? 'Archivo válido para importar'
+                        : 'El archivo tiene errores que deben corregirse'}
                     </h3>
-                    <div className="mt-2 text-sm">
-                      <ul className="list-disc pl-5 space-y-1">
-                        {validationReport.data.messages && validationReport.data.messages.length > 0 ? (
-                          validationReport.data.messages.map((msg: string, idx: number) => (
-                            <li key={idx} className={validationReport.data.isValid ? 'text-green-700 dark:text-green-300' : 'text-yellow-700 dark:text-yellow-300'}>{msg}</li>
-                          ))
-                        ) : (
-                          <li className="text-gray-500 dark:text-gray-400">No hay mensajes de validación</li>
-                        )}
+                    <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                      <ul className="list-disc pl-5 space-y-2">
+                        {validationReport.data.messages.map((message: string, index: number) => (
+                          <li key={index} className="transition-all duration-200 hover:translate-x-1">{message}</li>
+                        ))}
                       </ul>
                     </div>
                   </div>
                 </div>
               </div>
             )}
-            
             {importStats && (
-              <div className="mt-4 p-4 bg-[#f0f7ff] dark:bg-[#0a1f33] rounded-md border border-[#0056a2] dark:border-[#1e90ff]">
-                <h3 className="text-md font-semibold flex items-center mb-2 text-[#0056a2] dark:text-[#1e90ff]">
-                  <Info className="w-5 h-5 mr-2" />
-                  Resumen de importación
+              <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/20 rounded-lg border border-blue-200 dark:border-blue-800/50 shadow-sm transition-all duration-300 animate-fadeIn">
+                <h3 className="text-lg font-semibold flex items-center mb-3 text-blue-700 dark:text-blue-300">
+                  <div className="p-1.5 bg-blue-100 dark:bg-blue-800/40 rounded-full mr-3">
+                    <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  Importación completada con éxito
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-[#f8fafc] dark:bg-[#1a2234] p-3 rounded shadow-sm border border-[#e2e8f0] dark:border-[#334155]">
-                    <h4 className="font-medium text-[#0056a2] dark:text-[#1e90ff] mb-1">Especialidades</h4>
-                    <ul className="text-sm space-y-1 text-gray-700 dark:text-gray-300">
-                      <li>Procesadas: {importStats.especialidades}</li>
-                      <li>Existentes: {importStats.especialidadesExistentes}</li>
-                      <li className="text-[#0056a2] dark:text-[#1e90ff] font-medium">Nuevas: {importStats.especialidadesNuevas}</li>
-                    </ul>
-                  </div>
-                  <div className="bg-[#f8fafc] dark:bg-[#1a2234] p-3 rounded shadow-sm border border-[#e2e8f0] dark:border-[#334155]">
-                    <h4 className="font-medium text-[#0056a2] dark:text-[#1e90ff] mb-1">Usuarios</h4>
-                    <ul className="text-sm space-y-1 text-gray-700 dark:text-gray-300">
-                      <li>Procesados: {importStats.usuarios}</li>
-                      <li>Existentes: {importStats.usuariosExistentes}</li>
-                      <li className="text-[#0056a2] dark:text-[#1e90ff] font-medium">Nuevos: {importStats.usuariosNuevos}</li>
-                    </ul>
-                  </div>
-                  <div className="bg-[#f8fafc] dark:bg-[#1a2234] p-3 rounded shadow-sm border border-[#e2e8f0] dark:border-[#334155]">
-                    <h4 className="font-medium text-[#0056a2] dark:text-[#1e90ff] mb-1">Tareas</h4>
-                    <ul className="text-sm space-y-1 text-gray-700 dark:text-gray-300">
-                      <li>Procesadas: {importStats.tareas}</li>
-                      <li>Existentes: {importStats.tareasExistentes}</li>
-                      <li className="text-[#0056a2] dark:text-[#1e90ff] font-medium">Nuevas: {importStats.tareasNuevas}</li>
-                    </ul>
-                  </div>
+                <div className="text-sm text-gray-700 dark:text-gray-300 ml-2">
+                  <p className="font-medium mb-2">Se importaron:</p>
+                  <ul className="space-y-3 mt-2">
+                    <li className="flex items-center transition-all duration-200 hover:translate-x-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2"></div>
+                      <span className="font-medium">Especialidades:</span>
+                      <span className="ml-2">{importStats.especialidades}</span>
+                      <span className="text-gray-500 dark:text-gray-400 ml-2">(ya existentes: {importStats.especialidadesExistentes})</span>
+                    </li>
+                    <li className="flex items-center transition-all duration-200 hover:translate-x-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2"></div>
+                      <span className="font-medium">Usuarios:</span>
+                      <span className="ml-2">{importStats.usuarios}</span>
+                      <span className="text-gray-500 dark:text-gray-400 ml-2">(ya existentes: {importStats.usuariosExistentes})</span>
+                    </li>
+                    <li className="flex items-center transition-all duration-200 hover:translate-x-1">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-500 mr-2"></div>
+                      <span className="font-medium">Tareas:</span>
+                      <span className="ml-2">{importStats.tareas}</span>
+                      <span className="text-gray-500 dark:text-gray-400 ml-2">(ya existentes: {importStats.tareasExistentes})</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             )}
@@ -407,13 +517,19 @@ const DataImportExport: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 p-4 rounded-r-md">
-            <div className="flex">
+          {/* Export Instructions Card */}
+          <div className="bg-gradient-to-r from-blue-50 to-blue-50/80 dark:from-blue-900/20 dark:to-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-xl p-5 mb-6 shadow-sm">
+            <div className="flex items-start">
               <div className="flex-shrink-0">
-                <FileText className="h-5 w-5 text-blue-400" />
+                <div className="p-2.5 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <Download className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
-              <div className="ml-3">
-                <p className="text-sm text-blue-700 dark:text-blue-200">
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Instrucciones de exportación
+                </h3>
+                <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
                   Exporta los datos del sistema en diferentes formatos. Puedes exportar todos los datos 
                   en un archivo Excel o exportar por separado en formato CSV.
                 </p>
@@ -421,38 +537,89 @@ const DataImportExport: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-[#0056a2] dark:hover:border-[#1e90ff] focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500 transition-colors duration-200">
-              <div className="flex-shrink-0 bg-[#0056a2] dark:bg-[#1e90ff] rounded-md p-3">
-                <FileText className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <button
-                  onClick={() => exportData('excel')}
-                  disabled={isLoading}
-                  className="text-left focus:outline-none w-full"
-                >
-                  <span className="absolute inset-0" aria-hidden="true" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Exportar a Excel</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">Todos los datos en un solo archivo .xlsx</p>
-                </button>
+          {/* Export Options */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {/* Excel Export Card */}
+            <div className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transform hover:-translate-y-1">
+              <div className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-lg p-3 shadow-inner transition-all duration-300 group-hover:scale-110">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">Excel (.xlsx)</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Todos los datos en un solo archivo
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-5">
+                  <button
+                    onClick={() => exportData('excel')}
+                    disabled={isLoading}
+                    className="w-full inline-flex justify-center items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all duration-200 transform group-hover:scale-[1.02]"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                        Exportando...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="-ml-1 mr-2 h-5 w-5" />
+                        Exportar a Excel
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                  <Info className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                  Incluye todas las especialidades, usuarios y tareas
+                </div>
               </div>
             </div>
 
-            <div className="relative rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-[#0056a2] dark:hover:border-[#1e90ff] focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500 transition-colors duration-200">
-              <div className="flex-shrink-0 bg-green-600 dark:bg-green-500 rounded-md p-3">
-                <FileText className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <button
-                  onClick={() => exportData('csv')}
-                  disabled={isLoading}
-                  className="text-left focus:outline-none w-full"
-                >
-                  <span className="absolute inset-0" aria-hidden="true" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Exportar a CSV</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">Archivos separados por tipo de datos</p>
-                </button>
+            {/* CSV Export Card */}
+            <div className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-md hover:border-green-300 dark:hover:border-green-600 transform hover:-translate-y-1">
+              <div className="p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 rounded-lg p-3 shadow-inner transition-all duration-300 group-hover:scale-110">
+                    <FileText className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-200">CSV (.csv)</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      Archivos separados por tipo de datos
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-5">
+                  <button
+                    onClick={() => exportData('csv')}
+                    disabled={isLoading}
+                    className="w-full inline-flex justify-center items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition-all duration-200 transform group-hover:scale-[1.02]"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                        Exportando...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="-ml-1 mr-2 h-5 w-5" />
+                        Exportar a CSV
+                      </>
+                    )}
+                  </button>
+                </div>
+                
+                <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 flex items-center">
+                  <Info className="h-3.5 w-3.5 mr-1 text-green-500" />
+                  Se generarán 3 archivos: especialidades, usuarios y tareas
+                </div>
               </div>
             </div>
           </div>

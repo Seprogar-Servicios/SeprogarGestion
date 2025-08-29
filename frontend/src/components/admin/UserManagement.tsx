@@ -5,7 +5,6 @@ import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import { 
   Users, 
   Search, 
-  Filter, 
   Edit, 
   Shield,
   User as UserIcon,
@@ -19,6 +18,7 @@ import {
 } from 'lucide-react';
 import api from '../../config/api';
 import type { User } from '../../types';
+import { toast } from 'react-toastify';
 
 const UserManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -26,9 +26,16 @@ const UserManagement: React.FC = () => {
   if (user?.rol !== 'admin') {
     return (
       <div className="p-4">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <strong className="font-bold">Acceso denegado: </strong>
-          <span className="block sm:inline">No tienes permisos de administrador para acceder a esta sección.</span>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-red-500 p-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-full">
+              <Shield className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Acceso denegado</h2>
+              <p className="text-gray-600 dark:text-gray-300">No tienes permisos de administrador para acceder a esta sección.</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -329,185 +336,200 @@ const UserManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Administra usuarios del sistema y aprueba nuevos registros
-          </p>
-          {pendingUsers && pendingUsers.length > 0 && (
-            <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-              <AlertCircle className="h-4 w-4 mr-1" />
-              {pendingUsers.length} {pendingUsers.length === 1 ? 'usuario pendiente' : 'usuarios pendientes'} de aprobación
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-4 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex items-center">
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
+              <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
-          )}
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Gestión de Usuarios
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+                Administra usuarios del sistema y aprueba nuevos registros
+              </p>
+              {pendingUsers && pendingUsers.length > 0 && (
+                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {pendingUsers.length} {pendingUsers.length === 1 ? 'usuario pendiente' : 'usuarios pendientes'} de aprobación
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Crear Usuario
-        </button>
       </div>
       
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-700 mt-6">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('approved')}
-            className={`${activeTab === 'approved' 
-              ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'} 
-              whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center`}
-          >
-            <Users className="h-5 w-5 mr-2" />
-            Usuarios Aprobados
-          </button>
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`${activeTab === 'pending' 
-              ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'} 
-              whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm flex items-center`}
-          >
-            <Clock className="h-5 w-5 mr-2" />
-            Usuarios Pendientes
-            {pendingUsers && pendingUsers.length > 0 && (
-              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-yellow-500 rounded-full">
-                {pendingUsers.length}
-              </span>
-            )}
-          </button>
-        </nav>
-      </div>
-
-      {/* Header de usuarios */}
-      <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-        <div className="flex items-center">
-          <Users className="h-5 w-5 mr-2 text-blue-600" />
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Usuarios del Sistema ({users?.length || 0})</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-6">
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <nav className="flex -mb-px">
+            <button
+              onClick={() => setActiveTab('approved')}
+              className={`${activeTab === 'approved' 
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200'} 
+                whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm flex items-center transition-colors duration-200`}
+            >
+              <Users className="h-5 w-5 mr-2" />
+              Usuarios Aprobados
+            </button>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`${activeTab === 'pending' 
+                ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200'} 
+                whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 group relative`}
+            >
+              <Clock className="h-5 w-5 mr-2" />
+              Usuarios Pendientes
+              {pendingUsers && pendingUsers.length > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-1.5 text-xs font-medium text-white bg-yellow-500 rounded-full">
+                  {pendingUsers.length}
+                </span>
+              )}
+            </button>
+          </nav>
+        </div>
+        
+        {/* Header de usuarios */}
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+              {activeTab === 'approved' 
+                ? `Usuarios del Sistema (${users?.length || 0})` 
+                : `Solicitudes Pendientes (${pendingUsers?.length || 0})`}
+            </h2>
+          </div>
         </div>
       </div>
 
-      {/* Search and Filter - Only show for approved users tab */}
-      {activeTab === 'approved' && (
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4 my-4">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+      {/* Filtros de búsqueda */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1 w-full">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Buscar usuarios
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar por nombre o email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Buscar usuarios..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-3 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            />
           </div>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Filter className="h-5 w-5 text-gray-400" />
-            </div>
+          
+          <div className="w-full md:w-auto">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Filtrar por rol
+            </label>
             <select
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value as 'all' | 'admin' | 'usuario')}
-              className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="w-full md:w-48 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
             >
               <option value="all">Todos los roles</option>
               <option value="admin">Administradores</option>
-              <option value="usuario">Usuarios/Técnicos</option>
+              <option value="usuario">Usuarios</option>
             </select>
           </div>
+          
+          {activeTab === 'approved' && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg"
+            >
+              <Plus className="h-4 w-4" />
+              Nuevo Usuario
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Content */}
       {/* Pending Users Tab */}
       {activeTab === 'pending' && (
-        <div className="mt-6">
+        <div className="space-y-4">
           {pendingUsers && pendingUsers.length > 0 ? (
-            <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                {pendingUsers.map((pendingUser) => (
-                  <li key={pendingUser._id} className="px-6 py-4 hover:bg-yellow-50 dark:hover:bg-gray-700 border-l-4 border-yellow-400">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pendingUsers.map((pendingUser) => (
+                <div key={pendingUser._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 border-b border-yellow-100 dark:border-yellow-900/30">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center">
-                            <UserIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="flex items-center">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {pendingUser.nombre}
-                            </div>
-                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              Pendiente
-                            </span>
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">{pendingUser.email}</div>
-                          {pendingUser.telefono && (
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              <span className="inline-flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                                {pendingUser.telefono}
-                              </span>
-                            </div>
-                          )}
-                          <div className="text-xs text-gray-400 dark:text-gray-500">
-                            Registrado: {new Date(pendingUser.createdAt).toLocaleDateString()}
-                          </div>
+                      <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Solicitud Pendiente</h3>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Pendiente
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <div className="h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                          <UserIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={async () => {
-                            try {
-                              await dispatch(approveUser(pendingUser._id)).unwrap();
-                              const { toast } = await import('react-toastify');
-                              toast.success(`Usuario ${pendingUser.nombre} aprobado correctamente`, {
-                                position: "top-right",
-                                autoClose: 3000,
-                              });
-                            } catch (error) {
-                              console.error('Error al aprobar usuario:', error);
-                              const { toast } = await import('react-toastify');
-                              toast.error('Error al aprobar el usuario', {
-                                position: "top-right",
-                                autoClose: 3000,
-                              });
-                            }
-                          }}
-                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                          title="Aprobar usuario"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Aprobar
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(pendingUser._id, pendingUser.nombre)}
-                          className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                          title="Rechazar usuario"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      <div className="ml-4 flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{pendingUser.nombre}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{pendingUser.email}</p>
+                        
+                        {pendingUser.telefono && (
+                          <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            {pendingUser.telefono}
+                          </div>
+                        )}
+                        
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Registrado: {new Date(pendingUser.createdAt).toLocaleDateString()}
+                          </span>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await dispatch(approveUser(pendingUser._id)).unwrap();
+                                  toast.success('Usuario aprobado exitosamente');
+                                } catch (error) {
+                                  toast.error('Error al aprobar el usuario');
+                                }
+                              }}
+                              className="p-1.5 text-gray-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md hover:text-green-600 dark:hover:text-green-400 transition-colors duration-200"
+                              title="Aprobar usuario"
+                            >
+                              <CheckCircle className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(pendingUser._id, pendingUser.nombre)}
+                              className="p-1.5 text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200"
+                              title="Rechazar usuario"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="text-center py-12 bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md">
-              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 dark:bg-yellow-900 mb-4">
-                <Clock className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 p-8 text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-50 dark:bg-yellow-900/20 mb-4">
+                <Clock className="h-8 w-8 text-yellow-500 dark:text-yellow-400" />
               </div>
-              <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No hay usuarios pendientes</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No hay usuarios pendientes</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Todos los usuarios han sido aprobados o no hay nuevos registros pendientes.
               </p>
             </div>
@@ -517,100 +539,129 @@ const UserManagement: React.FC = () => {
       
       {/* Approved Users Tab */}
       {activeTab === 'approved' && (
-        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md mt-6">
-          <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+        <div className="space-y-4">
           {loading ? (
-            [...Array(5)].map((_, i) => (
-              <li key={i} className="px-6 py-4">
-                <div className="animate-pulse flex items-center space-x-4">
-                  <div className="rounded-full bg-gray-200 dark:bg-gray-700 h-10 w-10" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div className="bg-gray-50 dark:bg-gray-700/30 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                    <div className="animate-pulse h-4 w-32 bg-gray-200 dark:bg-gray-600 rounded"></div>
                   </div>
-                </div>
-              </li>
-            ))
-          ) : filteredUsers.length > 0 ? (
-            filteredUsers.map((user) => (
-              <li key={user._id} className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                        {user.rol === 'admin' ? (
-                          <Shield className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                        ) : (
-                          <UserIcon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                        )}
+                  <div className="p-5">
+                    <div className="flex items-start">
+                      <div className="animate-pulse h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 mr-4"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="animate-pulse h-5 w-3/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div className="animate-pulse h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div className="animate-pulse h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
                       </div>
                     </div>
-                    <div className="ml-4">
-                      <div className="flex items-center">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {user.nombre}
-                        </div>
-                        <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredUsers && filteredUsers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredUsers.map((user) => (
+                <div key={user._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                  <div className={`px-4 py-3 border-b ${
+                    user.rol === 'admin' 
+                      ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30' 
+                      : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-medium">
+                        {user.rol === 'admin' ? 'Administrador' : 'Técnico'}
+                      </h3>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        user.rol === 'admin'
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                      }`}>
+                        {user.rol === 'admin' ? (
+                          <Shield className="h-3 w-3 mr-1" />
+                        ) : (
+                          <UserIcon className="h-3 w-3 mr-1" />
+                        )}
+                        {user.rol === 'admin' ? 'Admin' : 'Técnico'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
                           user.rol === 'admin'
-                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                         }`}>
-                          {user.rol === 'admin' ? 'Administrador' : 'Técnico'}
-                        </span>
+                          {user.rol === 'admin' ? (
+                            <Shield className="h-6 w-6" />
+                          ) : (
+                            <UserIcon className="h-6 w-6" />
+                          )}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
-                      {user.telefono && (
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          <span className="inline-flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div className="ml-4 flex-1">
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{user.nombre}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{user.email}</p>
+                        
+                        {user.telefono && (
+                          <div className="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                             </svg>
                             {user.telefono}
+                          </div>
+                        )}
+                        
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            Registrado: {new Date(user.createdAt).toLocaleDateString()}
                           </span>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => {
+                                setResetPasswordUserId(user._id);
+                                setShowResetPasswordModal(true);
+                              }}
+                              className="p-1.5 text-gray-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md hover:text-orange-600 dark:hover:text-orange-400 transition-colors duration-200"
+                              title="Blanquear contraseña"
+                            >
+                              <Key className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => openEditModal(user)}
+                              className="p-1.5 text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                              title="Editar usuario"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user._id, user.nombre)}
+                              className="p-1.5 text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200"
+                              title="Eliminar usuario"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                      )}
-                      <div className="text-xs text-gray-400 dark:text-gray-500">
-                        Registrado: {new Date(user.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <button
-                      onClick={() => {
-                        setResetPasswordUserId(user._id);
-                        setShowResetPasswordModal(true);
-                      }}
-                      className="text-gray-400 hover:text-orange-500 dark:hover:text-orange-400"
-                      title="Blanquear contraseña"
-                    >
-                      <Key className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => openEditModal(user)}
-                      className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-                      title="Editar usuario"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteUser(user._id, user.nombre)}
-                      className="text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                      title="Eliminar usuario"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
                 </div>
-              </li>
-            ))
+              ))}
+            </div>
           ) : (
-            <li className="px-6 py-12 text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 p-8 text-center">
               <Users className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron usuarios</p>
-            </li>
+              <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No se encontraron usuarios</h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                No hay usuarios que coincidan con los filtros actuales
+              </p>
+            </div>
           )}
-        </ul>
-      </div>
+        </div>
       )}
 
       {/* Reset Password Modal */}
