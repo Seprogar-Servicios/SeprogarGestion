@@ -5,6 +5,7 @@ import tasksReducer from './slices/tasksSlice';
 import usersReducer from './slices/usersSlice';
 import materialsReducer from './slices/materialsSlice';
 import especialidadesReducer from './slices/especialidadesSlice';
+import observationsReducer from './slices/observationsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +14,7 @@ export const store = configureStore({
     users: usersReducer,
     materials: materialsReducer,
     especialidades: especialidadesReducer,
+    observations: observationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

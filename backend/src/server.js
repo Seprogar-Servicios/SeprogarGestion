@@ -96,8 +96,10 @@ app.get('/api/ip', (req, res) => {
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/usuarios', require('./routes/user.routes'));
 app.use('/api/tareas', require('./routes/tarea.routes'));
+app.use('/api/observaciones', require('./routes/observacion.routes'));
 
 // Rutas para el worker de WhatsApp (autenticación por API_KEY)
+// Rutas de la API
 app.use('/api/worker/tareas', require('./routes/apiWorker.routes'));
 app.use('/api/especialidades', require('./routes/especialidad.routes'));
 app.use('/api/materiales', require('./routes/material.routes'));
@@ -105,6 +107,21 @@ app.use('/api/data', require('./routes/data.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/subscribe', require('./routes/subscriptionRoutes'));
 app.use('/api-docs', require('./swagger/swaggerUI'));
+
+// Manejador de errores global
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Error interno del servidor';
+  
+  res.status(statusCode).json({
+    success: false,
+    message: message,
+    statusCode: statusCode,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

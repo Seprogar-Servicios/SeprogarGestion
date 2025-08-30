@@ -2,6 +2,7 @@
 export interface User {
   _id: string;
   nombre: string;
+  apellido?: string;
   email: string;
   rol: 'admin' | 'usuario';
   especialidad?: string;
@@ -11,13 +12,25 @@ export interface User {
   updatedAt: string;
 }
 
+// Observation types
+export interface Observation {
+  _id: string;
+  titulo: string;
+  descripcion: string;
+  tarea: string;
+  creadoPor: User;
+  modificadoPor?: User;
+  fechaCreacion: string;
+  fechaModificacion?: string;
+}
+
 // Task types
 export interface Task {
   _id: string;
   numero: string;
   titulo: string;
   descripcion?: string;
-  estado: 'pendiente' | 'en progreso' | 'completada';
+  estado: 'pendiente' | 'en progreso' | 'completada' | 'cancelada';
   tecnicos: User[];
   fechaCreacion: string;
   fechaModificacion: string;
@@ -28,6 +41,7 @@ export interface Task {
   numeroTitular?: string;
   direccion?: string;
   origen?: 'manual' | 'whatsapp' | string;
+  observaciones?: Observation[];
 }
 
 // Material types

@@ -6,7 +6,8 @@ import {
   Plus, 
   Search, 
   Edit, 
-  Trash2, 
+  Trash2,
+  X,
 } from 'lucide-react';
 import type { Especialidad } from '../../types';
 
@@ -340,35 +341,33 @@ const SpecialtyManagement: React.FC = () => {
 
       {/* Create/Edit Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => {
-                setShowCreateModal(false);
-                setEditingEspecialidad(null);
-                resetForm();
-              }}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 rounded-full p-1"
-              aria-label="Cerrar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-            <div className="mt-1">
-              <div className="flex items-center mb-6">
-                {editingEspecialidad ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                )}
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  {editingEspecialidad ? 'Editar Especialidad' : 'Nueva Especialidad'}
-                </h3>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-purple-600 p-4 -mx-6 -mt-6 rounded-t-xl">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
+                    {editingEspecialidad ? (
+                      <Edit className="h-5 w-5 text-white" />
+                    ) : (
+                      <Plus className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <h3 className="text-xl font-bold text-white">
+                    {editingEspecialidad ? 'Editar Especialidad' : 'Nueva Especialidad'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setEditingEspecialidad(null);
+                    resetForm();
+                  }}
+                  className="text-white hover:text-gray-200 focus:outline-none"
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
               
               <form onSubmit={editingEspecialidad ? handleUpdateEspecialidad : handleCreateEspecialidad} className="space-y-4">
@@ -421,13 +420,13 @@ const SpecialtyManagement: React.FC = () => {
                       setEditingEspecialidad(null);
                       resetForm();
                     }}
-                    className="px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                    className="px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center"
+                    className="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center cursor-pointer"
                   >
                     {editingEspecialidad ? (
                       <>
@@ -441,7 +440,7 @@ const SpecialtyManagement: React.FC = () => {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
-                        Crear
+                        Crear Especialidad
                       </>
                     )}
                   </button>

@@ -4,7 +4,7 @@ const tareaSchema = new mongoose.Schema({
   numero: { type: String, required: true, unique: true },
   titulo: { type: String, required: true },
   descripcion: { type: String },
-  estado: { type: String, enum: ['pendiente', 'en progreso', 'completada'], default: 'pendiente' },
+  estado: { type: String, enum: ['pendiente', 'en progreso', 'completada', 'cancelada'], default: 'pendiente' },
   tecnicos: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' }],
   fechaCreacion: { type: Date, default: Date.now },
   fechaModificacion: { type: Date, default: Date.now },

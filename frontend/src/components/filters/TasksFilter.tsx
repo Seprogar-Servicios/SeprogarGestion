@@ -11,6 +11,7 @@ interface TasksFilterProps {
 const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) => {
   const { users } = useAppSelector((state) => state.users);
   const [tecnico, setTecnico] = useState<string>(filters.tecnico || '');
+  const [estado, setEstado] = useState<string>(filters.estado || '');
   const [fechaDesde, setFechaDesde] = useState<string>(filters.fechaDesde || format(new Date(), 'yyyy-MM-dd'));
   const [showOnlyFutureTasks, setShowOnlyFutureTasks] = useState<boolean>(true);
 
@@ -44,13 +45,20 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
       delete newFilters.fechaDesde;
     }
     
+    if (estado) {
+      newFilters.estado = estado;
+    } else {
+      delete newFilters.estado;
+    }
+    
     onFiltersChange(newFilters);
   };
 
   const handleResetFilters = () => {
     setTecnico('');
+    setEstado('');
     setFechaDesde('');
-    setShowOnlyFutureTasks(false);
+    setShowOnlyFutureTasks(true);
     onFiltersChange({});
   };
 
@@ -95,14 +103,32 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="">Todos los técnicos</option>
-              {tecnicos.map((user: User) => (
-                <option key={user._id} value={user._id}>
-                  {user.nombre}
+              {tecnicos.map((tecnico) => (
+                <option key={tecnico._id} value={tecnico._id}>
+                  {tecnico.nombre}
                 </option>
               ))}
             </select>
           </div>
         )}
+
+        {/* Filtro por Estado */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Estado
+          </label>
+          <select
+            value={estado}
+            onChange={(e) => setEstado(e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          >
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en progreso">En progreso</option>
+            <option value="completada">Completada</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
 
         <div className="flex items-center">
           <input

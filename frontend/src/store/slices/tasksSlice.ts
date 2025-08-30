@@ -61,6 +61,18 @@ const getUpcomingDateRange = (filter: string) => {
 };
 
 // Async thunks
+export const fetchTaskById = createAsyncThunk(
+  'tasks/fetchTaskById',
+  async (taskId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get<ApiResponse<Task>>(`/tareas/${taskId}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Error al cargar la tarea');
+    }
+  }
+);
+
 export const fetchTasks = createAsyncThunk(
   'tasks/fetchTasks',
   async (filters: TaskFilters = {}, { rejectWithValue }) => {
@@ -98,18 +110,6 @@ export const fetchTasks = createAsyncThunk(
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Error al cargar tareas');
-    }
-  }
-);
-
-export const fetchTaskById = createAsyncThunk(
-  'tasks/fetchTaskById',
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const response = await api.get<ApiResponse<Task>>(`/tareas/${id}`);
-      return response.data.data;
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Error al cargar tarea');
     }
   }
 );
@@ -207,10 +207,13 @@ const tasksSlice = createSlice({
       state.error = null;
     },
     setFilters: (state, action: PayloadAction<TaskFilters>) => {
-      state.filters = action.payload;
+      state.filters = { ...state.filters, ...action.payload };
     },
     clearCurrentTask: (state) => {
       state.currentTask = null;
+    },
+    setCurrentTask: (state, action: PayloadAction<Task | null>) => {
+      state.currentTask = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -356,5 +359,5 @@ const tasksSlice = createSlice({
   },
 });
 
-export const { clearError, setFilters, clearCurrentTask } = tasksSlice.actions;
+export const { clearError, setFilters, clearCurrentTask, setCurrentTask } = tasksSlice.actions;
 export default tasksSlice.reducer;

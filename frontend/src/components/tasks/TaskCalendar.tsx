@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchCalendarTasks } from '../../store/slices/tasksSlice';
 import CalendarTasksFilter from '../filters/CalendarTasksFilter';
 import type { TaskFilters } from '../../types';
-import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, User, CheckCircle, AlertCircle, Loader, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, User, CheckCircle, AlertCircle, Loader, XCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useTheme } from '../../hooks/useTheme';
@@ -188,6 +188,8 @@ const TaskCalendar: React.FC = () => {
     switch (estado) {
       case 'completada':
         return isDarkMode ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-green-400 to-green-500';
+      case 'cancelada':
+        return isDarkMode ? 'bg-gradient-to-r from-red-500 to-red-600' : 'bg-gradient-to-r from-red-400 to-red-500';
       case 'en progreso':
         return isDarkMode ? 'bg-gradient-to-r from-amber-500 to-yellow-600' : 'bg-gradient-to-r from-amber-400 to-yellow-500';
       default:
@@ -318,7 +320,8 @@ const TaskCalendar: React.FC = () => {
                             >
                               {task.estado === 'completada' && <CheckCircle className="h-3 w-3 text-white" />}
                               {task.estado === 'en progreso' && <Loader className="h-3 w-3 text-white animate-spin" />}
-                              {task.estado !== 'completada' && task.estado !== 'en progreso' && <AlertCircle className="h-3 w-3 text-white" />}
+                              {task.estado === 'cancelada' && <XCircle className="h-3 w-3 text-white" />}
+                              {task.estado !== 'completada' && task.estado !== 'en progreso' && task.estado !== 'cancelada' && <AlertCircle className="h-3 w-3 text-white" />}
                               <span className="truncate">{task.titulo}</span>
                             </div>
                           ))
@@ -369,7 +372,7 @@ const TaskCalendar: React.FC = () => {
                       {selectedDateTasks.map((task) => (
                         <div
                           key={task._id}
-                          className={`p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-${task.estado === 'completada' ? 'green' : task.estado === 'en progreso' ? 'yellow' : 'gray'}-500 mb-3 animate-fadeIn`}
+                          className={`p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-${task.estado === 'completada' ? 'green' : task.estado === 'en progreso' ? 'yellow' : task.estado === 'cancelada' ? 'red' : 'gray'}-500 mb-3 animate-fadeIn`}
                           style={{ animationDelay: `${(selectedDateTasks.indexOf(task) * 100)}ms` }}
                         >
                           <div className="flex items-center justify-between mb-2">
@@ -384,7 +387,8 @@ const TaskCalendar: React.FC = () => {
                               >
                                 {task.estado === 'completada' && <CheckCircle className="h-4 w-4 text-white" />}
                                 {task.estado === 'en progreso' && <Loader className="h-4 w-4 text-white animate-spin" />}
-                                {task.estado !== 'completada' && task.estado !== 'en progreso' && <AlertCircle className="h-4 w-4 text-white" />}
+                                {task.estado === 'cancelada' && <XCircle className="h-4 w-4 text-white" />}
+                                {task.estado !== 'completada' && task.estado !== 'en progreso' && task.estado !== 'cancelada' && <AlertCircle className="h-4 w-4 text-white" />}
                                 <span>{task.estado}</span>
                               </span>
                             </div>

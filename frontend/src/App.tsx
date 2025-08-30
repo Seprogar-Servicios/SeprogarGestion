@@ -8,6 +8,7 @@ import Register from './components/auth/Register';
 import Dashboard from './components/dashboard/Dashboard';
 import TaskList from './components/tasks/TaskList';
 import TaskCalendar from './components/tasks/TaskCalendar';
+import TaskDetails from './components/tasks/TaskDetails';
 import UserManagement from './components/admin/UserManagement';
 import SpecialtyManagement from './components/admin/SpecialtyManagement';
 import DataImportExport from './components/admin/DataImportExport';
@@ -49,6 +50,7 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="tasks" element={<TaskList />} />
+              <Route path="tasks/:id" element={<TaskDetails />} />
               <Route path="calendar" element={<TaskCalendar />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="/admin/users" element={<UserManagement />} />
