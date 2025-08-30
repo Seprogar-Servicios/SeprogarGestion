@@ -443,7 +443,7 @@ const UserManagement: React.FC = () => {
           {activeTab === 'approved' && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg"
+              className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               Nuevo Usuario
@@ -459,7 +459,7 @@ const UserManagement: React.FC = () => {
           {pendingUsers && pendingUsers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {pendingUsers.map((pendingUser) => (
-                <div key={pendingUser._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                <div key={pendingUser._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 transform">
                   <div className="bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 border-b border-yellow-100 dark:border-yellow-900/30">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Solicitud Pendiente</h3>
@@ -503,14 +503,14 @@ const UserManagement: React.FC = () => {
                                   toast.error('Error al aprobar el usuario');
                                 }
                               }}
-                              className="p-1.5 text-gray-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md hover:text-green-600 dark:hover:text-green-400 transition-colors duration-200"
+                              className="p-2 text-gray-400 hover:text-green-500 transition-colors duration-200 cursor-pointer"
                               title="Aprobar usuario"
                             >
                               <CheckCircle className="h-5 w-5" />
                             </button>
                             <button
                               onClick={() => handleDeleteUser(pendingUser._id, pendingUser.nombre)}
-                              className="p-1.5 text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200"
+                              className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200 cursor-pointer"
                               title="Rechazar usuario"
                             >
                               <Trash2 className="h-5 w-5" />
@@ -551,9 +551,9 @@ const UserManagement: React.FC = () => {
                     <div className="flex items-start">
                       <div className="animate-pulse h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 mr-4"></div>
                       <div className="flex-1 space-y-2">
-                        <div className="animate-pulse h-5 w-3/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                        <div className="animate-pulse h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                        <div className="animate-pulse h-4 w-2/3 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                        <div className="animate-pulse h-5 w-3/4 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                        <div className="animate-pulse h-4 w-1/2 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                        <div className="animate-pulse h-4 w-2/3 bg-gray-200 dark:bg-gray-600 rounded"></div>
                       </div>
                     </div>
                   </div>
@@ -563,7 +563,7 @@ const UserManagement: React.FC = () => {
           ) : filteredUsers && filteredUsers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredUsers.map((user) => (
-                <div key={user._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+                <div key={user._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 transform">
                   <div className={`px-4 py-3 border-b ${
                     user.rol === 'admin' 
                       ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30' 
@@ -625,21 +625,21 @@ const UserManagement: React.FC = () => {
                                 setResetPasswordUserId(user._id);
                                 setShowResetPasswordModal(true);
                               }}
-                              className="p-1.5 text-gray-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md hover:text-orange-600 dark:hover:text-orange-400 transition-colors duration-200"
+                              className="p-2 text-gray-400 hover:text-orange-500 transition-colors duration-200 cursor-pointer"
                               title="Blanquear contraseña"
                             >
                               <Key className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => openEditModal(user)}
-                              className="p-1.5 text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                              className="p-2 text-gray-400 hover:text-blue-500 transition-colors duration-200 cursor-pointer"
                               title="Editar usuario"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteUser(user._id, user.nombre)}
-                              className="p-1.5 text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200"
+                              className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200 cursor-pointer"
                               title="Eliminar usuario"
                             >
                               <Trash2 className="h-4 w-4" />

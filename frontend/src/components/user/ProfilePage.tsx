@@ -66,7 +66,7 @@ const ProfilePage: React.FC = () => {
             className={`flex items-center px-4 py-2 ${refreshSuccess 
               ? 'bg-green-500 hover:bg-green-600' 
               : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'} 
-              text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none`}
+              text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none cursor-pointer`}
           >
             {refreshing ? (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />

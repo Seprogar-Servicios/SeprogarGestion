@@ -89,7 +89,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setIsExpanded(!isExpanded)}
-            className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md flex items-center gap-1 transition-colors duration-200"
+            className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md flex items-center gap-1 transition-colors duration-200 cursor-pointer"
           >
             <Sliders className="h-4 w-4" />
             {isExpanded ? 'Ocultar' : 'Mostrar'} filtros

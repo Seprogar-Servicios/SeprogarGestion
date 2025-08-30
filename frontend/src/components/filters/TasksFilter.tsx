@@ -157,13 +157,13 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
         <div className="flex space-x-2 pt-2">
           <button
             onClick={handleApplyFilters}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm font-medium"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm font-medium cursor-pointer"
           >
             Aplicar filtros
           </button>
           <button
             onClick={handleResetFilters}
-            className="flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white py-2 px-4 rounded-md text-sm font-medium"
+            className="flex-1 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-white py-2 px-4 rounded-md text-sm font-medium cursor-pointer"
           >
             Limpiar filtros
           </button>

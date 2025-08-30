@@ -190,7 +190,7 @@ const Analytics: React.FC = () => {
           <div className="flex items-center space-x-3 flex-wrap gap-2">
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow transform hover:scale-105"
+              className="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow transform hover:scale-105 cursor-pointer"
             >
               <Filter className="h-5 w-5 mr-2" />
               <span className="text-sm font-medium">

@@ -217,13 +217,13 @@ const TaskList: React.FC = () => {
                 }
                 closeToast?.();
               }}
-              className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600"
+              className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600 cursor-pointer"
             >
               Eliminar
             </button>
             <button 
               onClick={() => closeToast?.()}
-              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer"
             >
               Cancelar
             </button>
@@ -396,13 +396,13 @@ const TaskList: React.FC = () => {
                 }
                 closeToast?.();
               }}
-              className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600"
+              className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600 cursor-pointer"
             >
               Eliminar
             </button>
             <button 
               onClick={() => closeToast?.()}
-              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer"
             >
               Cancelar
             </button>
@@ -672,7 +672,7 @@ const TaskList: React.FC = () => {
               <CheckSquare className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
                 Gestión de Tareas
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
@@ -683,7 +683,7 @@ const TaskList: React.FC = () => {
           
           <button 
             onClick={() => setShowCreateModal(true)} 
-            className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-md hover:from-blue-600 hover:to-purple-700 transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105"
+            className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-md hover:from-blue-600 hover:to-purple-700 transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105 cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Nueva Tarea
@@ -723,14 +723,14 @@ const TaskList: React.FC = () => {
                   <button
                     onClick={handleDeleteMultipleTasks}
                     disabled={selectedTasks.length === 0}
-                    className="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2"
+                    className="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
                   >
                     <Trash className="h-4 w-4" />
                     Eliminar
                   </button>
                   <button
                     onClick={() => setSelectedTasks([])}
-                    className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+                    className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 cursor-pointer"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -738,7 +738,7 @@ const TaskList: React.FC = () => {
               ) : (
                 <button
                   onClick={handleSelectAllTasks}
-                  className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2"
+                  className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
                 >
                   <CheckSquare className="h-4 w-4" />
                   Seleccionar
@@ -749,7 +749,7 @@ const TaskList: React.FC = () => {
             {/* Filters Button */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2"
+              className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
             >
               <Filter className="h-4 w-4" />
               Filtros
@@ -761,7 +761,7 @@ const TaskList: React.FC = () => {
             {/* WhatsApp Button */}
             <button
               onClick={() => setShowWhatsAppPanel(!showWhatsAppPanel)}
-              className="px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2"
+              className="px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
             >
               <Send className="h-4 w-4" />
               {showWhatsAppPanel ? 'Ocultar WhatsApp' : 'Enviar WhatsApp'}
@@ -820,7 +820,7 @@ const TaskList: React.FC = () => {
                               <div className="flex items-center">
                                 <button 
                                   onClick={() => handleSelectAllForTecnico(tecnicoId)}
-                                  className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 mr-2"
+                                  className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 mr-2 cursor-pointer"
                                 >
                                   {tasks.every(task => selectedTasks.includes(task._id)) ? (
                                     <CheckSquare className="h-5 w-5" />
@@ -851,7 +851,7 @@ const TaskList: React.FC = () => {
                                 className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
                                   !tecnico.telefono || tecnico.telefono.trim() === '' || !tasks.some(task => selectedTasks.includes(task._id))
                                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-green-600 text-white hover:bg-green-700'
+                                    : 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
                                 }`}
                               >
                                 <Send className="h-4 w-4 mr-1" />
@@ -863,7 +863,7 @@ const TaskList: React.FC = () => {
                                 className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
                                   !tasks.some(task => selectedTasks.includes(task._id))
                                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
                                 }`}
                               >
                                 <Download className="h-4 w-4 mr-1" />
@@ -912,7 +912,7 @@ const TaskList: React.FC = () => {
                           className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
                             !user?.telefono || user.telefono.trim() === '' || selectedTasks.length === 0
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              : 'bg-green-600 text-white hover:bg-green-700'
+                              : 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
                           }`}
                         >
                           <Send className="h-4 w-4 mr-1" />
@@ -924,7 +924,7 @@ const TaskList: React.FC = () => {
                           className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
                             selectedTasks.length === 0
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
                           }`}
                         >
                           <Download className="h-4 w-4 mr-1" />
@@ -1091,14 +1091,14 @@ const TaskList: React.FC = () => {
                     <div className="flex space-x-2 ml-4">
                       <button
                         onClick={() => openEditModal(task)}
-                        className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 dark:text-blue-400 rounded-md transition-colors duration-200 shadow-sm"
+                        className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 dark:text-blue-400 rounded-md transition-colors duration-200 shadow-sm cursor-pointer"
                         aria-label="Editar tarea"
                       >
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteTask(task._id)}
-                        className="p-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-800/50 dark:text-red-400 rounded-md transition-colors duration-200 shadow-sm"
+                        className="p-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-800/50 dark:text-red-400 rounded-md transition-colors duration-200 shadow-sm cursor-pointer"
                         aria-label="Eliminar tarea"
                       >
                         <Trash2 className="h-4 w-4" />

@@ -51,7 +51,8 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
   
   const labels = topUserIds.map(userId => {
     const user = userMap[userId];
-    return user ? `${user.nombre} ${user.apellido}` : 'Usuario Desconocido';
+    if (!user) return 'Usuario Desconocido';
+    return user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre;
   });
   
   const data = topUserIds.map(userId => tasksByUser[userId]);

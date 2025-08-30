@@ -214,7 +214,7 @@ const TasksByTimeChart: React.FC<TasksByTimeChartProps> = ({ tasks }) => {
       <div className="flex justify-center mb-4 space-x-2">
         <button
           onClick={() => setTimeRange('day')}
-          className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center ${
+          className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center cursor-pointer ${
             timeRange === 'day'
               ? 'bg-blue-500 text-white shadow-md'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -225,7 +225,7 @@ const TasksByTimeChart: React.FC<TasksByTimeChartProps> = ({ tasks }) => {
         </button>
         <button
           onClick={() => setTimeRange('week')}
-          className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center ${
+          className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center cursor-pointer ${
             timeRange === 'week'
               ? 'bg-blue-500 text-white shadow-md'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -236,7 +236,7 @@ const TasksByTimeChart: React.FC<TasksByTimeChartProps> = ({ tasks }) => {
         </button>
         <button
           onClick={() => setTimeRange('month')}
-          className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center ${
+          className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center cursor-pointer ${
             timeRange === 'month'
               ? 'bg-blue-500 text-white shadow-md'
               : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'

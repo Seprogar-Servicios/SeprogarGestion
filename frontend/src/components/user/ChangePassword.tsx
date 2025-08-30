@@ -281,9 +281,9 @@ const ChangePassword: React.FC = () => {
             disabled={loading || (formData.newPassword !== '' && !passwordValidation.isValid) || formData.newPassword !== formData.confirmPassword}
             className={`w-full flex justify-center py-3 px-6 border border-transparent rounded-lg shadow-md text-sm font-medium text-white transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
               loading ? 'opacity-70 cursor-not-allowed bg-blue-500' : 
-              formData.newPassword !== formData.confirmPassword ? 'bg-gray-500 hover:bg-gray-600' :
-              !passwordValidation.isValid && formData.newPassword !== '' ? 'bg-gray-500 hover:bg-gray-600' :
-              'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 hover:shadow-lg'
+              formData.newPassword !== formData.confirmPassword ? 'bg-gray-500 hover:bg-gray-600 cursor-not-allowed' :
+              !passwordValidation.isValid && formData.newPassword !== '' ? 'bg-gray-500 hover:bg-gray-600 cursor-not-allowed' :
+              'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 hover:shadow-lg cursor-pointer'
             }`}
           >
             {loading ? (

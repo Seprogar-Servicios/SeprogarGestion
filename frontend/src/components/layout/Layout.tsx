@@ -96,7 +96,7 @@ const Layout: React.FC = () => {
                       navigate(item.href);
                       if (window.innerWidth < 1024) setSidebarOpen(false);
                     }}
-                    className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                    className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
                       active
                         ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
                         : 'text-blue-100 hover:bg-white/5 hover:text-white'
@@ -133,7 +133,7 @@ const Layout: React.FC = () => {
                           navigate(item.href);
                           if (window.innerWidth < 1024) setSidebarOpen(false);
                         }}
-                        className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                        className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
                           active
                             ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
                             : 'text-blue-100 hover:bg-white/5 hover:text-white'
@@ -163,7 +163,7 @@ const Layout: React.FC = () => {
                 navigate('/profile');
                 if (window.innerWidth < 1024) setSidebarOpen(false);
               }}
-              className="w-full text-left"
+              className="w-full text-left cursor-pointer"
             >
               <div className="flex items-center mb-4 px-2 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
                 <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-400/20 flex items-center justify-center text-blue-200">
@@ -182,7 +182,7 @@ const Layout: React.FC = () => {
             
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-blue-100 hover:text-white rounded-lg hover:bg-white/10 transition-colors group"
+              className="w-full flex items-center justify-center px-4 py-2.5 text-sm font-medium text-blue-100 hover:text-white rounded-lg hover:bg-white/10 transition-colors group cursor-pointer"
             >
               <LogOut className="mr-2 h-4 w-4 text-blue-200 group-hover:text-white" />
               Cerrar sesión

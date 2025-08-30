@@ -129,13 +129,13 @@ const SpecialtyManagement: React.FC = () => {
                 });
               }
             }}
-            className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600"
+            className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600 cursor-pointer"
           >
             Eliminar
           </button>
           <button 
             onClick={() => closeToast?.()}
-            className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+            className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer"
           >
             Cancelar
           </button>
@@ -196,7 +196,7 @@ const SpecialtyManagement: React.FC = () => {
               resetForm();
               setShowCreateModal(true);
             }}
-            className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 cursor-pointer"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nueva Especialidad
@@ -243,7 +243,7 @@ const SpecialtyManagement: React.FC = () => {
           ))
         ) : filteredEspecialidades.length > 0 ? (
           filteredEspecialidades.map((especialidad) => (
-            <div key={especialidad._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
+            <div key={especialidad._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 transform">
               <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -252,14 +252,14 @@ const SpecialtyManagement: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => openEditModal(especialidad)}
-                      className="p-1.5 text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+                      className="p-1.5 text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 cursor-pointer"
                       title="Editar especialidad"
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteEspecialidad(especialidad._id)}
-                      className="p-1.5 text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200"
+                      className="p-1.5 text-gray-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200 cursor-pointer"
                       title="Eliminar especialidad"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -320,7 +320,7 @@ const SpecialtyManagement: React.FC = () => {
             <div className="mt-6">
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors"
+                className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all duration-200 cursor-pointer"
               >
                 <Plus className="-ml-1 mr-2 h-5 w-5" />
                 {searchTerm ? 'Limpiar búsqueda' : 'Nueva especialidad'}

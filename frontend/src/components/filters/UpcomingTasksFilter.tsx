@@ -54,10 +54,10 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
             <button
               key={option.value}
               onClick={() => handleUpcomingFilterChange(option.value)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-lg border transition-all duration-200 shadow-sm hover:shadow ${
+              className={`flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
                 isSelected
-                  ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 text-blue-700 dark:from-blue-900/30 dark:to-purple-900/30 dark:border-blue-700 dark:text-blue-300 transform scale-105'
-                  : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-600 hover:transform hover:scale-105'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-700'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600'
               }`}
             >
               <div className={`p-1.5 rounded-full ${isSelected ? 'bg-blue-100 dark:bg-blue-800/50' : 'bg-gray-100 dark:bg-gray-600'}`}>

@@ -224,7 +224,7 @@ const TaskCalendar: React.FC = () => {
               setCurrentDate(today);
               setSelectedDate(today);
             }} 
-            className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2"
+            className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
           >
             <CalendarIcon className="h-4 w-4" />
             Ir a Hoy
