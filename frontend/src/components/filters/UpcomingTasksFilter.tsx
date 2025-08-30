@@ -20,17 +20,23 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
   ];
 
   const handleUpcomingFilterChange = (upcomingFilter: string) => {
-    const newFilters = { ...filters };
-    
-    if (upcomingFilter) {
-      newFilters.upcomingFilter = upcomingFilter as TaskFilters['upcomingFilter'];
-      // Clear custom date filters when using predefined ranges
-      delete newFilters.fechaDesde;
-      delete newFilters.fechaHasta;
-    } else {
-      delete newFilters.upcomingFilter;
+    // If selecting 'Todas las tareas', clear all filters
+    if (!upcomingFilter) {
+      onFiltersChange({});
+      return;
     }
     
+    // For other filters, set up the appropriate filter
+    const newFilters: TaskFilters = {
+      ...filters,
+      upcomingFilter: upcomingFilter as TaskFilters['upcomingFilter']
+    };
+    
+    // Clear any date filters that might conflict
+    delete newFilters.fechaDesde;
+    delete newFilters.fechaHasta;
+    
+    // Update the filters
     onFiltersChange(newFilters);
   };
 

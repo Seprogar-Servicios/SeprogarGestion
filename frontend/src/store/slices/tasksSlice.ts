@@ -207,7 +207,13 @@ const tasksSlice = createSlice({
       state.error = null;
     },
     setFilters: (state, action: PayloadAction<TaskFilters>) => {
-      state.filters = { ...state.filters, ...action.payload };
+      // If the payload is empty, clear all filters
+      if (Object.keys(action.payload).length === 0) {
+        state.filters = {};
+      } else {
+        // Otherwise, merge the new filters with the existing ones
+        state.filters = { ...state.filters, ...action.payload };
+      }
     },
     clearCurrentTask: (state) => {
       state.currentTask = null;

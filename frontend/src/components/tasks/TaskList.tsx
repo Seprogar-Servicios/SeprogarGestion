@@ -5,6 +5,7 @@ import { fetchTasks, createTask, updateTask, deleteTask, deleteMultipleTasks, se
 import { fetchUsers } from '../../store/slices/usersSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
 import TasksFilter from '../filters/TasksFilter';
+import { format } from 'date-fns';
 import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPin, CheckCircle, Hash, CheckSquare, Square, Send, Download, XCircle, Edit, Clock, ChevronDown } from 'lucide-react';
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
@@ -26,6 +27,7 @@ const TaskList: React.FC = () => {
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [showWhatsAppPanel, setShowWhatsAppPanel] = useState(false);
   const [selectedTecnico, setSelectedTecnico] = useState<string | null>(null);
+  const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
   
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,22 +66,43 @@ const TaskList: React.FC = () => {
     return '';
   };
 
+  // Initialize filters on component mount
   useEffect(() => {
-    // Cargar usuarios solo una vez y solo si el usuario es admin
+    if (!initialFiltersLoaded) {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const initialFilters: TaskFilters = {
+        fechaDesde: today
+      };
+      
+      // If user is not admin, filter only their tasks
+      if (user && user.rol !== 'admin') {
+        initialFilters.tecnico = user._id;
+      }
+      
+      dispatch(setFilters(initialFilters));
+      dispatch(fetchTasks(initialFilters));
+      setInitialFiltersLoaded(true);
+    }
+    
+    // Load users if admin
     if (user && user.rol === 'admin') {
       dispatch(fetchUsers());
     }
-  }, [dispatch, user]);
+  }, [dispatch, user, initialFiltersLoaded]);
   
+  // Handle filter changes
   useEffect(() => {
-    // Cargar tareas cada vez que cambien los filtros
-    // Si el usuario no es admin, filtrar solo sus tareas
-    const taskFilters = { ...filters };
-    if (user && user.rol !== 'admin') {
-      taskFilters.tecnico = user._id;
+    if (initialFiltersLoaded) {
+      const taskFilters = { ...filters };
+      
+      // Ensure non-admin users can only see their tasks
+      if (user && user.rol !== 'admin') {
+        taskFilters.tecnico = user._id;
+      }
+      
+      dispatch(fetchTasks(taskFilters));
     }
-    dispatch(fetchTasks(taskFilters));
-  }, [dispatch, filters, user]);
+  }, [dispatch, filters, user, initialFiltersLoaded]);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -982,134 +1005,122 @@ const TaskList: React.FC = () => {
                 className="flex-1 min-w-0 mb-2 md:mb-0 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors cursor-pointer block"
               >
                 <div className="flex flex-col w-full">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {task.titulo}
-                  </h3>
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 shadow-sm">
-                    #{task.numero}
-                  </span>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm ${
-                      task.estado === 'pendiente'
-                        ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 dark:from-yellow-900/70 dark:to-yellow-800/70 dark:text-yellow-200'
-                        : task.estado === 'en progreso'
-                        ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 dark:from-blue-900/70 dark:to-blue-800/70 dark:text-blue-200'
-                        : task.estado === 'cancelada'
-                        ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 dark:from-red-900/70 dark:to-red-800/70 dark:text-red-200'
-                        : 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 dark:from-green-900/70 dark:to-green-800/70 dark:text-green-200'
-                    }`}
-                  >
-                    {task.estado === 'pendiente' && 'Pendiente'}
-                    {task.estado === 'en progreso' && 'En Progreso'}
-                    {task.estado === 'completada' && (
-                      <>
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Completada
-                      </>
-                    )}
-                    {task.estado === 'cancelada' && (
-                      <>
-                        <XCircle className="h-3 w-3 mr-1" />
-                        Cancelada
-                      </>
-                    )}
-                  </span>
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                    {task.cliente && (
-                      <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
-                        <User className="h-3 w-3 mr-1.5 text-blue-500 dark:text-blue-400" />
-                        <span className="font-medium">{task.cliente}</span>
-                      </div>
-                    )}
-                    
-                    {task.numeroTitular && (
-                      <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1.5 text-green-500 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <span>{task.numeroTitular}</span>
-                      </div>
-                    )}
-                    
-                    {task.direccion && (
-                      <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
-                        <MapPin className="h-3 w-3 mr-1.5 text-red-500 dark:text-red-400" />
-                        <span className="truncate max-w-[200px]">
-                          {task.direccion}
+                  <div className="flex items-start w-full">
+                    {/* Left side - Task info */}
+                    <div className="flex-1 min-w-0 py-2">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                          {task.titulo}
+                        </h3>
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 shadow-sm whitespace-nowrap">
+                          #{task.numero}
+                        </span>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm whitespace-nowrap ${
+                            task.estado === 'pendiente'
+                              ? 'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 dark:from-yellow-900/70 dark:to-yellow-800/70 dark:text-yellow-200'
+                              : task.estado === 'en progreso'
+                              ? 'bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 dark:from-blue-900/70 dark:to-blue-800/70 dark:text-blue-200'
+                              : task.estado === 'cancelada'
+                              ? 'bg-gradient-to-r from-red-100 to-red-200 text-red-800 dark:from-red-900/70 dark:to-red-800/70 dark:text-red-200'
+                              : 'bg-gradient-to-r from-green-100 to-green-200 text-green-800 dark:from-green-900/70 dark:to-green-800/70 dark:text-green-200'
+                          }`}
+                        >
+                          {task.estado === 'pendiente' && 'Pendiente'}
+                          {task.estado === 'en progreso' && 'En Progreso'}
+                          {task.estado === 'completada' && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {task.estado === 'cancelada' && <XCircle className="h-3 w-3 mr-1" />}
                         </span>
                       </div>
-                    )}
-                    
-                    <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
-                      <Calendar className="h-3 w-3 mr-1.5 text-purple-500 dark:text-purple-400" />
-                      <span>
-                        {task.fechaEjecucion 
-                          ? (() => {
-                              // Obtener la fecha original
-                              const fecha = new Date(task.fechaEjecucion);
-                              // Ajustar para la zona horaria de Argentina (UTC-3)
-                              // Añadir un día completo para compensar el problema
-                              const fechaAjustada = new Date(fecha);
-                              fechaAjustada.setDate(fecha.getDate() + 1);
-                              
-                              return fechaAjustada.toLocaleDateString('es-AR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                              });
-                            })()
-                          : "Fecha no programada"}
-                      </span>
-                      {task.franja_horaria && (
-                        <span className="ml-2 text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 dark:from-blue-900/70 dark:to-purple-900/70 dark:text-blue-200 py-0.5 px-1.5 rounded shadow-sm">
-                          {task.franja_horaria}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex flex-wrap items-center justify-between w-full mt-2">
-                  {task.tecnicos.length > 0 && (
-                    <div className="flex-1 flex items-center bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-md shadow-sm">
-                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-2">Técnicos:</span>
-                      <div className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                        {task.tecnicos.map((t: any) => t.nombre).join(', ')}
+                      
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        {task.cliente && (
+                          <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
+                            <User className="h-3 w-3 mr-1.5 text-blue-500 dark:text-blue-400" />
+                            <span className="font-medium truncate max-w-[120px]">{task.cliente}</span>
+                          </div>
+                        )}
+                        
+                        {task.numeroTitular && (
+                          <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1.5 text-green-500 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            <span className="truncate max-w-[100px]">{task.numeroTitular}</span>
+                          </div>
+                        )}
+                        
+                        {task.direccion && (
+                          <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
+                            <MapPin className="h-3 w-3 mr-1.5 text-red-500 dark:text-red-400" />
+                            <span className="truncate max-w-[150px]">{task.direccion}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
+                          <Calendar className="h-3 w-3 mr-1.5 text-purple-500 dark:text-purple-400" />
+                          <span className="whitespace-nowrap">
+                            {task.fechaEjecucion 
+                              ? (() => {
+                                  const fecha = new Date(task.fechaEjecucion);
+                                  const fechaAjustada = new Date(fecha);
+                                  fechaAjustada.setDate(fecha.getDate() + 1);
+                                  return fechaAjustada.toLocaleDateString('es-AR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric'
+                                  });
+                                })()
+                              : "Sin fecha"}
+                          </span>
+                          {task.franja_horaria && (
+                            <span className="ml-2 text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 dark:from-blue-900/70 dark:to-purple-900/70 dark:text-blue-200 py-0.5 px-1.5 rounded shadow-sm whitespace-nowrap">
+                              {task.franja_horaria}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {task.tecnicos.length > 0 && (
+                          <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Técnicos:</span>
+                            <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate max-w-[150px]">
+                              {task.tecnicos.map((t: any) => t.nombre).join(', ')}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
-                  
-                  {user?.rol === 'admin' && (
-                    <div className="flex space-x-2 ml-2">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          openEditModal(task);
-                        }}
-                        className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 dark:text-blue-400 rounded-md transition-colors duration-200 shadow-sm"
-                        aria-label="Editar tarea"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDeleteTask(task._id);
-                        }}
-                        className="p-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-800/50 dark:text-red-400 rounded-md transition-colors duration-200 shadow-sm"
-                        aria-label="Eliminar tarea"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    
+                    {/* Right side - Action buttons */}
+                    {user?.rol === 'admin' && (
+                      <div className="flex items-start space-x-2 ml-4 pt-9 flex-shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openEditModal(task);
+                          }}
+                          className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 dark:text-blue-400 rounded-md transition-colors duration-200 shadow-sm"
+                          aria-label="Editar tarea"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteTask(task._id);
+                          }}
+                          className="p-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-800/50 dark:text-red-400 rounded-md transition-colors duration-200 shadow-sm"
+                          aria-label="Eliminar tarea"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                   )}
                 </div>
-              </Link>
+              </div>
+            </Link>
             </div>
           ))}
           {/* Controles de paginación */}
