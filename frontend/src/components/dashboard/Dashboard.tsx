@@ -35,9 +35,19 @@ const Dashboard: React.FC = () => {
     }
   }, [dispatch, user?.rol, currentFilters]);
 
-  const handleFiltersChange = (newFilters: TaskFilters) => {
-    setCurrentFilters(newFilters);
-    dispatch(setFilters(newFilters));
+  const handleFiltersChange = (updatedFilters: TaskFilters) => {
+    // Merge the new filters with the current ones
+    const mergedFilters = {
+      ...currentFilters,
+      ...updatedFilters,
+      // Ensure we don't have undefined values that would override existing ones
+      ...Object.fromEntries(
+        Object.entries(updatedFilters).filter(([_, v]) => v !== undefined)
+      )
+    };
+    
+    setCurrentFilters(mergedFilters);
+    dispatch(setFilters(mergedFilters));
   };
 
   const completedTasks = tasks?.filter(task => task.estado === 'completada').length || 0;
@@ -111,6 +121,26 @@ const Dashboard: React.FC = () => {
       .sort((a, b) => new Date(b.fechaCreacion).getTime() - new Date(a.fechaCreacion).getTime())
       .slice(0, 5)
     : [];
+
+  // Función para formatear fechas en la zona horaria de Argentina
+  const formatDateToArgentina = (dateString: string) => {
+    if (!dateString) return '';
+    
+    // Crear la fecha y ajustar a la zona horaria de Argentina (UTC-3)
+    const date = new Date(dateString);
+    
+    // Ajustar la fecha sumando 3 horas para compensar la diferencia con UTC
+    const adjustedDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+    
+    const options: Intl.DateTimeFormatOptions = {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'America/Argentina/Buenos_Aires'
+    };
+    
+    return adjustedDate.toLocaleDateString('es-AR', options);
+  };
 
   return (
     <div className="space-y-6">
@@ -267,11 +297,7 @@ const Dashboard: React.FC = () => {
                         </h4>
                         {task.fechaEjecucion && (
                           <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-2">
-                            {new Date(task.fechaEjecucion).toLocaleDateString('es-AR', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric'
-                            })}
+                            {formatDateToArgentina(task.fechaEjecucion)}
                           </span>
                         )}
                       </div>

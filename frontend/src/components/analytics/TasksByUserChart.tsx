@@ -26,6 +26,8 @@ interface TasksByUserChartProps {
 }
 
 const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => {
+  console.log('Tasks received:', tasks);
+  console.log('Users received:', users);
   // Crear un mapa de usuarios por ID para búsqueda rápida
   const userMap = users.reduce((acc, user) => {
     acc[user._id] = user;
@@ -34,19 +36,67 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
   
   // Contar tareas por usuario
   const tasksByUser = tasks.reduce((acc, task) => {
-    // Si hay técnicos asignados, contar una tarea para cada uno
+    console.log('Processing task:', task._id, 'with tecnicos:', task.tecnicos, 'tecnicoAsignado:', task.tecnicoAsignado);
+    
+    // Función para agregar un técnico al contador
+    const addTecnico = (tecnico: any, taskId: string) => {
+      if (!tecnico) return false;
+      
+      // Manejar diferentes formatos de técnico (objeto o string)
+      const userId = typeof tecnico === 'string' ? tecnico : 
+                   (tecnico._id ? tecnico._id : null);
+      
+      if (userId) {
+        const currentCount = acc[userId] || 0;
+        acc[userId] = currentCount + 1;
+        console.log(`Added task ${taskId} to user ${userId}. New count: ${currentCount + 1}`);
+        return true;
+      }
+      return false;
+    };
+    
+    let taskAssigned = false;
+    
+    // Revisar si hay técnicos en el array tecnicos
     if (task.tecnicos && task.tecnicos.length > 0) {
       task.tecnicos.forEach(tecnico => {
-        const userId = typeof tecnico === 'string' ? tecnico : tecnico._id;
-        acc[userId] = (acc[userId] || 0) + 1;
+        if (addTecnico(tecnico, task._id)) {
+          taskAssigned = true;
+        }
       });
+    } 
+    
+    // Si no se asignó por tecnicos, verificar tecnicoAsignado
+    if (!taskAssigned && task.tecnicoAsignado) {
+      addTecnico(task.tecnicoAsignado, task._id);
+    }
+    
+    // Si la tarea no tiene asignado, la asignamos a 'Sin asignar'
+    if (!taskAssigned && (!task.tecnicos || task.tecnicos.length === 0) && !task.tecnicoAsignado) {
+      const unassignedId = 'unassigned';
+      acc[unassignedId] = (acc[unassignedId] || 0) + 1;
+      console.log(`Task ${task._id} has no assigned technician`);
     }
     return acc;
   }, {} as Record<string, number>);
   
+  console.log('Final tasks by user:', tasksByUser);
+  
+  // Asegurarse de que el usuario 'unassigned' se muestre correctamente
+  if (tasksByUser['unassigned']) {
+    const unassignedUser = {
+      _id: 'unassigned',
+      nombre: 'Sin asignar',
+      apellido: ''
+    };
+    userMap['unassigned'] = unassignedUser;
+  }
+  
   // Preparar datos para el gráfico
   // Solo mostrar los 10 usuarios con más tareas si hay muchos
-  const sortedUserIds = Object.keys(tasksByUser).sort((a, b) => tasksByUser[b] - tasksByUser[a]);
+  const sortedUserIds = Object.keys(tasksByUser)
+    .filter(userId => tasksByUser[userId] > 0) // Filtrar usuarios con 0 tareas
+    .sort((a, b) => tasksByUser[b] - tasksByUser[a]);
   const topUserIds = sortedUserIds.slice(0, 10);
   
   const labels = topUserIds.map(userId => {

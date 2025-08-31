@@ -62,24 +62,20 @@ exports.getTareas = async (req, res) => {
     if (usuario) filtro.tecnicos = usuario;
     if (estado) filtro.estado = estado;
     if (cliente) filtro.cliente = { $regex: cliente, $options: 'i' };
-    // Manejo de filtros de fecha para fechaEjecucion como string
+    // Manejo de filtros de fecha para fechaEjecucion
     if (fechaDesde || fechaHasta) {
-      // Ahora fechaEjecucion es un string en formato YYYY-MM-DD
-      // Necesitamos comparar como strings
-      if (fechaDesde && fechaHasta) {
-        // Si tenemos ambas fechas, usamos una expresión regular para encontrar fechas en ese rango
-        const fechaDesdeStr = fechaDesde.split('T')[0]; // Asegurarnos de tener solo YYYY-MM-DD
-        const fechaHastaStr = fechaHasta.split('T')[0]; // Asegurarnos de tener solo YYYY-MM-DD
-        filtro.fechaEjecucion = { 
-          $gte: fechaDesdeStr,
-          $lte: fechaHastaStr
-        };
-      } else if (fechaDesde) {
-        const fechaDesdeStr = fechaDesde.split('T')[0];
-        filtro.fechaEjecucion = { $gte: fechaDesdeStr };
-      } else if (fechaHasta) {
-        const fechaHastaStr = fechaHasta.split('T')[0];
-        filtro.fechaEjecucion = { $lte: fechaHastaStr };
+      filtro.fechaEjecucion = {};
+      
+      if (fechaDesde) {
+        const fechaDesdeDate = new Date(fechaDesde);
+        fechaDesdeDate.setHours(0, 0, 0, 0); // Start of day
+        filtro.fechaEjecucion.$gte = fechaDesdeDate.toISOString();
+      }
+      
+      if (fechaHasta) {
+        const fechaHastaDate = new Date(fechaHasta);
+        fechaHastaDate.setHours(23, 59, 59, 999); // End of day
+        filtro.fechaEjecucion.$lte = fechaHastaDate.toISOString();
       }
     }
     const tareas = await Tarea.find(filtro)

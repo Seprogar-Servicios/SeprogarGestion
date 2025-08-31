@@ -16,7 +16,9 @@ import {
   TrendingUp,
   Filter,
   X,
-  RefreshCw
+  RefreshCw,
+  Check,
+  User
 } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
 
@@ -175,18 +177,24 @@ const Analytics: React.FC = () => {
   ];
 
   return (
-    <div className="py-6 animate-fadeIn">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent inline-block">
-              Panel de Análisis
-            </h1>
-            <div className="h-1 w-24 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mt-1"></div>
-            <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm">
-              Visualiza y analiza las métricas de rendimiento del sistema
-            </p>
+    <div className="space-y-6 h-full flex flex-col animate-fadeIn" style={{ minHeight: '85vh' }}>
+      {/* Header Card */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-4 animate-fadeIn">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center">
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
+              <BarChart3 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Panel de Análisis
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+                Visualiza y analiza las métricas de rendimiento del sistema
+              </p>
+            </div>
           </div>
+          
           <div className="flex items-center space-x-3 flex-wrap gap-2">
             <button 
               onClick={() => setShowFilters(!showFilters)}
@@ -205,131 +213,166 @@ const Analytics: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
         
-        {/* Panel de filtros */}
+        {/* Panel de filtros mejorado */}
         {showFilters && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 mb-6 animate-scaleIn">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                <Filter className="h-5 w-5 mr-2 text-blue-500" />
-                Filtros
-              </h2>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={resetFilters}
-                  className="flex items-center text-sm text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
-                >
-                  <RefreshCw className="h-4 w-4 mr-1" />
-                  Resetear
-                </button>
-                <button 
-                  onClick={() => setShowFilters(false)}
-                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-6 animate-fadeIn">
+            {/* Header del panel de filtros */}
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-800 px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Filtros de análisis</h2>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={resetFilters}
+                    className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors bg-white dark:bg-gray-700 px-3 py-1.5 rounded-md shadow-sm border border-blue-100 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-gray-600"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1.5" />
+                    Restablecer
+                  </button>
+                  <button 
+                    onClick={() => setShowFilters(false)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    aria-label="Cerrar filtros"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Filtro de fechas */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rango de fechas</label>
-                <div className="flex space-x-2">
-                  <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400">Desde</label>
-                    <input 
-                      type="date" 
-                      value={dateRange.start}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
-                    />
+            {/* Contenido de los filtros */}
+            <div className="p-5 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Filtro de fechas */}
+                <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                    Rango de fechas
+                  </label>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Desde</label>
+                      <div className="relative">
+                        <input 
+                          type="date" 
+                          value={dateRange.start}
+                          onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm py-2 px-3 border"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Hasta</label>
+                      <div className="relative">
+                        <input 
+                          type="date" 
+                          value={dateRange.end}
+                          onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm py-2 px-3 border"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400">Hasta</label>
-                    <input 
-                      type="date" 
-                      value={dateRange.end}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
-                    />
+                </div>
+                
+                {/* Filtro de estado */}
+                <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                    <CheckCircle className="h-4 w-4 mr-2 text-blue-500" />
+                    Estado de las tareas
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: 'pendiente', label: 'Pendiente', color: 'red' },
+                      { value: 'en progreso', label: 'En Progreso', color: 'yellow' },
+                      { value: 'completada', label: 'Completada', color: 'green' }
+                    ].map(({ value, label, color }) => {
+                      const isSelected = statusFilter.includes(value);
+                      const colorClasses = {
+                        red: isSelected 
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800' 
+                          : 'bg-white text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600',
+                        yellow: isSelected 
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800' 
+                          : 'bg-white text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600',
+                        green: isSelected 
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800' 
+                          : 'bg-white text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                      };
+                      
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => {
+                            if (isSelected && statusFilter.length > 1) {
+                              setStatusFilter(statusFilter.filter(s => s !== value));
+                            } else if (!isSelected) {
+                              setStatusFilter([...statusFilter, value]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 flex items-center ${colorClasses[color as keyof typeof colorClasses]}`}
+                        >
+                          {isSelected && (
+                            <Check className="h-3.5 w-3.5 mr-1.5" />
+                          )}
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              
+                {/* Filtro de usuario */}
+                <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                    <User className="h-4 w-4 mr-2 text-blue-500" />
+                    Técnico asignado
+                  </label>
+                  <div className="space-y-2">
+                    <select
+                      multiple
+                      value={userFilter}
+                      onChange={(e) => {
+                        const values = Array.from(e.target.selectedOptions, option => option.value);
+                        setUserFilter(values);
+                      }}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm py-2 min-h-[100px]"
+                    >
+                      {users.map((user) => (
+                        <option key={user._id} value={user._id}>
+                          {user.nombre}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Mantén presionado <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">Ctrl</span> (o <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">Cmd</span> en Mac) para seleccionar múltiples
+                    </p>
                   </div>
                 </div>
               </div>
               
-              {/* Filtro de estado */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
-                <div className="flex flex-wrap gap-2">
-                  {['pendiente', 'en progreso', 'completada'].map(status => {
-                    const isSelected = statusFilter.includes(status);
-                    let bgColor = '';
-                    let textColor = '';
-                    
-                    if (status === 'pendiente') {
-                      bgColor = isSelected ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-700';
-                      textColor = isSelected ? 'text-red-700 dark:text-red-300' : 'text-gray-700 dark:text-gray-300';
-                    } else if (status === 'en progreso') {
-                      bgColor = isSelected ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-gray-100 dark:bg-gray-700';
-                      textColor = isSelected ? 'text-yellow-700 dark:text-yellow-300' : 'text-gray-700 dark:text-gray-300';
-                    } else {
-                      bgColor = isSelected ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700';
-                      textColor = isSelected ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300';
-                    }
-                    
-                    return (
-                      <button
-                        key={status}
-                        onClick={() => {
-                          if (isSelected && statusFilter.length > 1) {
-                            setStatusFilter(statusFilter.filter(s => s !== status));
-                          } else if (!isSelected) {
-                            setStatusFilter([...statusFilter, status]);
-                          }
-                        }}
-                        className={`px-3 py-1 rounded-full text-sm ${bgColor} ${textColor} transition-colors duration-200`}
-                      >
-                        {status === 'pendiente' ? 'Pendiente' : 
-                         status === 'en progreso' ? 'En Progreso' : 'Completada'}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                <span className="font-medium text-blue-600 dark:text-blue-400 mr-1">{filteredTasks.length}</span> 
+                tareas encontradas con los filtros aplicados
               </div>
-              
-              {/* Filtro de usuario */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuario</label>
-                <select
-                  multiple
-                  value={userFilter}
-                  onChange={(e) => {
-                    const values = Array.from(e.target.selectedOptions, option => option.value);
-                    setUserFilter(values);
-                  }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
-                  size={3}
-                >
-                  {users.map(user => (
-                    <option key={user._id} value={user._id}>
-                      {user.nombre}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Mantén Ctrl para seleccionar varios</p>
-              </div>
-            </div>
-            
-            <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 flex items-center">
-              <span className="font-medium text-blue-600 dark:text-blue-400 mr-1">{filteredTasks.length}</span> 
-              tareas encontradas con los filtros aplicados
             </div>
           </div>
-        )}
-      </div>
-      
+        )}  
+
       {/* Tarjetas de estadísticas */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 mb-8">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-green-500 animate-fadeIn" style={{ animationDelay: '200ms' }}>
+        <div className="flex items-center mb-4">
+          <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full mr-3">
+            <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+          </div>
+          <h2 className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
+            Estadísticas Generales
+          </h2>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {statCards.map((stat, index) => {
             const Icon = stat.icon;
@@ -356,73 +399,66 @@ const Analytics: React.FC = () => {
           })}
         </div>
       </div>
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        <div className="py-4">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {/* Gráfico de tareas por tiempo */}
-            <div className="bg-gradient-to-br from-white to-blue-50/30 dark:from-gray-800 dark:to-blue-900/10 shadow-lg rounded-xl p-6 border border-blue-100 dark:border-blue-800/30 animate-fadeIn group hover:shadow-xl transition-all duration-300" style={{ animationDelay: '200ms' }}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent flex items-center">
-                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 mr-3 group-hover:scale-110 transition-transform duration-300">
-                    <Calendar className="h-5 w-5 text-blue-500" />
-                  </div>
-                  Tareas por Período
-                </h2>
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"></div>
-              </div>
-              <div className="h-80 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 shadow-inner">
-                <TasksByTimeChart tasks={filteredTasks} />
-              </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Gráfico de tareas por tiempo */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-blue-500 animate-fadeIn" style={{ animationDelay: '300ms' }}>
+          <div className="flex items-center mb-4">
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full mr-3">
+              <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
-            
-            {/* Gráfico de tareas por estado */}
-            <div className="bg-gradient-to-br from-white to-green-50/30 dark:from-gray-800 dark:to-green-900/10 shadow-lg rounded-xl p-6 border border-green-100 dark:border-green-800/30 animate-fadeIn group hover:shadow-xl transition-all duration-300" style={{ animationDelay: '300ms' }}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-semibold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent flex items-center">
-                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 mr-3 group-hover:scale-110 transition-transform duration-300">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  </div>
-                  Distribución por Estado
-                </h2>
-                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></div>
-              </div>
-              <div className="h-80 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 shadow-inner">
-                <TasksByStatusChart tasks={filteredTasks} />
-              </div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
+              Tareas por Período
+            </h2>
+          </div>
+          <div className="h-80 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+            <TasksByTimeChart tasks={filteredTasks} />
+          </div>
+        </div>
+        
+        {/* Gráfico de tareas por estado */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-green-500 animate-fadeIn" style={{ animationDelay: '400ms' }}>
+          <div className="flex items-center mb-4">
+            <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full mr-3">
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
-            
-            {/* Gráfico de tareas por usuario */}
-            <div className="bg-gradient-to-br from-white to-purple-50/30 dark:from-gray-800 dark:to-purple-900/10 shadow-lg rounded-xl p-6 border border-purple-100 dark:border-purple-800/30 animate-fadeIn group hover:shadow-xl transition-all duration-300" style={{ animationDelay: '400ms' }}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent flex items-center">
-                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 mr-3 group-hover:scale-110 transition-transform duration-300">
-                    <UsersIcon className="h-5 w-5 text-purple-500" />
-                  </div>
-                  Tareas por Usuario
-                </h2>
-                <div className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse"></div>
-              </div>
-              <div className="h-80 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 shadow-inner">
-                <TasksByUserChart tasks={filteredTasks} users={users} />
-              </div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
+              Distribución por Estado
+            </h2>
+          </div>
+          <div className="h-80 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+            <TasksByStatusChart tasks={filteredTasks} />
+          </div>
+        </div>
+        
+        {/* Gráfico de tareas por usuario */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-purple-500 animate-fadeIn" style={{ animationDelay: '500ms' }}>
+          <div className="flex items-center mb-4">
+            <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full mr-3">
+              <UsersIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
-            
-            {/* Gráfico adicional: Tiempo promedio de completado */}
-            <div className="bg-gradient-to-br from-white to-yellow-50/30 dark:from-gray-800 dark:to-yellow-900/10 shadow-lg rounded-xl p-6 border border-yellow-100 dark:border-yellow-800/30 animate-fadeIn group hover:shadow-xl transition-all duration-300" style={{ animationDelay: '500ms' }}>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-semibold bg-gradient-to-r from-yellow-600 to-yellow-500 bg-clip-text text-transparent flex items-center">
-                  <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 mr-3 group-hover:scale-110 transition-transform duration-300">
-                    <Clock className="h-5 w-5 text-yellow-500" />
-                  </div>
-                  Tiempo Promedio de Completado
-                </h2>
-                <div className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse"></div>
-              </div>
-              <div className="h-80 bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 shadow-inner">
-                <TasksCompletionTimeChart tasks={filteredTasks} />
-              </div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
+              Tareas por Usuario
+            </h2>
+          </div>
+          <div className="h-80 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+            <TasksByUserChart tasks={filteredTasks} users={users} />
+          </div>
+        </div>
+        
+        {/* Gráfico adicional: Tiempo promedio de completado */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-yellow-500 animate-fadeIn" style={{ animationDelay: '600ms' }}>
+          <div className="flex items-center mb-4">
+            <div className="bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded-full mr-3">
+              <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             </div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-yellow-600 to-yellow-500 bg-clip-text text-transparent">
+              Tiempo Promedio de Completado
+            </h2>
+          </div>
+          <div className="h-80 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+            <TasksCompletionTimeChart tasks={filteredTasks} />
           </div>
         </div>
       </div>

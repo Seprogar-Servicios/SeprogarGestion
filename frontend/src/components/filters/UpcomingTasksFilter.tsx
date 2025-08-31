@@ -1,6 +1,13 @@
 import React from 'react';
-import { Clock, Calendar, Filter, AlertCircle } from 'lucide-react';
+import { Clock, Calendar, List, Filter, AlertCircle } from 'lucide-react';
 import type { TaskFilters } from '../../types';
+
+type FilterOption = {
+  value: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  default?: boolean;
+};
 
 interface UpcomingTasksFilterProps {
   filters: TaskFilters;
@@ -11,75 +18,112 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
   filters,
   onFiltersChange,
 }) => {
-  const upcomingOptions = [
-    { value: '', label: 'Todas las tareas', icon: AlertCircle },
-    { value: 'next24h', label: 'Próximas 24 horas', icon: Clock },
-    { value: 'next48h', label: 'Próximas 48 horas', icon: Clock },
+  const filterOptions: FilterOption[] = [
+    { value: '', label: 'Todas las tareas', icon: List, default: true },
+    { value: 'past', label: 'Tareas antiguas', icon: Clock },
+    { value: 'current', label: 'Tareas actuales', icon: Calendar },
+    { value: 'next24h', label: 'Próximas 24h', icon: Clock },
+    { value: 'next48h', label: 'Próximas 48h', icon: Clock },
     { value: 'nextWeek', label: 'Próxima semana', icon: Calendar },
     { value: 'nextMonth', label: 'Próximo mes', icon: Calendar },
   ];
 
-  const handleUpcomingFilterChange = (upcomingFilter: string) => {
-    // If selecting 'Todas las tareas', clear all filters
-    if (!upcomingFilter) {
-      onFiltersChange({});
+  const handleUpcomingFilterChange = (upcomingFilter: 'past' | 'next24h' | 'next48h' | 'nextWeek' | 'nextMonth' | 'custom' | '') => {
+    // If clicking the same filter or 'Todas las tareas' is already selected, clear all filters
+    if (filters.upcomingFilter === upcomingFilter || (!upcomingFilter && !filters.upcomingFilter)) {
+      // Create a completely fresh filters object with no date-related fields
+      const { fechaDesde, fechaHasta, upcomingFilter: _, ...restFilters } = filters;
+      onFiltersChange({
+        ...restFilters,
+        fechaDesde: undefined,
+        fechaHasta: undefined,
+        upcomingFilter: undefined,
+      });
       return;
     }
     
-    // For other filters, set up the appropriate filter
-    const newFilters: TaskFilters = {
-      ...filters,
-      upcomingFilter: upcomingFilter as TaskFilters['upcomingFilter']
-    };
+    // For 'Todas las tareas', clear all date filters
+    if (!upcomingFilter) {
+      const { fechaDesde, fechaHasta, ...restFilters } = filters;
+      onFiltersChange({
+        ...restFilters,
+        fechaDesde: undefined,
+        fechaHasta: undefined,
+        upcomingFilter: undefined,
+      });
+      return;
+    }
     
-    // Clear any date filters that might conflict
-    delete newFilters.fechaDesde;
-    delete newFilters.fechaHasta;
-    
-    // Update the filters
-    onFiltersChange(newFilters);
+    // For other filters, just set the filter - the date range will be handled by getUpcomingDateRange
+    const { fechaDesde, fechaHasta, ...restFilters } = filters;
+    onFiltersChange({
+      ...restFilters,
+      fechaDesde: undefined, // Clear any previous date filters
+      fechaHasta: undefined, // Clear any previous date filters
+      upcomingFilter: upcomingFilter,
+    });
+  };
+
+  const getActiveFilterLabel = () => {
+    if (!filters.upcomingFilter) return '';
+    const activeFilter = filterOptions.find(opt => opt.value === filters.upcomingFilter);
+    return activeFilter?.label || '';
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-6 animate-fadeIn">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-6">
       <div className="flex items-center gap-2 mb-4">
         <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full">
           <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400" />
         </div>
         <h3 className="text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Filtrar Tareas Próximas
+          Filtrar Tareas
         </h3>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        {upcomingOptions.map((option) => {
+      <div className="flex flex-wrap gap-2">
+        {filterOptions.map((option) => {
+          const isActive = option.value
+            ? filters.upcomingFilter === option.value
+            : !filters.upcomingFilter;
           const Icon = option.icon;
-          const isSelected = filters.upcomingFilter === option.value || (!filters.upcomingFilter && !option.value);
           
           return (
             <button
-              key={option.value}
-              onClick={() => handleUpcomingFilterChange(option.value)}
-              className={`flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-                isSelected
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-700'
-                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600'
+              key={option.value || 'all'}
+              className={`group relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                isActive
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:shadow-lg hover:from-blue-700 hover:to-purple-700'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
               }`}
+              onClick={() => handleUpcomingFilterChange(option.value as any)}
             >
-              <div className={`p-1.5 rounded-full ${isSelected ? 'bg-blue-100 dark:bg-blue-800/50' : 'bg-gray-100 dark:bg-gray-600'}`}>
-                {Icon && <Icon className={`h-4 w-4 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'}`} />}
+              <div className={`p-1.5 rounded-full transition-colors ${
+                isActive
+                  ? 'bg-white/20'
+                  : 'bg-gray-100 group-hover:bg-gray-200 dark:bg-gray-600 dark:group-hover:bg-gray-500'
+              }`}>
+                <Icon className={`h-4 w-4 ${
+                  isActive ? 'text-white' : 'text-gray-600 dark:text-gray-300'
+                }`} />
               </div>
-              <span className="text-sm font-medium">{option.label}</span>
+              <span>{option.label}</span>
+              {isActive && (
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 flex items-center justify-center">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+              )}
             </button>
           );
         })}
       </div>
       
       {filters.upcomingFilter && (
-        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30 shadow-inner">
+        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
           <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            <strong>Filtro activo:</strong> <span className="ml-1 font-medium">{upcomingOptions.find(opt => opt.value === filters.upcomingFilter)?.label}</span>
+            <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+            <span><strong>Filtro activo:</strong> {getActiveFilterLabel()}</span>
           </p>
         </div>
       )}

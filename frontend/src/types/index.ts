@@ -32,6 +32,7 @@ export interface Task {
   descripcion?: string;
   estado: 'pendiente' | 'en progreso' | 'completada' | 'cancelada';
   tecnicos: User[];
+  tecnicoAsignado?: User | string;
   fechaCreacion: string;
   fechaModificacion: string;
   fechaEjecucion?: string;
@@ -106,6 +107,6 @@ export interface TaskFilters {
   fechaFin?: string;
   fechaDesde?: string;
   fechaHasta?: string;
-  upcomingFilter?: 'next24h' | 'next48h' | 'nextWeek' | 'nextMonth' | 'custom';
+  upcomingFilter?: 'past' | 'next24h' | 'next48h' | 'nextWeek' | 'nextMonth' | 'custom';
   usuario?: string;
 }

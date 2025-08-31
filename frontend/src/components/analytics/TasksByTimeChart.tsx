@@ -35,8 +35,14 @@ const TasksByTimeChart: React.FC<TasksByTimeChartProps> = ({ tasks }) => {
   const chartRef = useRef<ChartJS<"bar">>(null);
   const { isDarkMode } = useTheme();
   
+  // Función para normalizar fechas a la zona horaria local
+  const normalizeDate = (date: Date): Date => {
+    const d = new Date(date);
+    return new Date(d.getTime() - (d.getTimezoneOffset() * 60000));
+  };
+
   const getFilteredData = () => {
-    const today = new Date();
+    const today = normalizeDate(new Date());
     let labels: string[] = [];
     let data: number[] = [];
     
@@ -50,8 +56,9 @@ const TasksByTimeChart: React.FC<TasksByTimeChartProps> = ({ tasks }) => {
       data = labels.map((_, index) => {
         const date = subDays(today, 6 - index);
         return tasks.filter(task => {
-          const taskDate = new Date(task.fechaCreacion || '');
-          return isSameDay(taskDate, date);
+          const taskDate = task.fechaEjecucion ? task.fechaEjecucion : task.fechaCreacion;
+          if (!taskDate) return false;
+          return isSameDay(normalizeDate(new Date(taskDate)), date);
         }).length;
       });
     } else if (timeRange === 'week') {
@@ -64,8 +71,9 @@ const TasksByTimeChart: React.FC<TasksByTimeChartProps> = ({ tasks }) => {
       data = labels.map((_, index) => {
         const date = subWeeks(today, 3 - index);
         return tasks.filter(task => {
-          const taskDate = new Date(task.fechaCreacion || '');
-          return isSameWeek(taskDate, date, { weekStartsOn: 1 });
+          const taskDate = task.fechaEjecucion ? task.fechaEjecucion : task.fechaCreacion;
+          if (!taskDate) return false;
+          return isSameWeek(normalizeDate(new Date(taskDate)), date, { weekStartsOn: 1 });
         }).length;
       });
     } else {
@@ -78,8 +86,9 @@ const TasksByTimeChart: React.FC<TasksByTimeChartProps> = ({ tasks }) => {
       data = labels.map((_, index) => {
         const date = subMonths(today, 5 - index);
         return tasks.filter(task => {
-          const taskDate = new Date(task.fechaCreacion || '');
-          return isSameMonth(taskDate, date);
+          const taskDate = task.fechaEjecucion ? task.fechaEjecucion : task.fechaCreacion;
+          if (!taskDate) return false;
+          return isSameMonth(normalizeDate(new Date(taskDate)), date);
         }).length;
       });
     }

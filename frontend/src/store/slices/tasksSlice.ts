@@ -24,37 +24,71 @@ const initialState: TasksState = {
   filters: {},
 };
 
-// Helper function to calculate date ranges for upcoming tasks
+// Helper function to calculate date ranges for tasks
 const getUpcomingDateRange = (filter: string) => {
   const now = new Date();
-  // Establecer la hora a 00:00:00 para el día actual
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  if (!filter) return {};
+
   switch (filter) {
-    case 'next24h':
+    case 'past': {
+      // Tareas hasta ayer (inclusive)
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      yesterday.setHours(23, 59, 59, 999);
+      return { fechaHasta: yesterday.toISOString() };
+    }
+
+    case 'current':
+      // Desde hoy en adelante
+      return { fechaDesde: today.toISOString() };
+
+    case 'next24h': {
+      // Próximas 24 horas
+      const next24h = new Date(now);
+      next24h.setHours(now.getHours() + 24);
+      return { fechaDesde: now.toISOString(), fechaHasta: next24h.toISOString() };
+    }
+
+    case 'next48h': {
+      // Próximas 48 horas
+      const next48h = new Date(now);
+      next48h.setHours(now.getHours() + 48);
+      return { fechaDesde: now.toISOString(), fechaHasta: next48h.toISOString() };
+    }
+
+    case 'nextWeek': {
+      // Lunes siguiente
+      const nextMonday = new Date(today);
+      let offset = (1 + 7 - today.getDay()) % 7;
+      if (offset === 0) offset = 7; // Siempre apunta al lunes siguiente
+      nextMonday.setDate(today.getDate() + offset);
+
+      // Domingo siguiente
+      const nextSunday = new Date(nextMonday);
+      nextSunday.setDate(nextMonday.getDate() + 6);
+      nextSunday.setHours(23, 59, 59, 999);
+
       return {
-        fechaDesde: today.toISOString(),
-        fechaHasta: new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()
+        fechaDesde: nextMonday.toISOString(),
+        fechaHasta: nextSunday.toISOString()
       };
-    case 'next48h':
-      return {
-        fechaDesde: today.toISOString(),
-        fechaHasta: new Date(today.getTime() + 48 * 60 * 60 * 1000).toISOString()
-      };
-    case 'nextWeek':
-      return {
-        fechaDesde: today.toISOString(),
-        fechaHasta: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      };
-    case 'nextMonth':
-      // Crear fecha para el primer día del próximo mes
+    }
+
+    case 'nextMonth': {
+      // Primer y último día del próximo mes
       const firstDayNextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-      // Crear fecha para el último día del próximo mes
       const lastDayNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+      lastDayNextMonth.setHours(23, 59, 59, 999);
+
       return {
         fechaDesde: firstDayNextMonth.toISOString(),
         fechaHasta: lastDayNextMonth.toISOString()
       };
+    }
+
     default:
       return {};
   }
@@ -79,31 +113,46 @@ export const fetchTasks = createAsyncThunk(
     try {
       const params = new URLSearchParams();
       
-      // Handle upcoming filter
+      // Handle upcoming filter first to avoid duplicate parameters
       if (filters.upcomingFilter && filters.upcomingFilter !== 'custom') {
         const dateRange = getUpcomingDateRange(filters.upcomingFilter);
-        Object.entries(dateRange).forEach(([key, value]) => {
-          if (value) params.append(key, value);
-        });
+        // Skip if we have explicit date filters to avoid conflicts
+        if (!filters.fechaDesde && !filters.fechaHasta) {
+          Object.entries(dateRange).forEach(([key, value]) => {
+            if (value) params.set(key, value);
+          });
+        }
       }
       
       // Handle other filters
       Object.entries(filters).forEach(([key, value]) => {
-        if (value && key !== 'upcomingFilter') {
-          // Mapear el nombre del filtro 'tecnico' a 'usuario' que es lo que espera el backend
-          if (key === 'tecnico') {
-            params.append('usuario', value);
-          } else {
-            // Asegurarse de que fechaDesde se aplique correctamente
-            if (key === 'fechaDesde') {
-              // Convertir la fecha a formato ISO para que el backend la procese correctamente
-              const fechaDesde = new Date(value);
-              params.append(key, fechaDesde.toISOString());
-            } else {
-              params.append(key, value);
-            }
-          }
+        if (value === undefined || value === null || key === 'upcomingFilter') return;
+        
+        // Mapear el nombre del filtro 'tecnico' a 'usuario' que es lo que espera el backend
+        if (key === 'tecnico') {
+          params.append('usuario', value);
+          return;
         }
+        
+        // Handle date fields
+        if (key === 'fechaDesde' || key === 'fechaHasta') {
+          try {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              // For fechaHasta, set to end of day
+              if (key === 'fechaHasta') {
+                date.setHours(23, 59, 59, 999);
+              }
+              params.append(key, date.toISOString());
+            }
+          } catch (e) {
+            console.error(`Error processing date ${key}:`, e);
+          }
+          return;
+        }
+        
+        // For all other fields
+        params.append(key, String(value));
       });
       
       const response = await api.get<ApiResponse<Task[]>>(`/tareas?${params.toString()}`);
