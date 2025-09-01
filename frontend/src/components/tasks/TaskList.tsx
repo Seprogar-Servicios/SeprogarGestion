@@ -5,7 +5,6 @@ import { fetchTasks, createTask, updateTask, deleteTask, deleteMultipleTasks, se
 import { fetchUsers } from '../../store/slices/usersSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
 import TasksFilter from '../filters/TasksFilter';
-import { format } from 'date-fns';
 import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPin, CheckCircle, Hash, CheckSquare, Square, Send, Download, XCircle, Edit, Clock, ChevronDown } from 'lucide-react';
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
@@ -69,10 +68,7 @@ const TaskList: React.FC = () => {
   // Initialize filters on component mount
   useEffect(() => {
     if (!initialFiltersLoaded) {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const initialFilters: TaskFilters = {
-        fechaDesde: today
-      };
+      const initialFilters: TaskFilters = {};
       
       // If user is not admin, filter only their tasks
       if (user && user.rol !== 'admin') {

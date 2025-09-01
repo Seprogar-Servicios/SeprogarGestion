@@ -13,11 +13,10 @@ interface ObservationsListProps {
 
 const ObservationsList: React.FC<ObservationsListProps> = ({ taskId, currentUserId }) => {
   const dispatch = useAppDispatch();
-  const { observations, loading, error } = useAppSelector((state) => ({
-    observations: state.observations.observations,
-    loading: state.observations.loading,
-    error: state.observations.error,
-  }));
+  // Memoized selectors
+  const observations = useAppSelector((state) => state.observations.observations);
+  const loading = useAppSelector((state) => state.observations.loading);
+  const error = useAppSelector((state) => state.observations.error);
   
   const [showForm, setShowForm] = useState(false);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);

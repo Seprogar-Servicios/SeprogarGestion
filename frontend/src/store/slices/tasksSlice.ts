@@ -338,8 +338,9 @@ const tasksSlice = createSlice({
       })
       .addCase(deleteTask.fulfilled, (state, action) => {
         state.loading = false;
-        state.tasks = state.tasks.filter(task => task._id !== action.payload);
-        if (state.currentTask?._id === action.payload) {
+        const deletedId = action.payload;
+        state.tasks = state.tasks.filter(task => task._id !== deletedId);
+        if (state.currentTask?._id === deletedId) {
           state.currentTask = null;
         }
       })

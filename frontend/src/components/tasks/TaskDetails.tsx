@@ -1,14 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { fetchTaskById, clearCurrentTask } from '../../store/slices/tasksSlice';
+import { fetchTaskById, clearCurrentTask, deleteTask, updateTask } from '../../store/slices/tasksSlice';
+import { fetchUsers } from '../../store/slices/usersSlice';
 import { format, parseISO } from 'date-fns';
+import { toast } from 'react-toastify';
+import type { User as UserType } from '../../types';
 import { es } from 'date-fns/locale';
 import {
   ArrowLeft,
   Calendar,
   MapPin,
-  User,
+  User as UserIcon,
   Users,
   Phone,
   CheckCircle,
@@ -33,23 +36,104 @@ const TaskDetails: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const { currentTask, loading, error } = useAppSelector((state: RootState) => ({
-    currentTask: state.tasks.currentTask,
-    loading: state.tasks.loading,
-    error: state.tasks.error,
-  }));
-
-  const { user } = useAppSelector((state: RootState) => state.auth);
+  // Memoized selectors
+  const currentTask = useAppSelector((state: RootState) => state.tasks.currentTask);
+  const loading = useAppSelector((state: RootState) => state.tasks.loading);
+  const error = useAppSelector((state: RootState) => state.tasks.error);
+  const users = useAppSelector((state: RootState) => state.users.users);
+  const user = useAppSelector((state: RootState) => state.auth.user);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [formData, setFormData] = useState({
+    numero: '',
+    titulo: '',
+    descripcion: '',
+    cliente: '',
+    numeroTitular: '',
+    direccion: '',
+    fechaEjecucion: '',
+    horaInicio: '',
+    horaFin: '',
+    franja_horaria: '',
+    tecnicos: [] as UserType[],
+    estado: 'pendiente' as 'pendiente' | 'en progreso' | 'completada' | 'cancelada',
+    origen: 'manual' as 'manual' | 'whatsapp' | string
+  });
 
   useEffect(() => {
     if (id) {
       dispatch(fetchTaskById(id));
     }
+    dispatch(fetchUsers());
     
     return () => {
       dispatch(clearCurrentTask());
     };
   }, [dispatch, id]);
+
+  // Update form data when currentTask changes
+  useEffect(() => {
+    if (currentTask) {
+      setFormData(prev => ({
+        ...prev,
+        numero: currentTask.numero || '',
+        titulo: currentTask.titulo || '',
+        descripcion: currentTask.descripcion || '',
+        cliente: currentTask.cliente || '',
+        numeroTitular: currentTask.numeroTitular || '',
+        direccion: currentTask.direccion || '',
+        fechaEjecucion: currentTask.fechaEjecucion ? format(new Date(currentTask.fechaEjecucion), 'yyyy-MM-dd') : '',
+        horaInicio: currentTask.franja_horaria?.split('-')[0]?.trim() || '',
+        horaFin: currentTask.franja_horaria?.split('-')[1]?.trim() || '',
+        franja_horaria: currentTask.franja_horaria || '',
+        tecnicos: Array.isArray(currentTask.tecnicos) 
+          ? currentTask.tecnicos.filter((t): t is UserType => t !== null && typeof t === 'object' && '_id' in t)
+          : [],
+        estado: currentTask.estado || 'pendiente',
+        origen: currentTask.origen || 'manual'
+      }));
+    }
+  }, [currentTask]);
+
+  const handleUpdateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentTask) return;
+    
+    try {
+      // Format the time range if both start and end times are provided
+      let franjaHoraria = '';
+      if (formData.horaInicio && formData.horaFin) {
+        franjaHoraria = `${formData.horaInicio} - ${formData.horaFin}`;
+      }
+      
+      // Only include fields that are allowed to be updated
+      const taskUpdate = {
+        numero: formData.numero,
+        titulo: formData.titulo,
+        cliente: formData.cliente,
+        descripcion: formData.descripcion,
+        direccion: formData.direccion,
+        numeroTitular: formData.numeroTitular,
+        fechaEjecucion: formData.fechaEjecucion,
+        franja_horaria: franjaHoraria,
+        estado: formData.estado,
+        tecnicos: formData.tecnicos,
+        // Explicitly exclude 'origen' as it's not allowed in updates
+        // Also exclude any other fields that shouldn't be updated
+      };
+      
+      await dispatch(updateTask({ 
+        id: currentTask._id, 
+        data: taskUpdate
+      })).unwrap();
+      
+      setShowEditModal(false);
+      toast.success('Tarea actualizada correctamente');
+      dispatch(fetchTaskById(currentTask._id)); // Refresh task data
+    } catch (error) {
+      toast.error('Error al actualizar la tarea');
+      console.error('Error updating task:', error);
+    }
+  };
 
   const renderStatusBadge = (estado?: string): JSX.Element | null => {
     if (!estado) return null;
@@ -99,6 +183,89 @@ const TaskDetails: React.FC = () => {
       console.error('Error formatting date:', error);
       return 'Fecha inválida';
     }
+  };
+
+  const handleDelete = () => {
+    if (!currentTask) return;
+    
+    import('react-toastify').then(({ toast }) => {
+      const CustomToast: React.FC<{closeToast?: () => void}> = ({ closeToast }) => (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
+          <div className="p-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Eliminar tarea</h3>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    ¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={closeToast}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  closeToast?.();
+                  try {
+                    await dispatch(deleteTask(currentTask._id)).unwrap();
+                    toast.success('Tarea eliminada correctamente', {
+                      position: "top-right",
+                      autoClose: 3000,
+                      hideProgressBar: false,
+                      closeOnClick: true,
+                      pauseOnHover: true,
+                      draggable: true,
+                      className: '!bg-green-50 dark:!bg-green-900/30 !text-green-800 dark:!text-green-200',
+                      bodyClassName: '!p-4',
+                      progressClassName: '!bg-green-500/50'
+                    });
+                    navigate('/tasks');
+                  } catch (error) {
+                    toast.error('Error al eliminar la tarea', {
+                      position: "top-right",
+                      autoClose: 3000,
+                      hideProgressBar: false,
+                      closeOnClick: true,
+                      pauseOnHover: true,
+                      draggable: true,
+                      className: '!bg-red-50 dark:!bg-red-900/30 !text-red-800 dark:!text-red-200',
+                      bodyClassName: '!p-4',
+                      progressClassName: '!bg-red-500/50'
+                    });
+                    console.error('Error deleting task:', error);
+                  }
+                }}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+              >
+                <Trash2 className="-ml-1 mr-2 h-4 w-4" />
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      toast(<CustomToast />, {
+        position: "top-center",
+        autoClose: false,
+        closeOnClick: false,
+        draggable: false,
+        closeButton: false,
+        className: '!bg-transparent !p-0 !shadow-none',
+        bodyClassName: '!p-0',
+      });
+    });
   };
 
   if (loading) {
@@ -193,14 +360,14 @@ const TaskDetails: React.FC = () => {
             {user?.rol === 'admin' && (
               <>
                 <button
-                  onClick={() => navigate(`/tasks/edit/${currentTask._id}`)}
+                  onClick={() => setShowEditModal(true)}
                   className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
                 >
                   <Edit className="h-4 w-4" />
                   Editar
                 </button>
                 <button
-                  onClick={() => {}}
+                  onClick={handleDelete}
                   className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -239,7 +406,7 @@ const TaskDetails: React.FC = () => {
                 <div className="flex items-center">
                   <div className="flex-shrink-0 mr-4">
                     <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                      <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                   </div>
                   <div>
@@ -254,7 +421,7 @@ const TaskDetails: React.FC = () => {
                   <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
                     <dt className="w-10 flex-shrink-0">
                       <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
                     </dt>
                     <div className="ml-4 flex-1">
@@ -369,10 +536,10 @@ const TaskDetails: React.FC = () => {
                   </h3>
                 </div>
                 <div className="p-6 space-y-3">
-                  {currentTask.tecnicos.map((tecnico: any, index: number) => (
+                  {currentTask.tecnicos.map((tecnico: UserType, index: number) => (
                     <div key={index} className="flex items-center">
                       <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 flex items-center justify-center mr-3">
-                        <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <UserIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
                         <p className="text-gray-900 dark:text-white font-medium">{tecnico.nombre || `Técnico ${index + 1}`}</p>
@@ -428,6 +595,201 @@ const TaskDetails: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de edición */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto pt-20">
+          <div className="relative w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-purple-600">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-white">Editar Tarea #{currentTask?.numero || ''}</h3>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-white hover:text-gray-200"
+                >
+                  <XCircle className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <form onSubmit={handleUpdateTask} className="p-6">
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Número de Tarea <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.numero || ''}
+                      onChange={(e) => setFormData({...formData, numero: e.target.value})}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Título <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.titulo}
+                      onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Cliente
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cliente || ''}
+                      onChange={(e) => setFormData({...formData, cliente: e.target.value})}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Teléfono del Titular
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.numeroTitular || ''}
+                      onChange={(e) => setFormData({...formData, numeroTitular: e.target.value})}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Fecha de Ejecución
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.fechaEjecucion || ''}
+                      onChange={(e) => setFormData({...formData, fechaEjecucion: e.target.value})}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Hora de inicio
+                      </label>
+                      <input
+                        type="time"
+                        value={formData.horaInicio}
+                        onChange={(e) => setFormData({...formData, horaInicio: e.target.value})}
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Hora de fin
+                      </label>
+                      <input
+                        type="time"
+                        value={formData.horaFin}
+                        onChange={(e) => setFormData({...formData, horaFin: e.target.value})}
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Estado
+                    </label>
+                    <select
+                      value={formData.estado}
+                      onChange={(e) => setFormData({...formData, estado: e.target.value as any})}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="pendiente">Pendiente</option>
+                      <option value="en progreso">En Progreso</option>
+                      <option value="completada">Completada</option>
+                      <option value="cancelada">Cancelada</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Técnicos Asignados
+                    </label>
+                    <select
+                      multiple
+                      value={Array.isArray(formData.tecnicos) ? formData.tecnicos.map(t => typeof t === 'string' ? t : t._id) : []}
+                      onChange={(e) => {
+                        const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                        const selectedUsers = selectedOptions
+                          .map(id => users.find(u => u._id === id))
+                          .filter((user): user is UserType => user !== undefined);
+                        setFormData(prev => ({
+                          ...prev,
+                          tecnicos: selectedUsers
+                        }));
+                      }}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent h-[42px] min-h-[42px]"
+                    >
+                      {users.filter((user: UserType) => user.rol === 'usuario').map((user: UserType) => (
+                        <option key={user._id} value={user._id}>
+                          {user.nombre} {user.apellido || ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Dirección
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.direccion || ''}
+                      onChange={(e) => setFormData({...formData, direccion: e.target.value})}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Descripción
+                    </label>
+                    <textarea
+                      value={formData.descripcion || ''}
+                      onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
+                      rows={3}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Guardar cambios
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
     </div>
   );
 };

@@ -13,19 +13,16 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
   const [tecnico, setTecnico] = useState<string>(filters.tecnico || '');
   const [estado, setEstado] = useState<string>(filters.estado || '');
   const [fechaDesde, setFechaDesde] = useState<string>('');
-  const [showOnlyFutureTasks, setShowOnlyFutureTasks] = useState<boolean>(true);
+  const [showOnlyFutureTasks, setShowOnlyFutureTasks] = useState<boolean>(false);
 
   // Filtrar usuarios que son técnicos (rol 'usuario')
   const tecnicos = users?.filter((user: User) => user.rol === 'usuario' && user.aprobado) || [];
 
   // Set initial filters on mount
   useEffect(() => {
-    const today = format(startOfToday(), 'yyyy-MM-dd');
-    if (!filters.fechaDesde) {
-      onFiltersChange({
-        ...filters,
-        fechaDesde: today
-      });
+    // Don't set any date filter by default to show all tasks
+    if (Object.keys(filters).length === 0) {
+      onFiltersChange({});
     }
   }, []);
 
