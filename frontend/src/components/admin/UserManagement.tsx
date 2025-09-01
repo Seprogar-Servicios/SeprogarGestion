@@ -231,12 +231,15 @@ const UserManagement: React.FC = () => {
       }
 
       // Usar createFormData en lugar de formData para la creación
-      const userData = {
-        ...createFormData,
+      // Extraer solo los campos necesarios y excluir confirmPassword
+      const { confirmPassword, ...userData } = createFormData;
+      
+      const userToCreate = {
+        ...userData,
         especialidad: createFormData.especialidad || undefined
       };
       
-      await dispatch(createUser(userData)).unwrap();
+      await dispatch(createUser(userToCreate)).unwrap();
       await dispatch(fetchUsers());
       setShowCreateModal(false);
       resetCreateForm();
