@@ -101,58 +101,78 @@ const SpecialtyManagement: React.FC = () => {
     const { toast } = await import('react-toastify');
     
     const CustomToast = ({ closeToast }: { closeToast?: () => void }) => (
-      <div>
-        <p>¿Estás seguro de que quieres eliminar esta especialidad?</p>
-        <div className="flex justify-end mt-2 space-x-2">
-          <button 
-            onClick={async () => {
-              try {
-                await dispatch(deleteEspecialidad(especialidadId)).unwrap();
-                await dispatch(fetchEspecialidades());
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
+        <div className="p-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Eliminar especialidad
+              </h3>
+              <div className="mt-2">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  ¿Estás seguro de que deseas eliminar esta especialidad? Esta
+                  acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={closeToast}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
                 closeToast?.();
-                toast.success('Especialidad eliminada correctamente', {
-                  position: "top-right",
-                  autoClose: 3000,
-                  hideProgressBar: false,
-                  closeOnClick: true,
-                  pauseOnHover: true,
-                  draggable: true,
-                });
-              } catch (error) {
-                console.error('Error deleting especialidad:', error);
-                toast.error('Error al eliminar la especialidad', {
-                  position: "top-right",
-                  autoClose: 3000,
-                  hideProgressBar: false,
-                  closeOnClick: true,
-                  pauseOnHover: true,
-                  draggable: true,
-                });
-              }
-            }}
-            className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600 cursor-pointer"
-          >
-            Eliminar
-          </button>
-          <button 
-            onClick={() => closeToast?.()}
-            className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer"
-          >
-            Cancelar
-          </button>
+                try {
+                  await dispatch(deleteEspecialidad(especialidadId)).unwrap();
+                  await dispatch(fetchEspecialidades());
+                  toast.success('Especialidad eliminada correctamente', {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                    className:
+                      '!bg-green-50 dark:!bg-green-900/30 !text-green-800 dark:!text-green-200',
+                    bodyClassName: '!p-4',
+                  });
+                } catch (error) {
+                  console.error('Error deleting especialidad:', error);
+                  toast.error('Error al eliminar la especialidad', {
+                    position: "top-right",
+                    autoClose: 5000,
+                  });
+                }
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+            >
+              Eliminar
+            </button>
+          </div>
         </div>
       </div>
     );
-
+  
     toast(<CustomToast />, {
       position: "top-center",
       autoClose: false,
       closeButton: false,
       closeOnClick: false,
-      draggable: true,
-      className: 'w-full max-w-md'
+      draggable: false,
+      className: '!bg-transparent !p-0 !shadow-none', // contenedor sin fondo ni borde
+      bodyClassName: '!p-0',                          // sin padding extra
     });
   };
+  
 
   const resetForm = () => {
     setFormData({

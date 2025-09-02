@@ -24,7 +24,7 @@ function App() {
     <Provider store={store}>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <div className="App">
-          <ToastContainer 
+        <ToastContainer 
             position="top-right"
             autoClose={5000}
             hideProgressBar={false}
@@ -34,7 +34,10 @@ function App() {
             pauseOnFocusLoss
             draggable
             pauseOnHover
-            theme="light"
+            theme="dark"
+            toastClassName="!bg-gray-800 !rounded-lg !shadow-lg !mb-3 !font-sans !p-0"
+            bodyClassName="!p-0 !m-0"
+            progressClassName="!bg-blue-500"
           />
           <Routes>
             {/* Public routes */}

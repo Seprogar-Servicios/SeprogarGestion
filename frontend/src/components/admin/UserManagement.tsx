@@ -230,12 +230,13 @@ const UserManagement: React.FC = () => {
         return;
       }
 
-      // Usar createFormData en lugar de formData para la creación
-      // Extraer solo los campos necesarios y excluir confirmPassword
-      const { confirmPassword, ...userData } = createFormData;
-      
+      // Crear objeto con solo los campos necesarios para la API
       const userToCreate = {
-        ...userData,
+        nombre: createFormData.nombre,
+        email: createFormData.email,
+        telefono: createFormData.telefono,
+        password: createFormData.password,
+        rol: createFormData.rol,
         especialidad: createFormData.especialidad || undefined
       };
       
@@ -280,64 +281,89 @@ const UserManagement: React.FC = () => {
 
   const handleDeleteUser = async (userId: string, userName: string) => {
     const { toast } = await import('react-toastify');
-    
+  
     const ConfirmToast = ({ closeToast }: { closeToast?: () => void }) => (
-      <div className="p-4">
-        <p className="mb-4">¿Estás seguro de que deseas eliminar al usuario <strong>{userName}</strong>?</p>
-        <div className="flex justify-end space-x-2">
-          <button
-            onClick={async () => {
-              try {
-                const resultAction = await dispatch(deleteUser(userId));
-                if (deleteUser.fulfilled.match(resultAction)) {
-                  toast.success('Usuario eliminado correctamente', {
-                    position: "top-right",
-                    autoClose: 3000,
-                  });
-                  // Refresh the users list
-                  await dispatch(fetchUsers());
-                } else if (resultAction.payload) {
-                  toast.error(`Error al eliminar: ${resultAction.payload}`, {
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
+        <div className="p-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Eliminar usuario
+              </h3>
+              <div className="mt-2">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  ¿Estás seguro de que deseas eliminar al usuario{" "}
+                  <strong>{userName}</strong>? Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={closeToast}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                closeToast?.();
+                try {
+                  const resultAction = await dispatch(deleteUser(userId));
+                  if (deleteUser.fulfilled.match(resultAction)) {
+                    toast.success('Usuario eliminado correctamente', {
+                      position: "top-right",
+                      autoClose: 3000,
+                      hideProgressBar: false,
+                      closeOnClick: true,
+                      pauseOnHover: true,
+                      draggable: true,
+                      className:
+                        '!bg-green-50 dark:!bg-green-900/30 !text-green-800 dark:!text-green-200',
+                      bodyClassName: '!p-4',
+                    });
+                    await dispatch(fetchUsers());
+                  } else if (resultAction.payload) {
+                    toast.error(`Error al eliminar: ${resultAction.payload}`, {
+                      position: "top-right",
+                      autoClose: 5000,
+                    });
+                  }
+                } catch (error) {
+                  console.error('Error deleting user:', error);
+                  toast.error('Error inesperado al eliminar el usuario', {
                     position: "top-right",
                     autoClose: 5000,
                   });
                 }
-              } catch (error) {
-                console.error('Error deleting user:', error);
-                toast.error('Error inesperado al eliminar el usuario', {
-                  position: "top-right",
-                  autoClose: 5000,
-                });
-              }
-              closeToast?.();
-            }}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700"
-          >
-            Eliminar
-          </button>
-          <button
-            onClick={() => closeToast?.()}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
-          >
-            Cancelar
-          </button>
+              }}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+            >
+              <Trash2 className="-ml-1 mr-2 h-4 w-4" />
+              Eliminar
+            </button>
+          </div>
         </div>
       </div>
     );
-
-    toast(
-      <ConfirmToast />,
-      {
-        position: "top-center",
-        autoClose: false,
-        closeButton: false,
-        closeOnClick: false,
-        draggable: true,
-        className: 'w-full max-w-md'
-      }
-    );
+  
+    toast(<ConfirmToast />, {
+      position: "top-center",
+      autoClose: false,
+      closeOnClick: false,
+      draggable: false,
+      closeButton: false,
+      className: '!bg-transparent !p-0 !shadow-none', // hace transparente el toast container
+      bodyClassName: '!p-0',                          // elimina padding extra
+    });
   };
-
+  
+  
   // Asegurar que solo se muestren usuarios aprobados en la lista de usuarios filtrados
   const filteredUsers = users?.filter(user => {
     // Verificar que el usuario no esté en la lista de pendientes
