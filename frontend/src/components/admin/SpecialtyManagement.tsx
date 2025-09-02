@@ -3,12 +3,13 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchEspecialidades, createEspecialidad, updateEspecialidad, deleteEspecialidad } from '../../store/slices/especialidadesSlice';
 import { 
   Briefcase, 
+  Edit, 
   Plus, 
   Search, 
-  Edit, 
   Trash2,
   X,
 } from 'lucide-react';
+import { showSuccess, showError } from '../../utils/toastUtils';
 import type { Especialidad } from '../../types';
 
 const SpecialtyManagement: React.FC = () => {
@@ -38,26 +39,10 @@ const SpecialtyManagement: React.FC = () => {
       resetForm();
       
       // Mostrar notificación de éxito
-      const { toast } = await import('react-toastify');
-      toast.success('Especialidad creada correctamente', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      showSuccess('Especialidad creada correctamente');
     } catch (error) {
       console.error('Error creating especialidad:', error);
-      const { toast } = await import('react-toastify');
-      toast.error('Error al crear la especialidad', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      showError('Error al crear la especialidad');
     }
   };
 
@@ -74,32 +59,14 @@ const SpecialtyManagement: React.FC = () => {
       resetForm();
       
       // Mostrar notificación de éxito
-      const { toast } = await import('react-toastify');
-      toast.success('Especialidad actualizada correctamente', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      showSuccess('Especialidad actualizada correctamente');
     } catch (error) {
       console.error('Error updating especialidad:', error);
-      const { toast } = await import('react-toastify');
-      toast.error('Error al actualizar la especialidad', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      showError('Error al actualizar la especialidad');
     }
   };
 
   const handleDeleteEspecialidad = async (especialidadId: string) => {
-    const { toast } = await import('react-toastify');
-    
     const CustomToast = ({ closeToast }: { closeToast?: () => void }) => (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
         <div className="p-6">
@@ -134,26 +101,13 @@ const SpecialtyManagement: React.FC = () => {
                 try {
                   await dispatch(deleteEspecialidad(especialidadId)).unwrap();
                   await dispatch(fetchEspecialidades());
-                  toast.success('Especialidad eliminada correctamente', {
-                    position: "top-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    className:
-                      '!bg-green-50 dark:!bg-green-900/30 !text-green-800 dark:!text-green-200',
-                    bodyClassName: '!p-4',
-                  });
+                  showSuccess('Especialidad eliminada correctamente');
                 } catch (error) {
                   console.error('Error deleting especialidad:', error);
-                  toast.error('Error al eliminar la especialidad', {
-                    position: "top-right",
-                    autoClose: 5000,
-                  });
+                  showError('Error al eliminar la especialidad');
                 }
               }}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
             >
               Eliminar
             </button>
@@ -162,6 +116,7 @@ const SpecialtyManagement: React.FC = () => {
       </div>
     );
   
+    const { toast } = await import('react-toastify');
     toast(<CustomToast />, {
       position: "top-center",
       autoClose: false,

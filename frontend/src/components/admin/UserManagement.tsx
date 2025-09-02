@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import api from '../../config/api';
 import type { User } from '../../types';
-import { toast } from 'react-toastify';
+import { showSuccess, showError, showInfo } from '../../utils/toastUtils';
 
 const UserManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -98,39 +98,26 @@ const UserManagement: React.FC = () => {
       // Llamar al endpoint para resetear la contraseña usando la instancia de api
       const response = await api.post(`/usuarios/${userId}/reset-password`, {});
       
-      // Importar toast dinámicamente
-      const { toast } = await import('react-toastify');
-      
       // Mostrar la nueva contraseña en un toast
-      toast.success(
-        <div>
-          <p>Contraseña restablecida correctamente</p>
-          <p className="font-mono bg-gray-100 p-2 mt-2 rounded">
-            Nueva contraseña: <span className="font-bold">{response.data.newPassword}</span>
-          </p>
-          <p className="text-sm text-gray-600 mt-1">Por favor, anótala en un lugar seguro.</p>
-        </div>,
-        {
-          position: "top-center",
-          autoClose: 10000, // 10 segundos para que el usuario pueda copiar la contraseña
-          hideProgressBar: false,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          className: 'w-full max-w-md'
-        }
-      );
+      const message = `
+        Contraseña restablecida correctamente
+        
+        Nueva contraseña: ${response.data.newPassword}
+        
+        Por favor, comparte esta contraseña con el usuario de manera segura.
+      `;
+      
+      showSuccess(message, {
+        position: "top-center",
+        autoClose: 10000,
+        closeOnClick: false,
+        draggable: false,
+        closeButton: true,
+        className: '!max-w-md',
+      });
     } catch (error) {
       console.error('Error al restablecer la contraseña:', error);
-      const { toast } = await import('react-toastify');
-      toast.error('Error al restablecer la contraseña', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      showError('Error al restablecer la contraseña');
     }
   };
 
@@ -148,11 +135,7 @@ const UserManagement: React.FC = () => {
       });
       
       if (Object.keys(updatedFields).length === 0) {
-        const { toast } = await import('react-toastify');
-        toast.info('No se realizaron cambios en el usuario', {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        showInfo('No se realizaron cambios en el usuario');
         return;
       }
 
@@ -167,30 +150,14 @@ const UserManagement: React.FC = () => {
         setEditingUser(null);
         resetForm();
         
-        const { toast } = await import('react-toastify');
-        toast.success('Usuario actualizado correctamente', {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
+        showSuccess('Usuario actualizado correctamente');
       } else if (resultAction.payload) {
         // Handle API error with message
-        const { toast } = await import('react-toastify');
-        toast.error(`Error al actualizar: ${resultAction.payload}`, {
-          position: "top-right",
-          autoClose: 5000,
-        });
+        showError(`Error al actualizar: ${resultAction.payload}`);
       }
     } catch (error) {
       console.error('Error updating user:', error);
-      const { toast } = await import('react-toastify');
-      toast.error('Error inesperado al actualizar el usuario', {
-        position: "top-right",
-        autoClose: 5000,
-      });
+      showError('Error inesperado al actualizar el usuario');
     }
   };
 
@@ -222,11 +189,7 @@ const UserManagement: React.FC = () => {
     try {
       // Validate passwords match
       if (createFormData.password !== createFormData.confirmPassword) {
-        const { toast } = await import('react-toastify');
-        toast.error('Las contraseñas no coinciden', {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        showError('Las contraseñas no coinciden');
         return;
       }
 
@@ -244,27 +207,10 @@ const UserManagement: React.FC = () => {
       await dispatch(fetchUsers());
       setShowCreateModal(false);
       resetCreateForm();
-      
-      const { toast } = await import('react-toastify');
-      toast.success('Usuario creado correctamente', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      showSuccess('Usuario creado correctamente');
     } catch (error: any) {
       console.error('Error creating user:', error);
-      const { toast } = await import('react-toastify');
-      toast.error(error?.response?.data?.message || 'Error al crear el usuario', {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      showError(error?.response?.data?.message || 'Error al crear el usuario');
     }
   };
 
@@ -316,30 +262,14 @@ const UserManagement: React.FC = () => {
                 try {
                   const resultAction = await dispatch(deleteUser(userId));
                   if (deleteUser.fulfilled.match(resultAction)) {
-                    toast.success('Usuario eliminado correctamente', {
-                      position: "top-right",
-                      autoClose: 3000,
-                      hideProgressBar: false,
-                      closeOnClick: true,
-                      pauseOnHover: true,
-                      draggable: true,
-                      className:
-                        '!bg-green-50 dark:!bg-green-900/30 !text-green-800 dark:!text-green-200',
-                      bodyClassName: '!p-4',
-                    });
+                    showSuccess('Usuario eliminado correctamente');
                     await dispatch(fetchUsers());
                   } else if (resultAction.payload) {
-                    toast.error(`Error al eliminar: ${resultAction.payload}`, {
-                      position: "top-right",
-                      autoClose: 5000,
-                    });
+                    showError(`Error al eliminar: ${resultAction.payload}`);
                   }
                 } catch (error) {
                   console.error('Error deleting user:', error);
-                  toast.error('Error inesperado al eliminar el usuario', {
-                    position: "top-right",
-                    autoClose: 5000,
-                  });
+                  showError('Error inesperado al eliminar el usuario');
                 }
               }}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
@@ -541,9 +471,9 @@ const UserManagement: React.FC = () => {
                               onClick={async () => {
                                 try {
                                   await dispatch(approveUser(pendingUser._id)).unwrap();
-                                  toast.success('Usuario aprobado exitosamente');
+                                  showSuccess('Usuario aprobado exitosamente');
                                 } catch (error) {
-                                  toast.error('Error al aprobar el usuario');
+                                  showError('Error al aprobar el usuario');
                                 }
                               }}
                               className="p-2 text-gray-400 hover:text-green-500 transition-colors duration-200 cursor-pointer"

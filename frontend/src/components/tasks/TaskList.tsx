@@ -10,6 +10,7 @@ import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
 import { formatDireccionToMapsUrl } from '../../utils/mapsUtils';
+import { showSuccess, showError } from '../../utils/toastUtils';
 
 // Las clases de botones se definen directamente en los componentes
 
@@ -128,22 +129,10 @@ const TaskList: React.FC = () => {
       await dispatch(createTask(taskData as any)).unwrap();
       resetForm();
       setShowCreateModal(false);
-      import('react-toastify').then(({ toast }) => {
-        toast.success('Tarea creada correctamente', {
-          position: "top-right",
-          autoClose: 3000,
-        });
-      });
-      
-      // Recargar las tareas
+      showSuccess('Tarea creada correctamente', { autoClose: 3000 });
       dispatch(fetchTasks(filters));
     } catch (error: any) {
-      import('react-toastify').then(({ toast }) => {
-        toast.error(`Error al crear la tarea: ${error.message || 'Error desconocido'}`, {
-          position: "top-right",
-          autoClose: 5000,
-        });
-      });
+      showError(`Error al crear la tarea: ${error.message || 'Error desconocido'}`);
     }
   };
 
@@ -165,12 +154,7 @@ const TaskList: React.FC = () => {
       await dispatch(updateTask({ id: editingTask._id, data: taskData as any })).unwrap();
       
       // Mostrar mensaje de éxito con toast
-      import('react-toastify').then(({ toast }) => {
-        toast.success('Tarea actualizada correctamente', {
-          position: "top-right",
-          autoClose: 3000,
-        });
-      });
+      showSuccess('Tarea actualizada correctamente', { autoClose: 3000 });
       
       // Cerrar el modal y resetear
       setShowCreateModal(false);
@@ -180,12 +164,7 @@ const TaskList: React.FC = () => {
       // Recargar las tareas
       dispatch(fetchTasks(filters));
     } catch (error: any) {
-      import('react-toastify').then(({ toast }) => {
-        toast.error(`Error al actualizar la tarea: ${error.message || 'Error desconocido'}`, {
-          position: "top-right",
-          autoClose: 5000,
-        });
-      });
+      showError(`Error al actualizar la tarea: ${error.message || 'Error desconocido'}`);
     }
   };
 
@@ -224,46 +203,31 @@ const TaskList: React.FC = () => {
                   closeToast?.();
                   try {
                     await dispatch(deleteTask(taskId)).unwrap();
-                    toast.success('Tarea eliminada correctamente', {
-                      position: "top-right",
-                      autoClose: 3000,
-                      hideProgressBar: false,
-                      closeOnClick: true,
-                      pauseOnHover: true,
-                      draggable: true,
-                      className:
-                        '!bg-green-50 dark:!bg-green-900/30 !text-green-800 dark:!text-green-200',
-                      bodyClassName: '!p-4',
-                    });
+                    showSuccess('Tarea eliminada correctamente', { autoClose: 3000 });
+                    dispatch(fetchTasks(filters));
                   } catch (error) {
                     console.error('Error deleting task:', error);
-                    toast.error('Error al eliminar la tarea', {
-                      position: "top-right",
-                      autoClose: 5000,
-                      hideProgressBar: false,
-                      closeOnClick: true,
-                      pauseOnHover: true,
-                      draggable: true,
-                    });
+                    showError('Error al eliminar la tarea');
                   }
                 }}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
               >
+                <Trash2 className="-ml-1 mr-2 h-4 w-4 inline" />
                 Eliminar
               </button>
             </div>
           </div>
         </div>
       );
-  
+
       toast(<CustomToast />, {
         position: "top-center",
         autoClose: false,
         closeButton: false,
         closeOnClick: false,
         draggable: false,
-        className: '!bg-transparent !p-0 !shadow-none', // toast contenedor transparente
-        bodyClassName: '!p-0',                          // sin padding extra
+        className: '!bg-transparent !shadow-none !p-0 !m-0 !w-auto',
+        bodyClassName: '!p-0 !m-0',
       });
     });
   };

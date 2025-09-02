@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTaskById, clearCurrentTask, deleteTask, updateTask } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
+import { showSuccess, showError } from '../../utils/toastUtils';
 import { format, parseISO } from 'date-fns';
-import { toast } from 'react-toastify';
 import type { User as UserType } from '../../types';
 import { es } from 'date-fns/locale';
 import {
@@ -127,11 +127,11 @@ const TaskDetails: React.FC = () => {
       })).unwrap();
       
       setShowEditModal(false);
-      toast.success('Tarea actualizada correctamente');
+      showSuccess('Tarea actualizada correctamente');
       dispatch(fetchTaskById(currentTask._id)); // Refresh task data
     } catch (error) {
-      toast.error('Error al actualizar la tarea');
       console.error('Error updating task:', error);
+      showError('Error al actualizar la tarea');
     }
   };
 
@@ -219,31 +219,11 @@ const TaskDetails: React.FC = () => {
                   closeToast?.();
                   try {
                     await dispatch(deleteTask(currentTask._id)).unwrap();
-                    toast.success('Tarea eliminada correctamente', {
-                      position: "top-right",
-                      autoClose: 3000,
-                      hideProgressBar: false,
-                      closeOnClick: true,
-                      pauseOnHover: true,
-                      draggable: true,
-                      className: '!bg-green-50 dark:!bg-green-900/30 !text-green-800 dark:!text-green-200',
-                      bodyClassName: '!p-4',
-                      progressClassName: '!bg-green-500/50'
-                    });
+                    showSuccess('Tarea eliminada correctamente');
                     navigate('/tasks');
                   } catch (error) {
-                    toast.error('Error al eliminar la tarea', {
-                      position: "top-right",
-                      autoClose: 3000,
-                      hideProgressBar: false,
-                      closeOnClick: true,
-                      pauseOnHover: true,
-                      draggable: true,
-                      className: '!bg-red-50 dark:!bg-red-900/30 !text-red-800 dark:!text-red-200',
-                      bodyClassName: '!p-4',
-                      progressClassName: '!bg-red-500/50'
-                    });
                     console.error('Error deleting task:', error);
+                    showError('Error al eliminar la tarea');
                   }
                 }}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
