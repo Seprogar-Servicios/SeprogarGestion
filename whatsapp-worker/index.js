@@ -465,11 +465,41 @@ async function sendToAPI(taskData) {
       'fechaEjecucion', 'franja_horaria', 'cliente', 'numeroTitular', 'direccion'
     ];
     
-    // Filtrar solo los campos permitidos
+    // Filtrar solo los campos permitidos y formatear fechas
     const datosLimpios = {};
     camposPermitidos.forEach(campo => {
       if (dataToSend[campo] !== undefined) {
-        datosLimpios[campo] = dataToSend[campo];
+        // Formatear fechaEjecucion si existe
+        if (campo === 'fechaEjecucion' && dataToSend[campo]) {
+          try {
+            // Si ya está en formato YYYY-MM-DD, mantenerlo
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dataToSend[campo])) {
+              datosLimpios[campo] = dataToSend[campo];
+            } 
+            // Si está en formato DD/MM/YYYY, convertirlo
+            else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dataToSend[campo])) {
+              const [day, month, year] = dataToSend[campo].split('/');
+              datosLimpios[campo] = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+            // Si es una fecha ISO o similar, formatearla a YYYY-MM-DD
+            else {
+              const date = new Date(dataToSend[campo]);
+              if (!isNaN(date.getTime())) {
+                datosLimpios[campo] = date.toISOString().split('T')[0];
+              } else {
+                logger.warn(`Formato de fecha no reconocido: ${dataToSend[campo]}`);
+                datosLimpios[campo] = dataToSend[campo];
+              }
+            }
+            logger.info(`Fecha de ejecución formateada: ${dataToSend[campo]} -> ${datosLimpios[campo]}`);
+          } catch (error) {
+            logger.error(`Error al formatear fechaEjecucion: ${error.message}`);
+            // En caso de error, mantener el valor original
+            datosLimpios[campo] = dataToSend[campo];
+          }
+        } else {
+          datosLimpios[campo] = dataToSend[campo];
+        }
       }
     });
     
