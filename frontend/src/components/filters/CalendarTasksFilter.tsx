@@ -118,7 +118,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
             <select
               value={selectedTecnico}
               onChange={(e) => setSelectedTecnico(e.target.value)}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-colors duration-200"
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-colors duration-200 cursor-pointer"
             >
               <option value="">{tecnicos.length > 0 ? 'Todos los técnicos' : 'No hay técnicos'}</option>
               {tecnicos.map((tecnico: any) => (
@@ -140,7 +140,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
             <select
               value={selectedEstado}
               onChange={(e) => setSelectedEstado(e.target.value)}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-3 pr-10 text-sm text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-colors duration-200 appearance-none"
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-3 pr-10 text-sm text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-colors duration-200 appearance-none cursor-pointer"
             >
               {estadoOptions.map((option) => (
                 <option key={option.value} value={option.value}>
