@@ -81,33 +81,33 @@ client.on('ready', async () => {
   logger.info('SESIÓN INICIADA CORRECTAMENTE - WHATSAPP CONECTADO');
   logger.info('===========================================');
   
-  // Aplicar permisos correctos a la carpeta de sesión
-  try {
-    const sessionPath = path.resolve('./.wwebjs_auth');
-    const command = `chmod -R 777 ${sessionPath}`;
-    require('child_process').execSync(command);
-    logger.info(`Permisos aplicados correctamente a: ${sessionPath}`);
-  } catch (error) {
-    logger.error(`Error al aplicar permisos: ${error.message}`);
-  }
+  // Mostrar información del entorno
+  logger.info(`Entorno: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`Nivel de logs: ${process.env.LOG_LEVEL || 'INFO'}`);
   
   // Mostrar información de los chats
   try {
+    logger.info('Obteniendo lista de chats...');
     const chats = await client.getChats();
     const groups = chats.filter(chat => chat.isGroup);
+    
     logger.info(`📱 Total de chats: ${chats.length}`);
     logger.info(`👥 Total de grupos: ${groups.length}`);
     
     if (groups.length > 0) {
       logger.info('📋 Grupos disponibles:');
-      groups.forEach(group => {
-        logger.info(`  - "${group.name}"`);
+      groups.forEach((group, index) => {
+        const isAllowed = GRUPOS_PERMITIDOS.includes(group.name);
+        logger.info(`  ${index + 1}. "${group.name}" ${isAllowed ? '✅' : '❌'}`);
       });
     }
     
     logger.info('🔍 Escuchando mensajes...');
+    logger.info('===========================================');
+    
   } catch (error) {
     logger.error('Error al obtener información de chats:', error);
+    logger.error('Stack trace:', error.stack);
   }
 });
 
