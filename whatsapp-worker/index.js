@@ -8,13 +8,8 @@ const path = require('path');
 // Importar los parsers desde el módulo dedicado
 const { parsePedidoMessage, parseTareaMessage, parseExpedienteMessage } = require('./src/parsers');
 
-// Configuración de logger simple
-const logger = {
-  info: (message, ...args) => console.log(`[INFO] ${message}`, ...args),
-  warn: (message, ...args) => console.warn(`[WARN] ${message}`, ...args),
-  error: (message, ...args) => console.error(`[ERROR] ${message}`, ...args),
-  debug: (message, ...args) => console.debug(`[DEBUG] ${message}`, ...args)
-};
+// Importar el logger personalizado
+const logger = require('./src/utils/logger');
 
 // Lista de grupos permitidos desde variables de entorno
 const GRUPOS_PERMITIDOS = process.env.GRUPOS_PERMITIDOS 
