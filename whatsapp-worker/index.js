@@ -125,7 +125,9 @@ function setupEventHandlers() {
 async function logIncomingMessage(message) {
   const chat = await message.getChat();
   if (!chat.isGroup) return;
-  logger.debug(`MENSAJE RECIBIDO [GRUPO: ${chat.name}] De: ${message.from} Contenido: ${message.body || '<SIN TEXTO>'}`);
+  logger.debug(
+    `MENSAJE RECIBIDO [GRUPO: ${chat.name}] De: ${message.from} Contenido: ${message.body || '<SIN TEXTO>'}`
+  );
 }
 
 // === Procesamiento de mensajes ===
@@ -133,11 +135,9 @@ async function processMessage(message) {
   try {
     const chat = await message.getChat();
 
-    // Solo procesar mensajes de grupos permitidos
     if (!chat.isGroup) return;
     const groupName = chat.name.trim();
-    const isAllowed = GRUPOS_PERMITIDOS.includes(groupName);
-    if (!isAllowed) return;
+    if (!GRUPOS_PERMITIDOS.includes(groupName)) return;
 
     logger.info('=== NUEVO MENSAJE ===');
     logger.info(`De: ${message.from}`);
@@ -181,14 +181,18 @@ async function processMessage(message) {
     }
 
     const success = await sendToAPI(taskData);
-    if (success) logger.info(`Tarea #${taskData.numero} creada exitosamente`);
-    else logger.error('Error al crear la tarea en la API');
+    if (success) {
+      logger.info(`Tarea #${taskData.numero} creada exitosamente`);
+    } else {
+      logger.error('Error al crear la tarea en la API');
+    }
+
+    // Separador solo cuando hay un procesamiento válido
+    logger.info('='.repeat(50));
 
   } catch (error) {
     logger.error('Error crítico al procesar mensaje:', error);
     logger.error('Stack trace:', error.stack);
-  } finally {
-    logger.info('='.repeat(50));
   }
 }
 
@@ -207,21 +211,15 @@ async function checkDuplicateTask(numero) {
 
 async function sendToAPI(taskData) {
   try {
-    // Usar la URL específica para crear tareas desde el worker
     const createTaskUrl = process.env.CREATE_TASK_URL || 'http://localhost:3000/api/worker/tareas';
     const apiKey = process.env.API_KEY || '';
-    const axios = require('axios');
 
-    // Crear una copia de los datos para no modificar el objeto original
     const dataToSend = { ...taskData };
-
-    // Lista de campos permitidos según el esquema de validación del backend
     const camposPermitidos = [
       'numero', 'titulo', 'descripcion', 'estado', 'tecnicos',
       'fechaEjecucion', 'franja_horaria', 'cliente', 'numeroTitular', 'direccion'
     ];
 
-    // Filtrar solo los campos permitidos
     const datosLimpios = {};
     camposPermitidos.forEach(campo => {
       if (dataToSend[campo] !== undefined) {
@@ -229,7 +227,6 @@ async function sendToAPI(taskData) {
       }
     });
 
-    // Registrar los campos eliminados
     const camposEliminados = Object.keys(dataToSend).filter(campo => !camposPermitidos.includes(campo));
     if (camposEliminados.length > 0) {
       logger.info(`Campos eliminados para cumplir con la validación de la API: ${camposEliminados.join(', ')}`);
@@ -237,7 +234,6 @@ async function sendToAPI(taskData) {
 
     logger.info(`Enviando datos a la API: ${createTaskUrl}`);
 
-    // Configurar la solicitud con axios
     const response = await axios.post(createTaskUrl, datosLimpios, {
       headers: {
         'Content-Type': 'application/json',
@@ -249,14 +245,11 @@ async function sendToAPI(taskData) {
     return true;
   } catch (error) {
     if (error.response) {
-      // La solicitud fue hecha y el servidor respondió con un código de estado fuera del rango 2xx
       logger.error(`Error al crear tarea en la API: ${error.response.status}`);
       logger.error(`Detalles: ${JSON.stringify(error.response.data)}`);
     } else if (error.request) {
-      // La solicitud fue hecha pero no se recibió respuesta
       logger.error('Error: No se recibió respuesta de la API');
     } else {
-      // Ocurrió un error al configurar la solicitud
       logger.error('Error al configurar la solicitud:', error.message);
     }
     return false;

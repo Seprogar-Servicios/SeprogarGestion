@@ -109,52 +109,79 @@ function parsePedidoMessage(message) {
     let fechaEjecucion = null;
     let franja_horaria = null;
     
-    // Buscar el patrón de TURNO en cualquier parte del mensaje - extremadamente flexible
-    // Primero intentar con el formato estándar
-    let turnoMatch = message.match(/TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i);
-    
-    // Si no encuentra el formato estándar, intentar con un formato alternativo
-    if (!turnoMatch) {
-      turnoMatch = message.match(/TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*-[^\n]*(\d{1,2}:\d{2})/i);
-    }
-    
-    // Si aún no encuentra, buscar cualquier patrón de fecha y hora que pueda ser un turno
-    if (!turnoMatch) {
-      turnoMatch = message.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i);
-    }
-    
-    // Formato específico de producción: "franja horaria 8 a 12 hs"
-    if (!turnoMatch) {
-      const turnoFranjaMatch = message.match(/TURNO[^\n]*fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+franja\s+horaria\s+(\d{1,2})\s+a\s+(\d{1,2})\s+hs/i);
-      if (turnoFranjaMatch) {
-        // Convertir fecha de formato DD/MM/YYYY a YYYY-MM-DD
-        const fechaParts = turnoFranjaMatch[1].split('/');
-        if (fechaParts.length === 3) {
-          const dia = fechaParts[0].padStart(2, '0');
-          const mes = fechaParts[1].padStart(2, '0');
-          const anio = fechaParts[2];
-          fechaEjecucion = `${anio}-${mes}-${dia}`;
+    // Intentar diferentes formatos de fecha y hora
+    const datePatterns = [
+      // Formato 1: TURNO confirmado fecha DD/MM/AAAA HH:MM-HH:MM
+      {
+        pattern: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
+        handler: (match) => {
+          const [_, date, startTime, endTime] = match;
+          const [day, month, year] = date.split('/');
+          return {
+            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+            time: `${startTime} - ${endTime}`
+          };
         }
-        
-        // Extraer franja horaria en formato "8 a 12 hs"
-        const horaInicio = turnoFranjaMatch[2].padStart(2, '0') + ':00';
-        const horaFin = turnoFranjaMatch[3].padStart(2, '0') + ':00';
-        franja_horaria = `${horaInicio} - ${horaFin}`;
+      },
+      // Formato 2: TURNO...fecha...DD/MM/AAAA...HH:MM...-...HH:MM
+      {
+        pattern: /TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*-[^\n]*(\d{1,2}:\d{2})/i,
+        handler: (match) => {
+          const [_, date, startTime, endTime] = match;
+          const [day, month, year] = date.split('/');
+          return {
+            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+            time: `${startTime} - ${endTime}`
+          };
+        }
+      },
+      // Formato 3: DD/MM/AAAA HH:MM-HH:MM
+      {
+        pattern: /(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
+        handler: (match) => {
+          const [_, date, startTime, endTime] = match;
+          const [day, month, year] = date.split('/');
+          return {
+            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+            time: `${startTime} - ${endTime}`
+          };
+        }
+      },
+      // Formato 4: TURNO...fecha DD/MM/AAAA franja horaria H a H hs
+      {
+        pattern: /TURNO[^\n]*fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+franja\s+horaria\s+(\d{1,2})\s+a\s+(\d{1,2})\s+hs/i,
+        handler: (match) => {
+          const [_, date, startHour, endHour] = match;
+          const [day, month, year] = date.split('/');
+          return {
+            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+            time: `${startHour.padStart(2, '0')}:00 - ${endHour.padStart(2, '0')}:00`
+          };
+        }
+      },
+      // Formato 5: DD/MM DE H A H HS (nuevo formato)
+      {
+        pattern: /(\d{1,2})\s*\/\s*(\d{1,2})\s+DE\s+(\d+)\s+A\s+(\d+)\s+HS/i,
+        handler: (match) => {
+          const [_, day, month, startHour, endHour] = match;
+          const year = new Date().getFullYear();
+          return {
+            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+            time: `${startHour.padStart(2, '0')}:00 - ${endHour.padStart(2, '0')}:00`
+          };
+        }
       }
-    }
-    
-    if (turnoMatch) {
-      // Convertir fecha de formato DD/MM/YYYY a YYYY-MM-DD
-      const fechaParts = turnoMatch[1].split('/');
-      if (fechaParts.length === 3) {
-        const dia = fechaParts[0].padStart(2, '0');
-        const mes = fechaParts[1].padStart(2, '0');
-        const anio = fechaParts[2];
-        fechaEjecucion = `${anio}-${mes}-${dia}`;
+    ];
+
+    // Probar cada patrón hasta encontrar una coincidencia
+    for (const { pattern, handler } of datePatterns) {
+      const match = message.match(pattern);
+      if (match) {
+        const result = handler(match);
+        fechaEjecucion = result.date;
+        franja_horaria = result.time;
+        break;
       }
-      
-      // Extraer franja horaria
-      franja_horaria = `${turnoMatch[2]} - ${turnoMatch[3]}`;
     }
     
     // Crear objeto de tarea con tipos garantizados
