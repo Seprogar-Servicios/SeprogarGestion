@@ -123,34 +123,26 @@ function setupEventHandlers() {
 
 // === Logging de mensajes entrantes ===
 async function logIncomingMessage(message) {
-  if (message.fromMe) return;
   const chat = await message.getChat();
-  const groupInfo = chat.isGroup ? `[GRUPO: ${chat.name}]` : '[PRIVADO]';
-  logger.debug(`MENSAJE RECIBIDO ${groupInfo} De: ${message.from} Contenido: ${message.body || '<SIN TEXTO>'}`);
+  if (!chat.isGroup) return;
+  logger.debug(`MENSAJE RECIBIDO [GRUPO: ${chat.name}] De: ${message.from} Contenido: ${message.body || '<SIN TEXTO>'}`);
 }
 
 // === Procesamiento de mensajes ===
 async function processMessage(message) {
   try {
-    if (message.fromMe) return;
-
     const chat = await message.getChat();
+
+    // Solo procesar mensajes de grupos permitidos
+    if (!chat.isGroup) return;
+    const groupName = chat.name.trim();
+    const isAllowed = GRUPOS_PERMITIDOS.includes(groupName);
+    if (!isAllowed) return;
 
     logger.info('=== NUEVO MENSAJE ===');
     logger.info(`De: ${message.from}`);
+    logger.info(`Grupo: ${groupName}`);
     logger.info(`Contenido: ${message.body || '<SIN TEXTO>'}`);
-    logger.info(`Tipo de chat: ${chat.isGroup ? 'GRUPO' : 'PRIVADO'}`);
-    logger.info(`Nombre del grupo: "${chat.name || '<sin nombre>'}"`);
-
-    if (!chat.isGroup) {
-      logger.info('Mensaje fuera de grupo, ignorando...');
-      return;
-    }
-
-    const groupName = chat.name.trim();
-    const isAllowed = GRUPOS_PERMITIDOS.map(g => g.trim()).includes(groupName);
-    logger.info(`¿Grupo permitido?: ${isAllowed ? '✅' : '❌'}`);
-    if (!isAllowed) return;
 
     if (!message.body || message.body.trim() === '') {
       logger.info('Mensaje vacío o no texto, ignorando...');
@@ -163,15 +155,12 @@ async function processMessage(message) {
 
     if (cleanContent.startsWith('Pedido')) {
       messageType = 'pedido';
-      logger.info('Detectado mensaje tipo Pedido');
       taskData = parsePedidoMessage(message.body);
     } else if (cleanContent.startsWith('TAREA:')) {
       messageType = 'tarea';
-      logger.info('Detectado mensaje tipo TAREA');
       taskData = parseTareaMessage(message.body);
     } else if (cleanContent.startsWith('Expediente:')) {
       messageType = 'expediente';
-      logger.info('Detectado mensaje tipo Expediente');
       taskData = parseExpedienteMessage(message.body);
     } else {
       logger.info('Formato de mensaje no reconocido, ignorando...');
