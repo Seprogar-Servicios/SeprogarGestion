@@ -207,15 +207,58 @@ async function checkDuplicateTask(numero) {
 
 async function sendToAPI(taskData) {
   try {
-    const url = process.env.CREATE_TASK_URL;
+    // Usar la URL específica para crear tareas desde el worker
+    const createTaskUrl = process.env.CREATE_TASK_URL || 'http://localhost:3000/api/worker/tareas';
     const apiKey = process.env.API_KEY || '';
-    const response = await axios.post(url, taskData, {
-      headers: { Authorization: `Bearer ${apiKey}` },
+    const axios = require('axios');
+
+    // Crear una copia de los datos para no modificar el objeto original
+    const dataToSend = { ...taskData };
+
+    // Lista de campos permitidos según el esquema de validación del backend
+    const camposPermitidos = [
+      'numero', 'titulo', 'descripcion', 'estado', 'tecnicos',
+      'fechaEjecucion', 'franja_horaria', 'cliente', 'numeroTitular', 'direccion'
+    ];
+
+    // Filtrar solo los campos permitidos
+    const datosLimpios = {};
+    camposPermitidos.forEach(campo => {
+      if (dataToSend[campo] !== undefined) {
+        datosLimpios[campo] = dataToSend[campo];
+      }
     });
-    logger.info(`Tarea enviada, ID: ${response.data?._id || 'desconocido'}`);
+
+    // Registrar los campos eliminados
+    const camposEliminados = Object.keys(dataToSend).filter(campo => !camposPermitidos.includes(campo));
+    if (camposEliminados.length > 0) {
+      logger.info(`Campos eliminados para cumplir con la validación de la API: ${camposEliminados.join(', ')}`);
+    }
+
+    logger.info(`Enviando datos a la API: ${createTaskUrl}`);
+
+    // Configurar la solicitud con axios
+    const response = await axios.post(createTaskUrl, datosLimpios, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+
+    logger.info(`Tarea creada exitosamente en la API con ID: ${response.data._id || response.data.id || 'desconocido'}`);
     return true;
-  } catch (err) {
-    logger.error('Error al enviar tarea:', err.message);
+  } catch (error) {
+    if (error.response) {
+      // La solicitud fue hecha y el servidor respondió con un código de estado fuera del rango 2xx
+      logger.error(`Error al crear tarea en la API: ${error.response.status}`);
+      logger.error(`Detalles: ${JSON.stringify(error.response.data)}`);
+    } else if (error.request) {
+      // La solicitud fue hecha pero no se recibió respuesta
+      logger.error('Error: No se recibió respuesta de la API');
+    } else {
+      // Ocurrió un error al configurar la solicitud
+      logger.error('Error al configurar la solicitud:', error.message);
+    }
     return false;
   }
 }
