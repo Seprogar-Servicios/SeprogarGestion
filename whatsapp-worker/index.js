@@ -5,57 +5,41 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-// Importar los parsers desde el módulo dedicado
+// Parsers
 const { parsePedidoMessage, parseTareaMessage, parseExpedienteMessage } = require('./src/parsers');
-
-// Importar el logger personalizado
 const logger = require('./src/utils/logger');
 
-// Lista de grupos permitidos desde variables de entorno
-const GRUPOS_PERMITIDOS = process.env.GRUPOS_PERMITIDOS 
-  ? process.env.GRUPOS_PERMITIDOS.split(',').map(grupo => grupo.trim())
+// Grupos permitidos
+const GRUPOS_PERMITIDOS = process.env.GRUPOS_PERMITIDOS
+  ? process.env.GRUPOS_PERMITIDOS.split(',').map((g) => g.trim())
   : [];
 
 logger.info('Iniciando servicio de WhatsApp...');
 logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
 
-// Configuración de ruta para la autenticación local
+// === Autenticación local ===
 const AUTH_FOLDER = path.join(__dirname, '.wwebjs_auth');
-
-// Crear la carpeta de autenticación si no existe
 if (!fs.existsSync(AUTH_FOLDER)) {
   fs.mkdirSync(AUTH_FOLDER, { recursive: true });
   logger.info(`✅ Carpeta de autenticación creada en: ${AUTH_FOLDER}`);
-} else {
-  logger.info(`✅ Carpeta de autenticación encontrada en: ${AUTH_FOLDER}`);
-  
-  // Verificar permisos de la carpeta
-  try {
-    const testFile = path.join(AUTH_FOLDER, 'test-permiso.txt');
-    fs.writeFileSync(testFile, 'test');
-    fs.unlinkSync(testFile);
-    logger.info('✅ Permisos de escritura verificados correctamente');
-  } catch (error) {
-    logger.error('❌ Error de permisos en la carpeta de autenticación:', error.message);
-    process.exit(1);
-  }
 }
 
-// Configuración del cliente con reintentos
+// === Cliente ===
 let client;
 let initializationAttempts = 0;
 const MAX_INIT_ATTEMPTS = 3;
 
 function initializeClient() {
   try {
-    logger.info('\n' + '='.repeat(60));
+    logger.info('='.repeat(60));
     logger.info('🚀 INICIANDO CLIENTE WHATSAPP');
     logger.info('='.repeat(60));
-    logger.info(`📂 Ruta de autenticación: ${path.join(__dirname, '.wwebjs_auth')}`);
-    logger.info(`🔌 Navegador: ${process.env.BROWSER_PATH || 'predeterminado'}`);
-    logger.info(`🔄 Intento de inicialización: ${initializationAttempts + 1}/${MAX_INIT_ATTEMPTS}`);
-    
+
     client = new Client({
+      authStrategy: new LocalAuth({
+        dataPath: AUTH_FOLDER,
+        clientId: 'futurgas-worker',
+      }),
       puppeteer: {
         headless: true,
         args: [
@@ -67,598 +51,169 @@ function initializeClient() {
           '--no-zygote',
           '--single-process',
           '--disable-gpu',
-          '--disable-extensions',
-          '--disable-software-rasterizer',
-          '--disable-features=IsolateOrigins,site-per-process',
-          '--disable-web-security',
-          '--disable-site-isolation-trials'
         ],
         executablePath: process.env.BROWSER_PATH || undefined,
-        ignoreDefaultArgs: ['--disable-extensions'],
-        timeout: 0
-      },
-      authStrategy: new LocalAuth({
-        dataPath: AUTH_FOLDER,
-        clientId: 'futurgas-worker',
-        dataPathClient: 'session',
-        dataPathServer: 'tokens',
-        dataPathCustomToken: 'custom-tokens',
-        dataPathDefaultToken: 'default-tokens',
-        dataPathPairingCode: 'pairing-codes',
-        dataPathTakeover: 'takeover',
-        dataPathWebhook: 'webhooks',
-        dataPathMedia: 'media',
-        dataPathAuthTokens: 'auth-tokens',
-        dataPathAuthOptions: 'auth-options',
-        dataPathAuthState: 'auth-state',
-        dataPathAuthInfo: 'auth-info',
-        dataPathAuthTokens: 'auth-tokens',
-        dataPathAuthOptions: 'auth-options',
-        dataPathAuthState: 'auth-state',
-        dataPathAuthInfo: 'auth-info',
-        dataPathAuthTokens: 'auth-tokens',
-        dataPathAuthOptions: 'auth-options',
-        dataPathAuthState: 'auth-state',
-        dataPathAuthInfo: 'auth-info',
-        puppeteer: {
-          headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
-        }
-      }),
-      webVersionCache: {
-        type: 'remote',
-        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
       },
       takeoverOnConflict: true,
       takeoverTimeoutMs: 30000,
-      qrTimeout: 0, // Desactiva el timeout del QR
+      qrTimeout: 0,
       restartOnAuthFail: true,
     });
-    
+
     setupEventHandlers();
-    
-    client.initialize().catch(error => {
-      logger.error('❌ Error al inicializar el cliente:', error);
-      handleInitializationError(error);
-    });
-    
-  } catch (error) {
-    logger.error('❌ Error al crear el cliente:', error);
-    handleInitializationError(error);
+    client.initialize().catch((err) => handleInitializationError(err));
+  } catch (err) {
+    handleInitializationError(err);
   }
 }
 
 function handleInitializationError(error) {
   initializationAttempts++;
-  
+  logger.error('❌ Error al inicializar el cliente:', error);
+
   if (initializationAttempts >= MAX_INIT_ATTEMPTS) {
-    logger.error(`\n${'❌'.repeat(30)}`);
-    logger.error('SE ALCANZÓ EL MÁXIMO DE INTENTOS DE INICIALIZACIÓN');
-    logger.error('Por favor, verifica la configuración y reinicia el servicio');
-    logger.error(`${'❌'.repeat(30)}\n`);
+    logger.error('Se alcanzó el máximo de intentos. Verifica configuración.');
     return;
   }
-  
-  const retryDelay = initializationAttempts * 5000; // 5s, 10s, 15s...
-  logger.warn(`Reintentando en ${retryDelay/1000} segundos... (${initializationAttempts}/${MAX_INIT_ATTEMPTS})`);
-  
-  setTimeout(() => {
-    logger.info('\n' + '🔄'.repeat(30));
-    logger.info(`REINTENTANDO INICIALIZACIÓN (${initializationAttempts + 1}/${MAX_INIT_ATTEMPTS})`);
-    logger.info('🔄'.repeat(30) + '\n');
-    initializeClient();
-  }, retryDelay);
+
+  const retryDelay = initializationAttempts * 5000;
+  logger.warn(`Reintentando en ${retryDelay / 1000} segundos...`);
+  setTimeout(initializeClient, retryDelay);
 }
 
 function setupEventHandlers() {
-  // Evento cuando se genera el código QR
   client.on('qr', (qr) => {
-    logger.info('\n' + '='.repeat(60));
-    logger.info('📱 CÓDIGO QR GENERADO');
-    logger.info('Escanea este código con WhatsApp Web');
-    logger.info('='.repeat(60));
+    logger.info('📱 Escanea este QR para iniciar sesión:');
     qrcode.generate(qr, { small: true });
-    logger.info('='.repeat(60) + '\n');
   });
-  
-  // Evento cuando se autentica correctamente
+
   client.on('authenticated', () => {
-    logger.info('\n' + '✅'.repeat(30));
-    logger.info('✅ AUTENTICACIÓN EXITOSA');
-    logger.info('✅ SESIÓN INICIADA CORRECTAMENTE');
-    logger.info('✅'.repeat(30) + '\n');
+    logger.info('✅ Autenticación exitosa');
   });
-  
-  // Evento cuando el cliente está listo
+
   client.on('ready', async () => {
-    logger.info('\n' + '🚀'.repeat(30));
-    logger.info('CLIENTE LISTO');
-    logger.info(`Hora de inicio: ${new Date().toLocaleString()}`);
-    logger.info('🚀'.repeat(30) + '\n');
-    
+    logger.info('🚀 Cliente listo y conectado a WhatsApp');
     try {
       const chats = await client.getChats();
-      const groups = chats.filter(chat => chat.isGroup);
-      
+      const groups = chats.filter((c) => c.isGroup);
       logger.info(`📱 Chats cargados: ${chats.length}`);
-      logger.info(`👥 Grupos disponibles: ${groups.length}`);
-      
-      if (groups.length > 0) {
-        logger.info('\n📋 LISTA DE GRUPOS:');
-        groups.forEach((group, index) => {
-          const isAllowed = GRUPOS_PERMITIDOS.includes(group.name);
-          logger.info(`  ${index + 1}. "${group.name}" ${isAllowed ? '✅' : '❌'}`);
-        });
-      }
-      
-      logger.info('\n' + '👂 ESCUCHANDO MENSAJES...');
-      
-    } catch (error) {
-      logger.error('Error al cargar los chats:', error);
+      logger.info(`👥 Grupos detectados: ${groups.length}`);
+      groups.forEach((g, i) => {
+        const allowed = GRUPOS_PERMITIDOS.includes(g.name) ? '✅' : '❌';
+        logger.info(` ${i + 1}. ${g.name} ${allowed}`);
+      });
+      logger.info('👂 Escuchando mensajes...');
+    } catch (err) {
+      logger.error('Error al cargar chats:', err);
     }
   });
-  
-  // Otros manejadores de eventos...
-}
 
-// Verificar si hay una sesión guardada
-const sessionFile = path.join(AUTH_FOLDER, 'session', 'session.json');
-const hasExistingSession = fs.existsSync(sessionFile);
+  client.on('message_create', processMessage);
+  client.on('message', logIncomingMessage);
 
-if (hasExistingSession) {
-  logger.info('\n' + '🔍'.repeat(30));
-  logger.info('SESIÓN EXISTENTE DETECTADA');
-  logger.info('Intentando restaurar la sesión...');
-  logger.info('🔍'.repeat(30) + '\n');
-} else {
-  logger.info('\n' + '⚠️'.repeat(30));
-  logger.info('NO SE ENCONTRÓ NINGUNA SESIÓN GUARDADA');
-  logger.info('Se generará un nuevo código QR para autenticación');
-  logger.info('⚠️'.repeat(30) + '\n');
-}
-
-// Inicializar el cliente
-initializeClient();
-
-// Manejar cierre limpio del proceso
-process.on('SIGINT', async () => {
-  logger.info('\n' + '🛑'.repeat(30));
-  logger.info('RECIBIDA SEÑAL DE TERMINACIÓN');
-  logger.info('Cerrando sesión de WhatsApp...');
-  
-  try {
-    if (client) {
-      // Guardar la sesión antes de cerrar
-      await client.pupPage?.evaluate(() => localStorage.setItem('last-window-state', 'saved'));
-      await client.destroy();
-    }
-    logger.info('✅ Sesión cerrada correctamente');
-    process.exit(0);
-  } catch (error) {
-    logger.error('❌ Error al cerrar la sesión:', error);
+  client.on('auth_failure', (err) => {
+    logger.error('🔥 Error crítico de autenticación:', err.message);
+    logger.error('Elimina la carpeta .wwebjs_auth y vuelve a iniciar.');
     process.exit(1);
-  }
-});
+  });
 
-// Evento cuando se genera el código QR para autenticación
-client.on('qr', (qr) => {
-  logger.info('===========================================');
-  logger.info('QR CODE GENERADO - NECESITA ESCANEAR CON WHATSAPP');
-  logger.info('===========================================');
-  
-  // Mostrar QR grande en ASCII en los logs
-  qrcode.generate(qr, { small: false });
-  
-  // También mostrar el string del QR para usar en generadores online
-  logger.info('STRING DEL QR (copia y pega en qr-code-generator.com):');
-  logger.info(qr);
-  logger.info('===========================================');
-});
+  client.on('disconnected', (reason) => {
+    logger.warn(`Cliente desconectado: ${reason}`);
+    setTimeout(() => {
+      logger.info('Intentando reconectar...');
+      initializeClient();
+    }, 5000);
+  });
+}
 
-// Evento cuando el cliente está listo
-client.on('ready', async () => {
-  logger.info('===========================================');
-  logger.info('SESIÓN INICIADA CORRECTAMENTE - WHATSAPP CONECTADO');
-  logger.info('===========================================');
-  
-  // Mostrar información del entorno
-  logger.info(`Entorno: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`Nivel de logs: ${process.env.LOG_LEVEL || 'INFO'}`);
-  
-  // Mostrar información de los chats
+async function logIncomingMessage(message) {
+  if (message.fromMe) return;
+  const chat = await message.getChat();
+  const groupInfo = chat.isGroup ? `[GRUPO: ${chat.name}]` : '[PRIVADO]';
+  logger.debug(`MENSAJE RECIBIDO ${groupInfo} De: ${message.from} Contenido: ${message.body}`);
+}
+
+async function processMessage(message) {
   try {
-    logger.info('Obteniendo lista de chats...');
-    const chats = await client.getChats();
-    const groups = chats.filter(chat => chat.isGroup);
-    
-    logger.info(` Total de chats: ${chats.length}`);
-    logger.info(` Total de grupos: ${groups.length}`);
-    
-    if (groups.length > 0) {
-      logger.info(' Grupos disponibles:');
-      groups.forEach((group, index) => {
-        const isAllowed = GRUPOS_PERMITIDOS.includes(group.name);
-        logger.info(`  ${index + 1}. "${group.name}" ${isAllowed ? '✅' : '❌'}`);
-      });
-    }
-    
-    logger.info(' Escuchando mensajes...');
-    logger.info('===========================================');
-    
-  } catch (error) {
-    logger.error('Error al obtener información de chats:', error);
-    logger.error('Stack trace:', error.stack);
-  }
-});
-
-// Evento principal para procesar mensajes
-client.on('message_create', async (message) => {
-  try {
-    // Verificar si el mensaje es del bot para evitar bucles
     if (message.fromMe) return;
 
-    logger.info('\n=== NUEVO MENSAJE ===');
-    logger.info(` De: ${message.from}`);
-    logger.info(` Contenido: ${message.body?.substring(0, 100) || 'Sin contenido'}...`);
-    
-    // Verificar si el mensaje viene de un grupo
     const chat = await message.getChat();
-    
-    if (!chat.isGroup) {
-      logger.info(' Mensaje recibido fuera de un grupo, ignorando...');
-      return;
-    }
-    
+    if (!chat.isGroup) return;
+
     const groupName = chat.name;
-    logger.info(` Grupo: "${groupName}"`);
-    
-    // Verificar si el grupo está permitido
     if (!GRUPOS_PERMITIDOS.includes(groupName)) {
-      logger.info(` Grupo "${groupName}" no está en la lista de permitidos`);
-      logger.debug(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
+      logger.info(`Grupo "${groupName}" no está permitido`);
       return;
     }
-    
-    logger.info(` Grupo permitido detectado, procesando mensaje...`);
-    
-    const messageContent = message.body.trim();
-    let cleanContent = messageContent;
-    
-    // Limpieza del contenido
-    cleanContent = cleanContent
-      .replace(/\*/g, '')
-      .replace(/^["']|["']$/g, '')
-      .trim();
-    
-    logger.info(` Contenido limpio: ${cleanContent.substring(0, 100)}...`);
-    
-    // Determinar el tipo de mensaje
+
+    const cleanContent = message.body.replace(/\*/g, '').trim();
     let taskData = null;
     let messageType = 'desconocido';
-    
-    if (cleanContent.trim().startsWith('Pedido')) {
+
+    if (cleanContent.startsWith('Pedido')) {
       messageType = 'pedido';
-      logger.info(' Detectado formato de Pedido');
-      taskData = parsePedidoMessage(messageContent);
-    } 
-    else if (cleanContent.trim().startsWith('TAREA:')) {
+      taskData = parsePedidoMessage(message.body);
+    } else if (cleanContent.startsWith('TAREA:')) {
       messageType = 'tarea';
-      logger.info(' Detectado formato de TAREA');
-      taskData = parseTareaMessage(messageContent);
-    } 
-    else if (cleanContent.trim().startsWith('Expediente:')) {
+      taskData = parseTareaMessage(message.body);
+    } else if (cleanContent.startsWith('Expediente:')) {
       messageType = 'expediente';
-      logger.info(' Detectado formato de Expediente');
-      taskData = parseExpedienteMessage(messageContent);
-    } 
-    else {
-      logger.info(' Formato de mensaje no reconocido');
+      taskData = parseExpedienteMessage(message.body);
+    } else {
+      logger.info('Formato de mensaje no reconocido');
       return;
     }
-    
-    // Verificar si se pudo parsear el mensaje
+
     if (!taskData) {
-      logger.error(' No se pudo extraer información de la tarea');
+      logger.error('No se pudo parsear el mensaje');
       return;
     }
-    
-    logger.info(` Datos extraídos (${messageType}):`, JSON.stringify(taskData, null, 2));
-    
-    // Verificar duplicados
+
     const isDuplicate = await checkDuplicateTask(taskData.numero);
     if (isDuplicate) {
-      logger.warn(` Tarea #${taskData.numero} ya existe, ignorando...`);
+      logger.warn(`Tarea #${taskData.numero} ya existe, ignorando...`);
       return;
     }
-    
-    // Enviar a la API
-    logger.info(' Enviando tarea a la API...');
+
     const success = await sendToAPI(taskData);
-    
-    if (success) {
-      logger.info(` Tarea #${taskData.numero} creada exitosamente`);
-    } else {
-      logger.error(' Error al crear la tarea en la API');
-    }
-    
-  } catch (error) {
-    logger.error(' Error crítico al procesar mensaje:', error);
-    logger.error('Stack trace:', error.stack);
-  } finally {
-    logger.info('='.repeat(50) + '\n');
-  }
-});
-
-// Manejar eventos de mensajes entrantes (solo para logging)
-client.on('message', async (message) => {
-  try {
-    if (message.fromMe) return;
-    
-    const chat = await message.getChat();
-    const groupInfo = chat.isGroup ? `[GRUPO: ${chat.name}]` : '[PRIVADO]';
-    
-    logger.debug(`\n MENSAJE RECIBIDO ${groupInfo}`);
-    logger.debug(` De: ${message.from}`);
-    logger.debug(` Contenido: ${message.body?.substring(0, 50) || 'Sin contenido'}...`);
-    
-  } catch (error) {
-    logger.error('Error en evento message:', error);
-  }
-});
-
-// Manejar errores de autenticación
-client.on('auth_failure', (error) => {
-  logger.error('\n' + '🔥'.repeat(50));
-  logger.error(' ERROR CRÍTICO DE AUTENTICACIÓN');
-  logger.error('🔥'.repeat(50));
-  logger.error('Se ha producido un error al autenticar con WhatsApp Web');
-  logger.error(`Mensaje: ${error.message}`);
-  
-  if (error.message.includes('session')) {
-    logger.error('\n💡 Posible solución:');
-    logger.error('1. Elimina la carpeta .wwebjs_auth');
-    logger.error('2. Reinicia la aplicación');
-    logger.error('3. Escanea el código QR nuevamente');
-  }
-  
-  logger.error('\nStack trace:');
-  logger.error(error.stack || 'No hay stack trace disponible');
-  logger.error('🔥'.repeat(50) + '\n');
-  
-  // Forzar salida con código de error
-  process.exit(1);
-});
-
-// Manejar desconexiones
-client.on('disconnected', (reason) => {
-  logger.warn(`Cliente desconectado: ${reason}`);
-  // Reiniciar el cliente después de un tiempo
-  setTimeout(() => {
-    logger.info('Intentando reconectar...');
-    client.initialize();
-  }, 5000);
-});
-
-// Función para extraer y formatear la fecha de un texto de turno
-function extraerFechaDelTurno(turnoText) {
-  try {
-    // Buscar patrones de fecha en el texto del turno (dd/mm/yyyy o dd-mm-yyyy)
-    const fechaMatch = turnoText.match(/([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
-    
-    if (!fechaMatch) {
-      logger.warn(`No se encontró fecha en el texto del turno: ${turnoText}`);
-      return null;
-    }
-    
-    // Extraer la fecha encontrada
-    const fechaStr = fechaMatch[1];
-    const fechaParts = fechaStr.split(/[\/\-]/);
-    
-    if (fechaParts.length !== 3) {
-      logger.warn(`Formato de fecha incorrecto: ${fechaStr}`);
-      return null;
-    }
-    
-    let dia = parseInt(fechaParts[0], 10);
-    let mes = parseInt(fechaParts[1], 10) - 1; // Meses en JS son 0-11
-    let anio = parseInt(fechaParts[2], 10);
-    
-    // Si el año tiene 2 dígitos, asumimos 20XX
-    if (anio < 100) {
-      anio += 2000;
-    }
-    
-    // Crear fecha con la zona horaria local
-    const fecha = new Date(anio, mes, dia);
-    
-    if (isNaN(fecha.getTime())) {
-      logger.warn(`Fecha inválida: ${fechaStr}`);
-      return null;
-    }
-    
-    // Formato YYYY-MM-DD sin componente de tiempo para evitar problemas de zona horaria
-    const anioStr = fecha.getFullYear();
-    const mesStr = (fecha.getMonth() + 1).toString().padStart(2, '0');
-    const diaStr = fecha.getDate().toString().padStart(2, '0');
-    
-    const fechaFormateada = `${anioStr}-${mesStr}-${diaStr}`;
-    logger.info(`Fecha extraída del turno: ${fechaFormateada}`);
-    
-    return fechaFormateada;
-  } catch (error) {
-    logger.error('Error al extraer fecha del turno:', error);
-    return null;
+    if (success) logger.info(`Tarea #${taskData.numero} creada exitosamente`);
+    else logger.error('Error al crear tarea en la API');
+  } catch (err) {
+    logger.error('Error procesando mensaje:', err);
   }
 }
 
-// Función para verificar si una tarea ya existe
 async function checkDuplicateTask(numero) {
   try {
-    const checkUrl = process.env.CHECK_DUPLICATE_URL || 'http://localhost:3000/api/worker/tareas/check-duplicate';
+    const url = `${process.env.CHECK_DUPLICATE_URL}/${numero}`;
     const apiKey = process.env.API_KEY || '';
-    const axios = require('axios');
-    
-    logger.info(`Verificando si la tarea ${numero} ya existe...`);
-    
-    // Intentar verificar con el endpoint específico
-    try {
-      const response = await axios.get(`${checkUrl}/${numero}`, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      });
-      
-      const exists = response.data && response.data.exists;
-      
-      if (exists) {
-        logger.warn(`La tarea con número ${numero} ya existe en el sistema`);
-      } else {
-        logger.info(`La tarea con número ${numero} no existe, se puede crear`);
-      }
-      
-      return exists;
-    } catch (checkError) {
-      // Si falla la verificación específica, intentar buscar la tarea directamente
-      logger.warn(`Error al verificar con endpoint específico: ${checkError.message}`);
-      logger.info(`Intentando verificar existencia de tarea ${numero} por método alternativo...`);
-      
-      const tasksUrl = process.env.GET_TASKS_URL || 'http://localhost:3000/api/worker/tareas';
-      const tasksResponse = await axios.get(`${tasksUrl}?numero=${numero}`, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      });
-      
-      // Si encontramos al menos una tarea con ese número, consideramos que existe
-      const exists = tasksResponse.data && Array.isArray(tasksResponse.data) && tasksResponse.data.length > 0;
-      
-      if (exists) {
-        logger.warn(`La tarea con número ${numero} ya existe en el sistema (verificación alternativa)`);
-      } else {
-        logger.info(`La tarea con número ${numero} no existe, se puede crear (verificación alternativa)`);
-      }
-      
-      return exists;
-    }
-  } catch (error) {
-    logger.error('Error al verificar tarea duplicada:', error.message);
-    // En caso de error en ambos métodos, asumimos que existe para prevenir duplicados
-    logger.warn(`Por precaución, asumiendo que la tarea ${numero} ya existe para evitar duplicados`);
+    const res = await axios.get(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+    return res.data?.exists || false;
+  } catch {
+    logger.warn(`No se pudo verificar duplicado para ${numero}, asumiendo existente.`);
     return true;
   }
 }
 
-// Función para enviar datos a la API
 async function sendToAPI(taskData) {
   try {
-    // Usar la URL específica para crear tareas desde el worker
-    const createTaskUrl = process.env.CREATE_TASK_URL || 'http://localhost:3000/api/worker/tareas';
+    const url = process.env.CREATE_TASK_URL;
     const apiKey = process.env.API_KEY || '';
-    const axios = require('axios');
-    
-    // Crear una copia de los datos para no modificar el objeto original
-    const dataToSend = { ...taskData };
-    
-    // Lista de campos permitidos según el esquema de validación del backend
-    const camposPermitidos = [
-      'numero', 'titulo', 'descripcion', 'estado', 'tecnicos',
-      'fechaEjecucion', 'franja_horaria', 'cliente', 'numeroTitular', 'direccion'
-    ];
-    
-    // Filtrar solo los campos permitidos y formatear fechas
-    const datosLimpios = {};
-    camposPermitidos.forEach(campo => {
-      if (dataToSend[campo] !== undefined) {
-        // Formatear fechaEjecucion si existe
-        if (campo === 'fechaEjecucion' && dataToSend[campo]) {
-          try {
-            // Si ya está en formato YYYY-MM-DD, mantenerlo
-            if (/^\d{4}-\d{2}-\d{2}$/.test(dataToSend[campo])) {
-              datosLimpios[campo] = dataToSend[campo];
-            } 
-            // Si está en formato DD/MM/YYYY, convertirlo
-            else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dataToSend[campo])) {
-              const [day, month, year] = dataToSend[campo].split('/');
-              datosLimpios[campo] = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            }
-            // Si es una fecha ISO o similar, formatearla a YYYY-MM-DD
-            else {
-              const date = new Date(dataToSend[campo]);
-              if (!isNaN(date.getTime())) {
-                datosLimpios[campo] = date.toISOString().split('T')[0];
-              } else {
-                logger.warn(`Formato de fecha no reconocido: ${dataToSend[campo]}`);
-                datosLimpios[campo] = dataToSend[campo];
-              }
-            }
-            logger.info(`Fecha de ejecución formateada: ${dataToSend[campo]} -> ${datosLimpios[campo]}`);
-          } catch (error) {
-            logger.error(`Error al formatear fechaEjecucion: ${error.message}`);
-            // En caso de error, mantener el valor original
-            datosLimpios[campo] = dataToSend[campo];
-          }
-        } else {
-          datosLimpios[campo] = dataToSend[campo];
-        }
-      }
+    const response = await axios.post(url, taskData, {
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
-    
-    // Registrar los campos eliminados
-    const camposEliminados = Object.keys(dataToSend).filter(campo => !camposPermitidos.includes(campo));
-    if (camposEliminados.length > 0) {
-      logger.info(`Campos eliminados para cumplir con la validación de la API: ${camposEliminados.join(', ')}`);
-    }
-    
-    // Verificar nuevamente si la tarea ya existe justo antes de enviarla
-    // Esto es una doble verificación para evitar errores de duplicación
-    const isDuplicate = await checkDuplicateTask(datosLimpios.numero);
-    if (isDuplicate) {
-      logger.warn(`⚠️ Cancelando envío: La tarea con número ${datosLimpios.numero} ya existe (verificación final)`);
-      return false;
-    }
-    
-    logger.info(`Enviando datos a la API: ${createTaskUrl}`);
-    
-    // Configurar la solicitud con axios
-    const response = await axios.post(createTaskUrl, datosLimpios, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      }
-    });
-    
-    logger.info(`Tarea creada exitosamente en la API con ID: ${response.data._id || response.data.id || 'desconocido'}`);
+    logger.info(`Tarea enviada, ID: ${response.data?._id || 'desconocido'}`);
     return true;
-  } catch (error) {
-    // Detectar errores de duplicación
-    const isDuplicateError = 
-      (error.response && 
-       error.response.status === 500 && 
-       error.response.data && 
-       (error.response.data.error?.includes('duplicate key error') || 
-        error.response.data.error?.includes('dup key')));
-    
-    if (isDuplicateError) {
-      logger.warn(`⚠️ Error de duplicación detectado para la tarea ${taskData.numero}`);
-      logger.warn('La tarea ya existe en la base de datos, ignorando...');
-      // No es realmente un error, la tarea ya existe
-      return true;
-    }
-    
-    if (error.response) {
-      logger.error(`Error al crear tarea en la API: ${error.response.status}`);
-      logger.error(`Detalles: ${JSON.stringify(error.response.data)}`);
-    } else {
-      logger.error('Error al crear tarea en la API:', error.message);
-    }
+  } catch (err) {
+    logger.error('Error al enviar tarea:', err.message);
     return false;
   }
 }
 
-// Inicializar el cliente
-client.initialize();
+// === Iniciar cliente ===
+initializeClient();
 
-// Manejar señales de terminación para cerrar correctamente
+// === Cierre limpio ===
 process.on('SIGINT', async () => {
   logger.info('Cerrando cliente de WhatsApp...');
   await client.destroy();
