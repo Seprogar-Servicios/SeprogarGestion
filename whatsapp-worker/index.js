@@ -21,7 +21,25 @@ logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
 
 // Configuración de ruta para la autenticación local
 const AUTH_FOLDER = path.join(__dirname, '.wwebjs_auth');
-logger.info(`Usando carpeta de autenticación: ${AUTH_FOLDER}`);
+
+// Crear la carpeta de autenticación si no existe
+if (!fs.existsSync(AUTH_FOLDER)) {
+  fs.mkdirSync(AUTH_FOLDER, { recursive: true });
+  logger.info(`✅ Carpeta de autenticación creada en: ${AUTH_FOLDER}`);
+} else {
+  logger.info(`✅ Carpeta de autenticación encontrada en: ${AUTH_FOLDER}`);
+  
+  // Verificar permisos de la carpeta
+  try {
+    const testFile = path.join(AUTH_FOLDER, 'test-permiso.txt');
+    fs.writeFileSync(testFile, 'test');
+    fs.unlinkSync(testFile);
+    logger.info('✅ Permisos de escritura verificados correctamente');
+  } catch (error) {
+    logger.error('❌ Error de permisos en la carpeta de autenticación:', error.message);
+    process.exit(1);
+  }
+}
 
 // Configuración del cliente con reintentos
 let client;
@@ -48,13 +66,44 @@ function initializeClient() {
           '--no-first-run',
           '--no-zygote',
           '--single-process',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-extensions',
+          '--disable-software-rasterizer',
+          '--disable-features=IsolateOrigins,site-per-process',
+          '--disable-web-security',
+          '--disable-site-isolation-trials'
         ],
-        executablePath: process.env.BROWSER_PATH || undefined
+        executablePath: process.env.BROWSER_PATH || undefined,
+        ignoreDefaultArgs: ['--disable-extensions'],
+        timeout: 0
       },
       authStrategy: new LocalAuth({
-        dataPath: path.join(__dirname, '.wwebjs_auth'),
+        dataPath: AUTH_FOLDER,
         clientId: 'futurgas-worker',
+        dataPathClient: 'session',
+        dataPathServer: 'tokens',
+        dataPathCustomToken: 'custom-tokens',
+        dataPathDefaultToken: 'default-tokens',
+        dataPathPairingCode: 'pairing-codes',
+        dataPathTakeover: 'takeover',
+        dataPathWebhook: 'webhooks',
+        dataPathMedia: 'media',
+        dataPathAuthTokens: 'auth-tokens',
+        dataPathAuthOptions: 'auth-options',
+        dataPathAuthState: 'auth-state',
+        dataPathAuthInfo: 'auth-info',
+        dataPathAuthTokens: 'auth-tokens',
+        dataPathAuthOptions: 'auth-options',
+        dataPathAuthState: 'auth-state',
+        dataPathAuthInfo: 'auth-info',
+        dataPathAuthTokens: 'auth-tokens',
+        dataPathAuthOptions: 'auth-options',
+        dataPathAuthState: 'auth-state',
+        dataPathAuthInfo: 'auth-info',
+        puppeteer: {
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        }
       }),
       webVersionCache: {
         type: 'remote',
@@ -152,8 +201,44 @@ function setupEventHandlers() {
   // Otros manejadores de eventos...
 }
 
+// Verificar si hay una sesión guardada
+const sessionFile = path.join(AUTH_FOLDER, 'session', 'session.json');
+const hasExistingSession = fs.existsSync(sessionFile);
+
+if (hasExistingSession) {
+  logger.info('\n' + '🔍'.repeat(30));
+  logger.info('SESIÓN EXISTENTE DETECTADA');
+  logger.info('Intentando restaurar la sesión...');
+  logger.info('🔍'.repeat(30) + '\n');
+} else {
+  logger.info('\n' + '⚠️'.repeat(30));
+  logger.info('NO SE ENCONTRÓ NINGUNA SESIÓN GUARDADA');
+  logger.info('Se generará un nuevo código QR para autenticación');
+  logger.info('⚠️'.repeat(30) + '\n');
+}
+
 // Inicializar el cliente
 initializeClient();
+
+// Manejar cierre limpio del proceso
+process.on('SIGINT', async () => {
+  logger.info('\n' + '🛑'.repeat(30));
+  logger.info('RECIBIDA SEÑAL DE TERMINACIÓN');
+  logger.info('Cerrando sesión de WhatsApp...');
+  
+  try {
+    if (client) {
+      // Guardar la sesión antes de cerrar
+      await client.pupPage?.evaluate(() => localStorage.setItem('last-window-state', 'saved'));
+      await client.destroy();
+    }
+    logger.info('✅ Sesión cerrada correctamente');
+    process.exit(0);
+  } catch (error) {
+    logger.error('❌ Error al cerrar la sesión:', error);
+    process.exit(1);
+  }
+});
 
 // Evento cuando se genera el código QR para autenticación
 client.on('qr', (qr) => {
