@@ -23,20 +23,137 @@ logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
 const AUTH_FOLDER = path.join(__dirname, '.wwebjs_auth');
 logger.info(`Usando carpeta de autenticación: ${AUTH_FOLDER}`);
 
+// Configuración del cliente con reintentos
+let client;
+let initializationAttempts = 0;
+const MAX_INIT_ATTEMPTS = 3;
+
+function initializeClient() {
+  try {
+    logger.info('\n' + '='.repeat(60));
+    logger.info('🚀 INICIANDO CLIENTE WHATSAPP');
+    logger.info('='.repeat(60));
+    logger.info(`📂 Ruta de autenticación: ${path.join(__dirname, '.wwebjs_auth')}`);
+    logger.info(`🔌 Navegador: ${process.env.BROWSER_PATH || 'predeterminado'}`);
+    logger.info(`🔄 Intento de inicialización: ${initializationAttempts + 1}/${MAX_INIT_ATTEMPTS}`);
+    
+    client = new Client({
+      puppeteer: {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-gpu'
+        ],
+        executablePath: process.env.BROWSER_PATH || undefined
+      },
+      authStrategy: new LocalAuth({
+        dataPath: path.join(__dirname, '.wwebjs_auth'),
+        clientId: 'futurgas-worker',
+      }),
+      webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+      },
+      takeoverOnConflict: true,
+      takeoverTimeoutMs: 30000,
+      qrTimeout: 0, // Desactiva el timeout del QR
+      restartOnAuthFail: true,
+    });
+    
+    setupEventHandlers();
+    
+    client.initialize().catch(error => {
+      logger.error('❌ Error al inicializar el cliente:', error);
+      handleInitializationError(error);
+    });
+    
+  } catch (error) {
+    logger.error('❌ Error al crear el cliente:', error);
+    handleInitializationError(error);
+  }
+}
+
+function handleInitializationError(error) {
+  initializationAttempts++;
+  
+  if (initializationAttempts >= MAX_INIT_ATTEMPTS) {
+    logger.error(`\n${'❌'.repeat(30)}`);
+    logger.error('SE ALCANZÓ EL MÁXIMO DE INTENTOS DE INICIALIZACIÓN');
+    logger.error('Por favor, verifica la configuración y reinicia el servicio');
+    logger.error(`${'❌'.repeat(30)}\n`);
+    return;
+  }
+  
+  const retryDelay = initializationAttempts * 5000; // 5s, 10s, 15s...
+  logger.warn(`Reintentando en ${retryDelay/1000} segundos... (${initializationAttempts}/${MAX_INIT_ATTEMPTS})`);
+  
+  setTimeout(() => {
+    logger.info('\n' + '🔄'.repeat(30));
+    logger.info(`REINTENTANDO INICIALIZACIÓN (${initializationAttempts + 1}/${MAX_INIT_ATTEMPTS})`);
+    logger.info('🔄'.repeat(30) + '\n');
+    initializeClient();
+  }, retryDelay);
+}
+
+function setupEventHandlers() {
+  // Evento cuando se genera el código QR
+  client.on('qr', (qr) => {
+    logger.info('\n' + '='.repeat(60));
+    logger.info('📱 CÓDIGO QR GENERADO');
+    logger.info('Escanea este código con WhatsApp Web');
+    logger.info('='.repeat(60));
+    qrcode.generate(qr, { small: true });
+    logger.info('='.repeat(60) + '\n');
+  });
+  
+  // Evento cuando se autentica correctamente
+  client.on('authenticated', () => {
+    logger.info('\n' + '✅'.repeat(30));
+    logger.info('✅ AUTENTICACIÓN EXITOSA');
+    logger.info('✅ SESIÓN INICIADA CORRECTAMENTE');
+    logger.info('✅'.repeat(30) + '\n');
+  });
+  
+  // Evento cuando el cliente está listo
+  client.on('ready', async () => {
+    logger.info('\n' + '🚀'.repeat(30));
+    logger.info('CLIENTE LISTO');
+    logger.info(`Hora de inicio: ${new Date().toLocaleString()}`);
+    logger.info('🚀'.repeat(30) + '\n');
+    
+    try {
+      const chats = await client.getChats();
+      const groups = chats.filter(chat => chat.isGroup);
+      
+      logger.info(`📱 Chats cargados: ${chats.length}`);
+      logger.info(`👥 Grupos disponibles: ${groups.length}`);
+      
+      if (groups.length > 0) {
+        logger.info('\n📋 LISTA DE GRUPOS:');
+        groups.forEach((group, index) => {
+          const isAllowed = GRUPOS_PERMITIDOS.includes(group.name);
+          logger.info(`  ${index + 1}. "${group.name}" ${isAllowed ? '✅' : '❌'}`);
+        });
+      }
+      
+      logger.info('\n' + '👂 ESCUCHANDO MENSAJES...');
+      
+    } catch (error) {
+      logger.error('Error al cargar los chats:', error);
+    }
+  });
+  
+  // Otros manejadores de eventos...
+}
+
 // Inicializar el cliente
-const client = new Client({
-  puppeteer: {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  },
-  authStrategy: new LocalAuth({
-    dataPath: path.join(__dirname, '.wwebjs_auth'),
-  }),
-  webVersionCache: {
-    type: 'remote',
-    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
-  },
-});
+initializeClient();
 
 // Evento cuando se genera el código QR para autenticación
 client.on('qr', (qr) => {
