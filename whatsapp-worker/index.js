@@ -4,6 +4,7 @@ const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores headless
 
 // Parsers
 const { parsePedidoMessage, parseTareaMessage, parseExpedienteMessage } = require('./src/parsers');
@@ -29,11 +30,13 @@ let client;
 let initializationAttempts = 0;
 const MAX_INIT_ATTEMPTS = 3;
 
-function initializeClient() {
+async function initializeClient() {
   try {
     logger.info('='.repeat(60));
     logger.info('🚀 INICIANDO CLIENTE WHATSAPP');
     logger.info('='.repeat(60));
+
+    const executablePath = await chromium.executablePath();
 
     client = new Client({
       authStrategy: new LocalAuth({
@@ -42,17 +45,9 @@ function initializeClient() {
       }),
       puppeteer: {
         headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-          '--disable-gpu',
-        ],
-        executablePath: process.env.BROWSER_PATH || undefined,
+        args: chromium.args,
+        executablePath,
+        defaultViewport: chromium.defaultViewport,
       },
       takeoverOnConflict: true,
       takeoverTimeoutMs: 30000,
