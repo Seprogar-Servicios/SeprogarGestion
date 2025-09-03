@@ -1,6 +1,7 @@
 /**
- * Módulo simple para registro de logs
+ * Logger mejorado con colores y emojis
  */
+const chalk = require('chalk');
 
 // Niveles de log
 const LOG_LEVELS = {
@@ -10,68 +11,59 @@ const LOG_LEVELS = {
   ERROR: 3
 };
 
-// Nivel actual (se puede cambiar con una variable de entorno)
-const currentLevel = process.env.LOG_LEVEL ? 
-  (LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] || LOG_LEVELS.INFO) : 
-  LOG_LEVELS.INFO;
+// Nivel actual (definido por variable de entorno)
+const currentLevel = process.env.LOG_LEVEL
+  ? (LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] || LOG_LEVELS.INFO)
+  : LOG_LEVELS.INFO;
 
 /**
- * Formatea la fecha y hora actual para los logs
- * @returns {string} - Fecha y hora formateada
+ * Genera timestamp uniforme
  */
 function getTimestamp() {
-  return new Date().toISOString();
+  return chalk.gray(`[${new Date().toISOString()}]`);
 }
 
 /**
- * Registra un mensaje de debug
- * @param {string} message - Mensaje a registrar
- * @param {any} data - Datos adicionales (opcional)
+ * DEBUG
  */
 function debug(message, data = null) {
   if (currentLevel <= LOG_LEVELS.DEBUG) {
-    console.log(`[${getTimestamp()}] [DEBUG] ${message}`);
-    if (data) console.log(data);
+    console.log(`${getTimestamp()} ${chalk.magenta('🔍 DEBUG')} ${message}`);
+    if (data) console.log(chalk.magenta(JSON.stringify(data, null, 2)));
   }
 }
 
 /**
- * Registra un mensaje informativo
- * @param {string} message - Mensaje a registrar
- * @param {any} data - Datos adicionales (opcional)
+ * INFO
  */
 function info(message, data = null) {
   if (currentLevel <= LOG_LEVELS.INFO) {
-    console.log(`[${getTimestamp()}] [INFO] ${message}`);
-    if (data) console.log(data);
+    console.log(`${getTimestamp()} ${chalk.blue('ℹ INFO')}  ${message}`);
+    if (data) console.log(chalk.blue(JSON.stringify(data, null, 2)));
   }
 }
 
 /**
- * Registra una advertencia
- * @param {string} message - Mensaje a registrar
- * @param {any} data - Datos adicionales (opcional)
+ * WARN
  */
 function warn(message, data = null) {
   if (currentLevel <= LOG_LEVELS.WARN) {
-    console.warn(`[${getTimestamp()}] [WARN] ${message}`);
-    if (data) console.warn(data);
+    console.warn(`${getTimestamp()} ${chalk.yellow('⚠ WARN')}  ${message}`);
+    if (data) console.warn(chalk.yellow(JSON.stringify(data, null, 2)));
   }
 }
 
 /**
- * Registra un error
- * @param {string} message - Mensaje a registrar
- * @param {Error|any} error - Error o datos adicionales (opcional)
+ * ERROR
  */
-function error(message, error = null) {
+function error(message, err = null) {
   if (currentLevel <= LOG_LEVELS.ERROR) {
-    console.error(`[${getTimestamp()}] [ERROR] ${message}`);
-    if (error) {
-      if (error instanceof Error) {
-        console.error(error.stack || error.message);
+    console.error(`${getTimestamp()} ${chalk.red('❌ ERROR')} ${message}`);
+    if (err) {
+      if (err instanceof Error) {
+        console.error(chalk.red(err.stack || err.message));
       } else {
-        console.error(error);
+        console.error(chalk.red(JSON.stringify(err, null, 2)));
       }
     }
   }
