@@ -23,41 +23,19 @@ logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
 const AUTH_FOLDER = path.join(__dirname, '.wwebjs_auth');
 logger.info(`Usando carpeta de autenticación: ${AUTH_FOLDER}`);
 
-// Inicializar cliente de WhatsApp con LocalAuth
+// Inicializar el cliente
 const client = new Client({
-  authStrategy: new LocalAuth({
-    dataPath: AUTH_FOLDER
-  }),
   puppeteer: {
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--disable-gpu',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-features=TranslateUI',
-      '--disable-ipc-flooding-protection',
-      '--disable-background-networking',
-      '--disable-default-apps',
-      '--disable-extensions',
-      '--disable-sync',
-      '--disable-translate',
-      '--hide-scrollbars',
-      '--mute-audio',
-      '--no-default-browser-check',
-      '--no-pings',
-      '--single-process',
-      '--memory-pressure-off',
-      '--max_old_space_size=256'
-    ],
     headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
-  }
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  },
+  authStrategy: new LocalAuth({
+    dataPath: path.join(__dirname, '.wwebjs_auth'),
+  }),
+  webVersionCache: {
+    type: 'remote',
+    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+  },
 });
 
 // Evento cuando se genera el código QR para autenticación
@@ -91,18 +69,18 @@ client.on('ready', async () => {
     const chats = await client.getChats();
     const groups = chats.filter(chat => chat.isGroup);
     
-    logger.info(`📱 Total de chats: ${chats.length}`);
-    logger.info(`👥 Total de grupos: ${groups.length}`);
+    logger.info(` Total de chats: ${chats.length}`);
+    logger.info(` Total de grupos: ${groups.length}`);
     
     if (groups.length > 0) {
-      logger.info('📋 Grupos disponibles:');
+      logger.info(' Grupos disponibles:');
       groups.forEach((group, index) => {
         const isAllowed = GRUPOS_PERMITIDOS.includes(group.name);
         logger.info(`  ${index + 1}. "${group.name}" ${isAllowed ? '✅' : '❌'}`);
       });
     }
     
-    logger.info('🔍 Escuchando mensajes...');
+    logger.info(' Escuchando mensajes...');
     logger.info('===========================================');
     
   } catch (error) {
@@ -111,217 +89,142 @@ client.on('ready', async () => {
   }
 });
 
-// Evento para cualquier mensaje (debug y procesamiento principal)
+// Evento principal para procesar mensajes
 client.on('message_create', async (message) => {
   try {
-    logger.info('🔔 EVENTO message_create detectado');
-    logger.info(`   - Tipo: ${message.type}`);
-    logger.info(`   - De: ${message.from}`);
-    logger.info(`   - Contenido: ${message.body?.substring(0, 50) || 'Sin contenido'}...`);
+    // Verificar si el mensaje es del bot para evitar bucles
+    if (message.fromMe) return;
+
+    logger.info('\n=== NUEVO MENSAJE ===');
+    logger.info(` De: ${message.from}`);
+    logger.info(` Contenido: ${message.body?.substring(0, 100) || 'Sin contenido'}...`);
     
-    // Verificar si el mensaje viene de un grupo permitido
+    // Verificar si el mensaje viene de un grupo
     const chat = await message.getChat();
     
     if (!chat.isGroup) {
-      logger.info('Mensaje recibido fuera de un grupo, ignorando...');
+      logger.info(' Mensaje recibido fuera de un grupo, ignorando...');
       return;
     }
     
     const groupName = chat.name;
-    logger.info(`Grupo: "${groupName}"`);
-    logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
+    logger.info(` Grupo: "${groupName}"`);
     
+    // Verificar si el grupo está permitido
     if (!GRUPOS_PERMITIDOS.includes(groupName)) {
-      logger.info(`❌ Grupo "${groupName}" NO está en la lista de permitidos, ignorando...`);
+      logger.info(` Grupo "${groupName}" no está en la lista de permitidos`);
+      logger.debug(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
       return;
     }
     
-    logger.info(`✅ Grupo "${groupName}" está permitido, procesando mensaje...`);
+    logger.info(` Grupo permitido detectado, procesando mensaje...`);
     
     const messageContent = message.body.trim();
-    logger.info(`Mensaje completo: ${messageContent}`);
-    
-    let taskData = null;
-    
-    // Determinar el tipo de mensaje y parsearlo
-    // Aplicar limpieza previa para extraer contenido de logs y normalizar formato
     let cleanContent = messageContent;
     
-    // Extraer contenido limpio de logs si existe
-    if (cleanContent.includes('[INFO]')) {
-      const cleanContentMatch = cleanContent.match(/\[INFO\] Contenido limpio: "([\s\S]*)"/i);
-      if (cleanContentMatch && cleanContentMatch[1]) {
-        cleanContent = cleanContentMatch[1];
-        logger.info('Contenido limpio extraído de logs');
-      } else {
-        // Si no hay contenido limpio, intentar extraer el mensaje completo
-        const fullMessageMatch = cleanContent.match(/\[INFO\] Mensaje completo: "([\s\S]*)"/i);
-        if (fullMessageMatch && fullMessageMatch[1]) {
-          cleanContent = fullMessageMatch[1];
-          logger.info('Mensaje completo extraído de logs');
-        }
-      }
-    }
+    // Limpieza del contenido
+    cleanContent = cleanContent
+      .replace(/\*/g, '')
+      .replace(/^["']|["']$/g, '')
+      .trim();
     
-    // Eliminar asteriscos y normalizar saltos de línea
-    cleanContent = cleanContent.replace(/\*/g, '').trim();
+    logger.info(` Contenido limpio: ${cleanContent.substring(0, 100)}...`);
     
-    // Eliminar comillas iniciales y finales si existen
-    cleanContent = cleanContent.replace(/^["']|["']$/g, '').trim();
-    
-    logger.info(`Contenido limpio para detección: ${cleanContent.substring(0, 50)}...`);
+    // Determinar el tipo de mensaje
+    let taskData = null;
+    let messageType = 'desconocido';
     
     if (cleanContent.trim().startsWith('Pedido')) {
-      logger.info('Detectado formato de Pedido, procesando...');
-      taskData = parsePedidoMessage(messageContent); // Pasamos el mensaje original al parser que ya tiene la lógica de limpieza
-    } else if (cleanContent.trim().startsWith('TAREA:')) {
-      logger.info('Detectado formato de TAREA, procesando...');
+      messageType = 'pedido';
+      logger.info(' Detectado formato de Pedido');
+      taskData = parsePedidoMessage(messageContent);
+    } 
+    else if (cleanContent.trim().startsWith('TAREA:')) {
+      messageType = 'tarea';
+      logger.info(' Detectado formato de TAREA');
       taskData = parseTareaMessage(messageContent);
-    } else if (cleanContent.trim().startsWith('Expediente:')) {
-      logger.info('Detectado formato de Expediente, procesando...');
+    } 
+    else if (cleanContent.trim().startsWith('Expediente:')) {
+      messageType = 'expediente';
+      logger.info(' Detectado formato de Expediente');
       taskData = parseExpedienteMessage(messageContent);
-    } else {
-      logger.info('Formato de mensaje no reconocido, ignorando...');
-      logger.info(`Contenido limpio: "${cleanContent}"`);
+    } 
+    else {
+      logger.info(' Formato de mensaje no reconocido');
       return;
     }
     
-    if (taskData) {
-      logger.info('Datos parseados correctamente:', JSON.stringify(taskData, null, 2));
-      
-      // Verificar si la tarea ya existe
-      const isDuplicate = await checkDuplicateTask(taskData.numero);
-      
-      if (isDuplicate) {
-        logger.warn(`⚠️ Tarea con número ${taskData.numero} ya existe, ignorando...`);
-        return;
-      }
-      
-      // Enviar a la API
-      const success = await sendToAPI(taskData);
-      if (success) {
-        logger.info('✅ Tarea creada exitosamente en la API');
-      } else {
-        logger.error('❌ Error al crear la tarea en la API');
-      }
+    // Verificar si se pudo parsear el mensaje
+    if (!taskData) {
+      logger.error(' No se pudo extraer información de la tarea');
+      return;
+    }
+    
+    logger.info(` Datos extraídos (${messageType}):`, JSON.stringify(taskData, null, 2));
+    
+    // Verificar duplicados
+    const isDuplicate = await checkDuplicateTask(taskData.numero);
+    if (isDuplicate) {
+      logger.warn(` Tarea #${taskData.numero} ya existe, ignorando...`);
+      return;
+    }
+    
+    // Enviar a la API
+    logger.info(' Enviando tarea a la API...');
+    const success = await sendToAPI(taskData);
+    
+    if (success) {
+      logger.info(` Tarea #${taskData.numero} creada exitosamente`);
     } else {
-      logger.error('❌ Error al parsear el mensaje');
+      logger.error(' Error al crear la tarea en la API');
     }
     
   } catch (error) {
-    logger.error('Error procesando mensaje:', error);
+    logger.error(' Error crítico al procesar mensaje:', error);
+    logger.error('Stack trace:', error.stack);
+  } finally {
+    logger.info('='.repeat(50) + '\n');
   }
 });
 
-// Evento para mensajes recibidos (alternativo)
-client.on('message_received', async (message) => {
-  logger.info('📨 EVENTO message_received detectado');
-});
-
-// Evento cuando se recibe un mensaje
+// Manejar eventos de mensajes entrantes (solo para logging)
 client.on('message', async (message) => {
   try {
-    logger.info('=== MENSAJE RECIBIDO ===');
-    logger.info(`Tipo de mensaje: ${message.type}`);
-    logger.info(`De: ${message.from}`);
-    logger.info(`Contenido: ${message.body}`);
+    if (message.fromMe) return;
     
-    // Verificar si el mensaje viene de un grupo permitido
     const chat = await message.getChat();
+    const groupInfo = chat.isGroup ? `[GRUPO: ${chat.name}]` : '[PRIVADO]';
     
-    if (!chat.isGroup) {
-      logger.info('Mensaje recibido fuera de un grupo, ignorando...');
-      return;
-    }
-    
-    const groupName = chat.name;
-    logger.info(`Grupo: "${groupName}"`);
-    logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
-    
-    if (!GRUPOS_PERMITIDOS.includes(groupName)) {
-      logger.info(`❌ Grupo "${groupName}" NO está en la lista de permitidos, ignorando...`);
-      return;
-    }
-    
-    logger.info(`✅ Grupo "${groupName}" está permitido, procesando mensaje...`);
-    
-    const messageContent = message.body.trim();
-    logger.info(`Mensaje recibido del grupo "${groupName}": ${messageContent.substring(0, 50)}...`);
-    
-    let taskData = null;
-    
-    // Determinar el tipo de mensaje y parsearlo
-    // Aplicar limpieza previa para extraer contenido de logs y normalizar formato
-    let cleanContent = messageContent;
-    
-    // Extraer contenido limpio de logs si existe
-    if (cleanContent.includes('[INFO]')) {
-      const cleanContentMatch = cleanContent.match(/\[INFO\] Contenido limpio: "([\s\S]*)"/i);
-      if (cleanContentMatch && cleanContentMatch[1]) {
-        cleanContent = cleanContentMatch[1];
-        logger.info('Contenido limpio extraído de logs');
-      } else {
-        // Si no hay contenido limpio, intentar extraer el mensaje completo
-        const fullMessageMatch = cleanContent.match(/\[INFO\] Mensaje completo: "([\s\S]*)"/i);
-        if (fullMessageMatch && fullMessageMatch[1]) {
-          cleanContent = fullMessageMatch[1];
-          logger.info('Mensaje completo extraído de logs');
-        }
-      }
-    }
-    
-    // Eliminar asteriscos y normalizar saltos de línea
-    cleanContent = cleanContent.replace(/\*/g, '').trim();
-    
-    // Eliminar comillas iniciales y finales si existen
-    cleanContent = cleanContent.replace(/^["']|["']$/g, '').trim();
-    
-    logger.info(`Contenido limpio para detección: ${cleanContent.substring(0, 50)}...`);
-    
-    if (cleanContent.trim().startsWith('Pedido')) {
-      logger.info('Detectado formato de Pedido, procesando...');
-      taskData = parsePedidoMessage(messageContent); // Pasamos el mensaje original al parser que ya tiene la lógica de limpieza
-    } else if (cleanContent.trim().startsWith('TAREA:')) {
-      logger.info('Detectado formato de TAREA, procesando...');
-      taskData = parseTareaMessage(messageContent);
-    } else if (cleanContent.trim().startsWith('Expediente:')) {
-      logger.info('Detectado formato de Expediente, procesando...');
-      taskData = parseExpedienteMessage(messageContent);
-    } else {
-      logger.debug('Formato de mensaje no reconocido, ignorando...');
-      return;
-    }
-    
-    if (!taskData) {
-      logger.warn('No se pudo extraer información de la tarea del mensaje');
-      return;
-    }
-    
-    // Verificar si la tarea ya existe
-    const isDuplicate = await checkDuplicateTask(taskData.numero);
-    
-    if (isDuplicate) {
-      logger.warn(`Tarea con número ${taskData.numero} ya existe, ignorando...`);
-      return;
-    }
-    
-    // Crear la tarea usando la función sendToAPI
-    const success = await sendToAPI(taskData);
-    if (success) {
-      logger.info(`Tarea creada exitosamente: ${taskData.titulo}`);
-    }
+    logger.debug(`\n MENSAJE RECIBIDO ${groupInfo}`);
+    logger.debug(` De: ${message.from}`);
+    logger.debug(` Contenido: ${message.body?.substring(0, 50) || 'Sin contenido'}...`);
     
   } catch (error) {
-    logger.error('Error al procesar mensaje:', error);
+    logger.error('Error en evento message:', error);
   }
 });
 
 // Manejar errores de autenticación
 client.on('auth_failure', (error) => {
-  logger.error('===========================================');
-  logger.error('ERROR DE AUTENTICACIÓN - SESIÓN NO VÁLIDA');
-  logger.error('===========================================');
-  logger.error(error);
+  logger.error('\n' + '🔥'.repeat(50));
+  logger.error(' ERROR CRÍTICO DE AUTENTICACIÓN');
+  logger.error('🔥'.repeat(50));
+  logger.error('Se ha producido un error al autenticar con WhatsApp Web');
+  logger.error(`Mensaje: ${error.message}`);
+  
+  if (error.message.includes('session')) {
+    logger.error('\n💡 Posible solución:');
+    logger.error('1. Elimina la carpeta .wwebjs_auth');
+    logger.error('2. Reinicia la aplicación');
+    logger.error('3. Escanea el código QR nuevamente');
+  }
+  
+  logger.error('\nStack trace:');
+  logger.error(error.stack || 'No hay stack trace disponible');
+  logger.error('🔥'.repeat(50) + '\n');
+  
+  // Forzar salida con código de error
+  process.exit(1);
 });
 
 // Manejar desconexiones
