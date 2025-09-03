@@ -4,7 +4,7 @@ const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores headless
+const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
 
 // Parsers
 const { parsePedidoMessage, parseTareaMessage, parseExpedienteMessage } = require('./src/parsers');
@@ -94,7 +94,7 @@ function setupEventHandlers() {
       logger.info(`📱 Chats cargados: ${chats.length}`);
       logger.info(`👥 Grupos detectados: ${groups.length}`);
       groups.forEach((g, i) => {
-        const allowed = GRUPOS_PERMITIDOS.includes(g.name) ? '✅' : '❌';
+        const allowed = GRUPOS_PERMITIDOS.includes(g.name.trim()) ? '✅' : '❌';
         logger.info(` ${i + 1}. ${g.name} ${allowed}`);
       });
       logger.info('👂 Escuchando mensajes...');
@@ -121,23 +121,39 @@ function setupEventHandlers() {
   });
 }
 
+// === Logging de mensajes entrantes ===
 async function logIncomingMessage(message) {
   if (message.fromMe) return;
   const chat = await message.getChat();
   const groupInfo = chat.isGroup ? `[GRUPO: ${chat.name}]` : '[PRIVADO]';
-  logger.debug(`MENSAJE RECIBIDO ${groupInfo} De: ${message.from} Contenido: ${message.body}`);
+  logger.debug(`MENSAJE RECIBIDO ${groupInfo} De: ${message.from} Contenido: ${message.body || '<SIN TEXTO>'}`);
 }
 
+// === Procesamiento de mensajes ===
 async function processMessage(message) {
   try {
     if (message.fromMe) return;
 
     const chat = await message.getChat();
-    if (!chat.isGroup) return;
 
-    const groupName = chat.name;
-    if (!GRUPOS_PERMITIDOS.includes(groupName)) {
-      logger.info(`Grupo "${groupName}" no está permitido`);
+    logger.info('=== NUEVO MENSAJE ===');
+    logger.info(`De: ${message.from}`);
+    logger.info(`Contenido: ${message.body || '<SIN TEXTO>'}`);
+    logger.info(`Tipo de chat: ${chat.isGroup ? 'GRUPO' : 'PRIVADO'}`);
+    logger.info(`Nombre del grupo: "${chat.name || '<sin nombre>'}"`);
+
+    if (!chat.isGroup) {
+      logger.info('Mensaje fuera de grupo, ignorando...');
+      return;
+    }
+
+    const groupName = chat.name.trim();
+    const isAllowed = GRUPOS_PERMITIDOS.map(g => g.trim()).includes(groupName);
+    logger.info(`¿Grupo permitido?: ${isAllowed ? '✅' : '❌'}`);
+    if (!isAllowed) return;
+
+    if (!message.body || message.body.trim() === '') {
+      logger.info('Mensaje vacío o no texto, ignorando...');
       return;
     }
 
@@ -147,22 +163,27 @@ async function processMessage(message) {
 
     if (cleanContent.startsWith('Pedido')) {
       messageType = 'pedido';
+      logger.info('Detectado mensaje tipo Pedido');
       taskData = parsePedidoMessage(message.body);
     } else if (cleanContent.startsWith('TAREA:')) {
       messageType = 'tarea';
+      logger.info('Detectado mensaje tipo TAREA');
       taskData = parseTareaMessage(message.body);
     } else if (cleanContent.startsWith('Expediente:')) {
       messageType = 'expediente';
+      logger.info('Detectado mensaje tipo Expediente');
       taskData = parseExpedienteMessage(message.body);
     } else {
-      logger.info('Formato de mensaje no reconocido');
+      logger.info('Formato de mensaje no reconocido, ignorando...');
       return;
     }
 
     if (!taskData) {
-      logger.error('No se pudo parsear el mensaje');
+      logger.error('No se pudo extraer información del mensaje');
       return;
     }
+
+    logger.info(`Datos extraídos (${messageType}): ${JSON.stringify(taskData, null, 2)}`);
 
     const isDuplicate = await checkDuplicateTask(taskData.numero);
     if (isDuplicate) {
@@ -172,12 +193,17 @@ async function processMessage(message) {
 
     const success = await sendToAPI(taskData);
     if (success) logger.info(`Tarea #${taskData.numero} creada exitosamente`);
-    else logger.error('Error al crear tarea en la API');
-  } catch (err) {
-    logger.error('Error procesando mensaje:', err);
+    else logger.error('Error al crear la tarea en la API');
+
+  } catch (error) {
+    logger.error('Error crítico al procesar mensaje:', error);
+    logger.error('Stack trace:', error.stack);
+  } finally {
+    logger.info('='.repeat(50));
   }
 }
 
+// === Funciones auxiliares ===
 async function checkDuplicateTask(numero) {
   try {
     const url = `${process.env.CHECK_DUPLICATE_URL}/${numero}`;
@@ -205,7 +231,7 @@ async function sendToAPI(taskData) {
   }
 }
 
-// === Iniciar cliente ===
+// === Inicializar cliente ===
 initializeClient();
 
 // === Cierre limpio ===
