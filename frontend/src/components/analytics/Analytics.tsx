@@ -67,7 +67,13 @@ const Analytics: React.FC = () => {
     if (tasks.length) {
       let filtered = [...tasks];
       
-      // Filtrar por fecha de ejecución
+      // Mostrar todas las tareas por defecto
+      if (!dateRange.start && !dateRange.end && statusFilter.length === 0 && userFilter.length === 0) {
+        setFilteredTasks(filtered);
+        return;
+      }
+      
+      // Aplicar filtros solo si están activos
       if (dateRange.start && dateRange.end) {
         const startDate = new Date(dateRange.start);
         const endDate = new Date(dateRange.end);
@@ -78,69 +84,23 @@ const Analytics: React.FC = () => {
           if (!task.fechaEjecucion) return true;
           
           try {
-            // Convertir la fecha de ejecución a objeto Date
             const taskDate = new Date(task.fechaEjecucion);
-            
-            // Si la fecha no es válida, incluir la tarea de todos modos
-            if (isNaN(taskDate.getTime())) {
-              console.warn('Fecha de ejecución inválida, incluyendo tarea de todos modos:', {
-                id: task._id,
-                fechaEjecucion: task.fechaEjecucion
-              });
-              return true;
-            }
-            
-            // Verificar si la fecha está dentro del rango
-            const isInRange = taskDate >= startDate && taskDate <= endDate;
-            
-            if (!isInRange) {
-              console.log('Tarea filtrada por fecha de ejecución:', {
-                id: task._id,
-                fechaEjecucion: task.fechaEjecucion,
-                rango: `${dateRange.start} a ${dateRange.end}`
-              });
-            }
-            
-            return isInRange;
+            if (isNaN(taskDate.getTime())) return true;
+            return taskDate >= startDate && taskDate <= endDate;
           } catch (error) {
-            console.error('Error al procesar fecha de ejecución, incluyendo tarea:', {
-              id: task._id,
-              error,
-              fechaEjecucion: task.fechaEjecucion
-            });
-            return true; // Incluir la tarea si hay un error al procesar la fecha
+            return true;
           }
         });
       }
       
-      // Filtrar por estado
       if (statusFilter.length > 0) {
         filtered = filtered.filter(task => statusFilter.includes(task.estado));
       }
       
-      // Filtrar por usuario
       if (userFilter.length > 0) {
         filtered = filtered.filter(task => {
-          // Si la tarea no tiene técnicos asignados, incluirla solo si el filtro de usuario está vacío
-          if (!task.tecnicos || task.tecnicos.length === 0) {
-            console.log('Tarea sin técnicos asignados, incluyendo en resultados:', task._id);
-            return true;
-          }
-          
-          // Verificar si alguno de los técnicos asignados está en el filtro
-          const hasMatchingTecnico = task.tecnicos.some(tecnico => 
-            tecnico && userFilter.includes(tecnico._id)
-          );
-          
-          if (!hasMatchingTecnico) {
-            console.log('Tarea filtrada por técnico no coincidente:', {
-              id: task._id,
-              tecnicos: task.tecnicos,
-              filtro: userFilter
-            });
-          }
-          
-          return hasMatchingTecnico;
+          if (!task.tecnicos || task.tecnicos.length === 0) return true;
+          return task.tecnicos.some(tecnico => tecnico && userFilter.includes(tecnico._id));
         });
       }
       
