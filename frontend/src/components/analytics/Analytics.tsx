@@ -121,8 +121,26 @@ const Analytics: React.FC = () => {
       // Filtrar por usuario
       if (userFilter.length > 0) {
         filtered = filtered.filter(task => {
+          // Si la tarea no tiene técnicos asignados, incluirla solo si el filtro de usuario está vacío
+          if (!task.tecnicos || task.tecnicos.length === 0) {
+            console.log('Tarea sin técnicos asignados, incluyendo en resultados:', task._id);
+            return true;
+          }
+          
           // Verificar si alguno de los técnicos asignados está en el filtro
-          return task.tecnicos && task.tecnicos.some(tecnico => userFilter.includes(tecnico._id));
+          const hasMatchingTecnico = task.tecnicos.some(tecnico => 
+            tecnico && userFilter.includes(tecnico._id)
+          );
+          
+          if (!hasMatchingTecnico) {
+            console.log('Tarea filtrada por técnico no coincidente:', {
+              id: task._id,
+              tecnicos: task.tecnicos,
+              filtro: userFilter
+            });
+          }
+          
+          return hasMatchingTecnico;
         });
       }
       
