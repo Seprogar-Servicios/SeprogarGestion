@@ -74,27 +74,42 @@ const Analytics: React.FC = () => {
         endDate.setHours(23, 59, 59, 999); // Incluir todo el día final
         
         filtered = filtered.filter(task => {
-          // Usar fechaEjecucion en lugar de fechaCreacion
-          if (!task.fechaEjecucion) return false; // Si no tiene fecha de ejecución, la filtramos
+          // Si no tiene fecha de ejecución, incluirla en los resultados
+          if (!task.fechaEjecucion) return true;
           
-          // Convertir la fecha de ejecución a objeto Date
-          const taskDate = new Date(task.fechaEjecucion);
-          
-          // Asegurarse de que la fecha sea válida
-          if (isNaN(taskDate.getTime())) {
-            console.log('Fecha de ejecución inválida:', task.fechaEjecucion, 'en tarea:', task._id);
-            return false;
-          }
-          
-          const isInRange = taskDate >= startDate && taskDate <= endDate;
-          if (!isInRange) {
-            console.log('Tarea filtrada por fecha de ejecución:', {
+          try {
+            // Convertir la fecha de ejecución a objeto Date
+            const taskDate = new Date(task.fechaEjecucion);
+            
+            // Si la fecha no es válida, incluir la tarea de todos modos
+            if (isNaN(taskDate.getTime())) {
+              console.warn('Fecha de ejecución inválida, incluyendo tarea de todos modos:', {
+                id: task._id,
+                fechaEjecucion: task.fechaEjecucion
+              });
+              return true;
+            }
+            
+            // Verificar si la fecha está dentro del rango
+            const isInRange = taskDate >= startDate && taskDate <= endDate;
+            
+            if (!isInRange) {
+              console.log('Tarea filtrada por fecha de ejecución:', {
+                id: task._id,
+                fechaEjecucion: task.fechaEjecucion,
+                rango: `${dateRange.start} a ${dateRange.end}`
+              });
+            }
+            
+            return isInRange;
+          } catch (error) {
+            console.error('Error al procesar fecha de ejecución, incluyendo tarea:', {
               id: task._id,
-              fechaEjecucion: task.fechaEjecucion,
-              rango: `${dateRange.start} a ${dateRange.end}`
+              error,
+              fechaEjecucion: task.fechaEjecucion
             });
+            return true; // Incluir la tarea si hay un error al procesar la fecha
           }
-          return isInRange;
         });
       }
       
