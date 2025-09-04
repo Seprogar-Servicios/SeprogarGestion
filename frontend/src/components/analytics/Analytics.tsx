@@ -26,6 +26,7 @@ const Analytics: React.FC = () => {
   const dispatch = useAppDispatch();
   const { tasks, loading: tasksLoading } = useAppSelector((state) => state.tasks);
   const { users, loading: usersLoading } = useAppSelector((state) => state.users);
+  const { user } = useAppSelector((state) => state.auth);
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -52,15 +53,21 @@ const Analytics: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([
-        dispatch(fetchTasks({})),
-        dispatch(fetchUsers())
-      ]);
-      setIsLoading(false);
+      try {
+        // Usar un objeto de filtros vacío para obtener todas las tareas
+        await dispatch(fetchTasks({})).unwrap();
+        if (user?.rol === 'admin') {
+          await dispatch(fetchUsers());
+        }
+      } catch (error) {
+        console.error('Error al cargar los datos:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     loadData();
-  }, [dispatch]);
+  }, [dispatch, user?.rol]);
   
   // Aplicar filtros a las tareas
   useEffect(() => {
