@@ -18,7 +18,8 @@ import {
   X,
   RefreshCw,
   Check,
-  User
+  User,
+  ClipboardList
 } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
 
@@ -32,21 +33,7 @@ const Analytics: React.FC = () => {
   
   // Filtros
   const [filteredTasks, setFilteredTasks] = useState<typeof tasks>([]);
-  const [dateRange, setDateRange] = useState<{start: string, end: string}>(() => {
-    const end = new Date();
-    const start = subMonths(end, 3); // Por defecto, últimos 3 meses
-    
-    // Asegurarse de que las fechas sean válidas
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      console.error('Fechas inválidas al inicializar el rango');
-      return { start: '', end: '' };
-    }
-    
-    return {
-      start: format(start, 'yyyy-MM-dd'),
-      end: format(end, 'yyyy-MM-dd')
-    };
-  });
+  const [dateRange, setDateRange] = useState<{start: string, end: string}>({ start: '', end: '' });
   const [statusFilter, setStatusFilter] = useState<string[]>(['pendiente', 'en progreso', 'completada']);
   const [userFilter, setUserFilter] = useState<string[]>([]);
 
@@ -81,7 +68,7 @@ const Analytics: React.FC = () => {
     
     // Aplicar filtros solo si están activos
     const hasDateFilter = dateRange.start && dateRange.end;
-    const hasStatusFilter = statusFilter.length > 0;
+    const hasStatusFilter = statusFilter.length > 0 && statusFilter.length < 3; // Solo si no están todos los estados seleccionados
     const hasUserFilter = userFilter.length > 0;
     
     // Si no hay filtros activos, mostrar todas las tareas
@@ -143,6 +130,8 @@ const Analytics: React.FC = () => {
   
   // Calcular porcentajes
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const inProgressRate = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
+  const pendingRate = totalTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0;
   const avgCompletionTime = filteredTasks
     .filter(task => task.estado === 'completada' && task.fechaCreacion && task.fechaModificacion)
     .map(task => {
@@ -169,31 +158,33 @@ const Analytics: React.FC = () => {
     {
       title: 'Tareas Totales',
       value: totalTasks,
-      icon: BarChart3,
+      icon: ClipboardList,
       color: 'bg-blue-500',
-      textColor: 'text-blue-600 dark:text-blue-400'
+      textColor: 'text-blue-600 dark:text-blue-400',
     },
     {
       title: 'Completadas',
       value: completedTasks,
+      subtext: `(${completionRate}% del total)`,
       icon: CheckCircle,
       color: 'bg-green-500',
       textColor: 'text-green-600 dark:text-green-400',
-      subtext: `${completionRate}% del total`
     },
     {
       title: 'En Progreso',
       value: inProgressTasks,
+      subtext: `(${inProgressRate}% del total)`,
       icon: Clock,
       color: 'bg-yellow-500',
-      textColor: 'text-yellow-600 dark:text-yellow-400'
+      textColor: 'text-yellow-600 dark:text-yellow-400',
     },
     {
       title: 'Pendientes',
       value: pendingTasks,
+      subtext: `(${pendingRate}% del total)`,
       icon: AlertCircle,
       color: 'bg-red-500',
-      textColor: 'text-red-600 dark:text-red-400'
+      textColor: 'text-red-600 dark:text-red-400',
     },
     {
       title: 'Tiempo Promedio',
