@@ -67,15 +67,32 @@ exports.getTareas = async (req, res) => {
       filtro.fechaEjecucion = {};
       
       if (fechaDesde) {
-        const fechaDesdeDate = new Date(fechaDesde);
-        fechaDesdeDate.setHours(0, 0, 0, 0); // Start of day
-        filtro.fechaEjecucion.$gte = fechaDesdeDate.toISOString();
+        try {
+          const fechaDesdeDate = new Date(fechaDesde);
+          if (!isNaN(fechaDesdeDate.getTime())) {
+            fechaDesdeDate.setHours(0, 0, 0, 0); // Start of day
+            filtro.fechaEjecucion.$gte = fechaDesdeDate;
+          }
+        } catch (error) {
+          console.error('Error al procesar fechaDesde:', error);
+        }
       }
       
       if (fechaHasta) {
-        const fechaHastaDate = new Date(fechaHasta);
-        fechaHastaDate.setHours(23, 59, 59, 999); // End of day
-        filtro.fechaEjecucion.$lte = fechaHastaDate.toISOString();
+        try {
+          const fechaHastaDate = new Date(fechaHasta);
+          if (!isNaN(fechaHastaDate.getTime())) {
+            fechaHastaDate.setHours(23, 59, 59, 999); // End of day
+            filtro.fechaEjecucion.$lte = fechaHastaDate;
+          }
+        } catch (error) {
+          console.error('Error al procesar fechaHasta:', error);
+        }
+      }
+      
+      // Si no hay operadores válidos, eliminar el filtro de fecha
+      if (Object.keys(filtro.fechaEjecucion).length === 0) {
+        delete filtro.fechaEjecucion;
       }
     }
     const tareas = await Tarea.find(filtro)

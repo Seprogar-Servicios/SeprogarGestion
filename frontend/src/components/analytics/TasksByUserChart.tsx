@@ -26,8 +26,6 @@ interface TasksByUserChartProps {
 }
 
 const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => {
-  console.log('Tasks received:', tasks);
-  console.log('Users received:', users);
   // Crear un mapa de usuarios por ID para búsqueda rápida
   const userMap = users.reduce((acc, user) => {
     acc[user._id] = user;
@@ -35,11 +33,9 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
   }, {} as Record<string, any>);
   
   // Contar tareas por usuario
-  const tasksByUser = tasks.reduce((acc, task) => {
-    console.log('Processing task:', task._id, 'with tecnicos:', task.tecnicos, 'tecnicoAsignado:', task.tecnicoAsignado);
-    
+  const tasksByUser = tasks.reduce((acc, task) => {    
     // Función para agregar un técnico al contador
-    const addTecnico = (tecnico: any, taskId: string) => {
+    const addTecnico = (tecnico: any) => {
       if (!tecnico) return false;
       
       // Manejar diferentes formatos de técnico (objeto o string)
@@ -49,7 +45,6 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
       if (userId) {
         const currentCount = acc[userId] || 0;
         acc[userId] = currentCount + 1;
-        console.log(`Added task ${taskId} to user ${userId}. New count: ${currentCount + 1}`);
         return true;
       }
       return false;
@@ -60,7 +55,7 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
     // Revisar si hay técnicos en el array tecnicos
     if (task.tecnicos && task.tecnicos.length > 0) {
       task.tecnicos.forEach(tecnico => {
-        if (addTecnico(tecnico, task._id)) {
+        if (addTecnico(tecnico)) {
           taskAssigned = true;
         }
       });
@@ -68,19 +63,16 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
     
     // Si no se asignó por tecnicos, verificar tecnicoAsignado
     if (!taskAssigned && task.tecnicoAsignado) {
-      addTecnico(task.tecnicoAsignado, task._id);
+      addTecnico(task.tecnicoAsignado);
     }
     
     // Si la tarea no tiene asignado, la asignamos a 'Sin asignar'
     if (!taskAssigned && (!task.tecnicos || task.tecnicos.length === 0) && !task.tecnicoAsignado) {
       const unassignedId = 'unassigned';
       acc[unassignedId] = (acc[unassignedId] || 0) + 1;
-      console.log(`Task ${task._id} has no assigned technician`);
     }
     return acc;
   }, {} as Record<string, number>);
-  
-  console.log('Final tasks by user:', tasksByUser);
   
   // Asegurarse de que el usuario 'unassigned' se muestre correctamente
   if (tasksByUser['unassigned']) {

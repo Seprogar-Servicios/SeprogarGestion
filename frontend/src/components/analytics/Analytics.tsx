@@ -71,50 +71,60 @@ const Analytics: React.FC = () => {
   
   // Aplicar filtros a las tareas
   useEffect(() => {
-    if (tasks.length) {
-      let filtered = [...tasks];
-      
-      // Mostrar todas las tareas por defecto
-      if (!dateRange.start && !dateRange.end && statusFilter.length === 0 && userFilter.length === 0) {
-        setFilteredTasks(filtered);
-        return;
-      }
-      
-      // Aplicar filtros solo si están activos
-      if (dateRange.start && dateRange.end) {
-        const startDate = new Date(dateRange.start);
-        const endDate = new Date(dateRange.end);
-        endDate.setHours(23, 59, 59, 999); // Incluir todo el día final
-        
-        filtered = filtered.filter(task => {
-          // Si no tiene fecha de ejecución, incluirla en los resultados
-          if (!task.fechaEjecucion) return true;
-          
-          try {
-            const taskDate = new Date(task.fechaEjecucion);
-            if (isNaN(taskDate.getTime())) return true;
-            return taskDate >= startDate && taskDate <= endDate;
-          } catch (error) {
-            return true;
-          }
-        });
-      }
-      
-      if (statusFilter.length > 0) {
-        filtered = filtered.filter(task => statusFilter.includes(task.estado));
-      }
-      
-      if (userFilter.length > 0) {
-        filtered = filtered.filter(task => {
-          if (!task.tecnicos || task.tecnicos.length === 0) return true;
-          return task.tecnicos.some(tecnico => tecnico && userFilter.includes(tecnico._id));
-        });
-      }
-      
-      setFilteredTasks(filtered);
-    } else {
+    if (!tasks.length) {
       setFilteredTasks([]);
+      return;
     }
+
+    // Por defecto, mostrar todas las tareas
+    let filtered = [...tasks];
+    
+    // Aplicar filtros solo si están activos
+    const hasDateFilter = dateRange.start && dateRange.end;
+    const hasStatusFilter = statusFilter.length > 0;
+    const hasUserFilter = userFilter.length > 0;
+    
+    // Si no hay filtros activos, mostrar todas las tareas
+    if (!hasDateFilter && !hasStatusFilter && !hasUserFilter) {
+      setFilteredTasks(filtered);
+      return;
+    }
+    
+    // Aplicar filtro de fechas si está activo
+    if (hasDateFilter) {
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999); // Incluir todo el día final
+      
+      filtered = filtered.filter(task => {
+        // Incluir tareas sin fecha de ejecución
+        if (!task.fechaEjecucion) return true;
+        
+        try {
+          const taskDate = new Date(task.fechaEjecucion);
+          if (isNaN(taskDate.getTime())) return true;
+          return taskDate >= startDate && taskDate <= endDate;
+        } catch (error) {
+          return true;
+        }
+      });
+    }
+    
+    // Aplicar filtro de estados si está activo
+    if (hasStatusFilter) {
+      filtered = filtered.filter(task => statusFilter.includes(task.estado));
+    }
+    
+    // Aplicar filtro de usuarios si está activo
+    if (hasUserFilter) {
+      filtered = filtered.filter(task => {
+        // Incluir tareas sin técnicos asignados solo si no hay filtro de usuario
+        if (!task.tecnicos || task.tecnicos.length === 0) return true;
+        return task.tecnicos.some(tecnico => tecnico && userFilter.includes(tecnico._id));
+      });
+    }
+    
+    setFilteredTasks(filtered);
   }, [tasks, dateRange, statusFilter, userFilter]);
 
   if (isLoading || tasksLoading || usersLoading) {

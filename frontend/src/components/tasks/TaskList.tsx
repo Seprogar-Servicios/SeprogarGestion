@@ -182,9 +182,7 @@ const TaskList: React.FC = () => {
       if (fechaEjecucionAjustada) {
         // Si la fecha viene en formato YYYY-MM-DD (sin tiempo)
         // La dejamos tal cual para que se maneje como string en el backend
-        // y no se convierta automáticamente a Date con zona horaria UTC
-        console.log('Fecha de ejecución original:', fechaEjecucionAjustada);
-        console.log('Fecha de ejecución ajustada:', fechaEjecucionAjustada);
+        // y no se convierta automáticamente a Date con zona horaria UTC;
       }
       
       const taskData = {
