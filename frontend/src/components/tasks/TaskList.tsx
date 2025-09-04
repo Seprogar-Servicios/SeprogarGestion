@@ -5,7 +5,7 @@ import { fetchTasks, createTask, updateTask, deleteTask, deleteMultipleTasks, se
 import { fetchUsers } from '../../store/slices/usersSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
 import TasksFilter from '../filters/TasksFilter';
-import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPin, CheckCircle, Hash, CheckSquare, Square, Send, Download, XCircle, Edit, Clock, ChevronDown } from 'lucide-react';
+import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPin, CheckCircle, Hash, CheckSquare, Square, Send, Download, XCircle, Edit, Clock, ChevronDown, RefreshCw } from 'lucide-react';
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
@@ -25,13 +25,79 @@ const TaskList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
   const [showWhatsAppPanel, setShowWhatsAppPanel] = useState(false);
+  // Define the Status type for better type safety
+  type Status = 'pendiente' | 'en progreso' | 'completada' | 'cancelada';
+  
+  // State for the new status with explicit type
+  const [newStatus, setNewStatus] = useState<Status>('pendiente');
   const [selectedTecnico, setSelectedTecnico] = useState<string | null>(null);
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
   
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
-  const [tasksPerPage] = useState(10); 
+  const [tasksPerPage] = useState(10);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  // Helper function to ensure status is in the correct format
+  const formatStatusForBackend = (status: string): Status => {
+    const lowerStatus = status.toLowerCase();
+    if (['pendiente', 'en progreso', 'completada', 'cancelada'].includes(lowerStatus)) {
+      return lowerStatus as Status;
+    }
+    return 'pendiente'; // Default fallback
+  };
+
+  const handleStatusChange = async () => {
+    if (selectedTasks.length === 0) return;
+    
+    setIsUpdatingStatus(true);
+    try {
+      // Format the status to ensure it matches backend expectations
+      const formattedStatus = formatStatusForBackend(newStatus);
+      
+      // Get the full task data for each selected task
+      const tasksToUpdate = selectedTasks.map(taskId => {
+        const task = tasks.find(t => t._id === taskId);
+        if (!task) return null;
+        
+        // Create an update object with all required fields from the original task
+        return {
+          id: taskId,
+          data: {
+            numero: task.numero,
+            titulo: task.titulo,
+            cliente: task.cliente || '',
+            direccion: task.direccion || '',
+            descripcion: task.descripcion || '',
+            numeroTitular: task.numeroTitular || '',
+            fechaEjecucion: task.fechaEjecucion || '',
+            franja_horaria: task.franja_horaria || '',
+            estado: formattedStatus, // Use the formatted status
+            tecnicos: task.tecnicos ? task.tecnicos.map((t: any) => t._id || t) : []
+          }
+        };
+      }).filter(Boolean); // Remove any null entries
+      
+      // Update each selected task with the required fields
+      const updatePromises = tasksToUpdate.map(task => 
+        task ? dispatch(updateTask(task)).unwrap() : Promise.resolve()
+      );
+      
+      await Promise.all(updatePromises);
+      
+      showSuccess(`Estado de ${selectedTasks.length} tarea(s) actualizado a "${newStatus}"`);
+      setShowStatusChangeModal(false);
+      setSelectedTasks([]);
+      dispatch(fetchTasks(filters)); // Refresh the task list
+    } catch (error) {
+      console.error('Error updating task statuses:', error);
+      showError('Error al actualizar el estado de las tareas');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   const handleFiltersChange = (newFilters: TaskFilters) => {
     dispatch(setFilters(newFilters));
@@ -708,31 +774,39 @@ const TaskList: React.FC = () => {
             <div className="flex items-center">
               {selectedTasks.length > 0 ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-2 rounded-md h-10 flex items-center">
-                    {selectedTasks.length} seleccionadas
+                  <span className="text-sm bg-blue-100 dark:bg-blue-900/80 text-blue-800 dark:text-blue-100 px-4 py-2 rounded-lg h-10 flex items-center font-semibold shadow-sm border border-blue-200 dark:border-blue-800">
+                    {selectedTasks.length} {selectedTasks.length === 1 ? 'tarea seleccionada' : 'tareas seleccionadas'}
                   </span>
+                  <button
+                    onClick={() => setShowStatusChangeModal(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 text-sm font-semibold flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-indigo-600 dark:border-indigo-400"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Cambiar estado
+                  </button>
                   <button
                     onClick={handleDeleteMultipleTasks}
                     disabled={selectedTasks.length === 0}
-                    className="px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
+                    className={`px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg ${selectedTasks.length > 0 ? 'opacity-100 hover:from-red-600 hover:to-pink-700' : 'opacity-50 cursor-not-allowed'} transition-all duration-200 text-sm font-semibold flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-red-600 dark:border-red-400`}
                   >
                     <Trash2 className="h-4 w-4" />
                     Eliminar
                   </button>
                   <button
                     onClick={() => setSelectedTasks([])}
-                    className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 cursor-pointer"
+                    className="h-10 px-3 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:from-gray-200 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-gray-300 dark:border-gray-600 flex items-center justify-center"
+                    title="Deseleccionar todo"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5 font-bold" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={handleSelectAllTasks}
-                  className="px-3 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 text-sm font-semibold flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-blue-600 dark:border-blue-400"
                 >
                   <CheckSquare className="h-4 w-4" />
-                  Seleccionar
+                  Seleccionar tareas
                 </button>
               )}
             </div>
@@ -740,24 +814,24 @@ const TaskList: React.FC = () => {
             {/* Filters Button */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="px-3 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-md hover:bg-purple-200 dark:hover:bg-purple-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-lg hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-gray-300 dark:border-gray-600"
             >
               <Filter className="h-4 w-4" />
-              Filtros
-              {showFilters && (
-                <span className="ml-1 w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
-              )}
+              {showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showFilters ? 'transform rotate-180' : ''}`} />
             </button>
             
             {/* WhatsApp Button */}
             <button
               onClick={() => setShowWhatsAppPanel(!showWhatsAppPanel)}
-              className="px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
+              className={`px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-green-600 dark:border-green-400 ${
+                selectedTasks.length > 0 ? 'ring-2 ring-offset-2 ring-green-400 dark:ring-green-500' : ''
+              }`}
             >
               <Send className="h-4 w-4" />
               {showWhatsAppPanel ? 'Ocultar WhatsApp' : 'Enviar WhatsApp'}
               {selectedTasks.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-white dark:bg-gray-800 text-green-700 dark:text-green-300 text-xs rounded-full shadow-sm">
+                <span className="ml-1 px-2 py-0.5 bg-white/20 text-white text-xs rounded-full font-bold">
                   {selectedTasks.length}
                 </span>
               )}
@@ -782,6 +856,72 @@ const TaskList: React.FC = () => {
         </div>
       )}
       
+      {/* Status Change Modal */}
+      {showStatusChangeModal && (
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-purple-600">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">
+                  Cambiar estado de {selectedTasks.length} tarea{selectedTasks.length !== 1 ? 's' : ''}
+                </h3>
+                <button
+                  onClick={() => setShowStatusChangeModal(false)}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nuevo estado
+                  </label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value as Status)}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en progreso">En progreso</option>
+                    <option value="completada">Completada</option>
+                    <option value="cancelada">Cancelada</option>
+                  </select>
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowStatusChangeModal(false)}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStatusChange}
+                    disabled={isUpdatingStatus}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUpdatingStatus ? (
+                      <>
+                        <RefreshCw className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                        Actualizando...
+                      </>
+                    ) : (
+                      'Actualizar estado'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Panel de WhatsApp */}
       {showWhatsAppPanel && (
         <div className="my-4 bg-white dark:bg-gray-800 rounded-lg shadow-md border-t-4 border-green-500 animate-fadeIn transition-all duration-300 ease-in-out" style={{ animationDelay: '200ms' }}>
@@ -957,15 +1097,25 @@ const TaskList: React.FC = () => {
           {currentTasks.map((task) => (
             <div 
               key={task._id} 
-              className={`group border-b border-gray-200 dark:border-gray-700 p-4 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-200 relative animate-fadeIn
-                ${task.estado === 'completada' 
-                  ? 'border-l-4 border-green-500 dark:border-green-600' 
-                  : task.estado === 'en progreso' 
-                    ? 'border-l-4 border-amber-500 dark:border-amber-600' 
-                    : 'border-l-4 border-blue-500 dark:border-blue-600'}`}
-              style={{ 
+              className="group border-b border-gray-200 dark:border-gray-700 p-4 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all duration-200 relative animate-fadeIn"
+              id={`task-${task._id}`}
+              style={{
                 animationDelay: `${currentTasks.indexOf(task) * 50}ms`,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                borderLeft: (() => {
+                  const status = String(task.estado || '').toLowerCase().trim();
+                  
+                  if (status.includes('completad')) {
+                    return '4px solid #22c55e'; 
+                  } else if (status.includes('progreso')) {
+                    return '4px solid #3b82f6'; 
+                  } else if (status.includes('cancelad')) {
+                    return '4px solid #ef4444'; 
+                  } else {
+                    return '4px solid #f59e0b'; 
+                  }
+                })(),
+                opacity: String(task.estado || '').toLowerCase().includes('cancelad') ? 0.8 : 1
               }}
             >
               {/* Checkbox para seleccionar tarea */}

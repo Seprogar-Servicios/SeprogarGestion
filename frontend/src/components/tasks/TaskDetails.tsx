@@ -105,6 +105,11 @@ const TaskDetails: React.FC = () => {
         franjaHoraria = `${formData.horaInicio} - ${formData.horaFin}`;
       }
       
+      // Convert tecnicos array from objects to just the _id strings
+      const tecnicosIds = formData.tecnicos.map(tecnico => 
+        typeof tecnico === 'string' ? tecnico : tecnico._id
+      );
+      
       // Only include fields that are allowed to be updated
       const taskUpdate = {
         numero: formData.numero,
@@ -116,9 +121,7 @@ const TaskDetails: React.FC = () => {
         fechaEjecucion: formData.fechaEjecucion,
         franja_horaria: franjaHoraria,
         estado: formData.estado,
-        tecnicos: formData.tecnicos,
-        // Explicitly exclude 'origen' as it's not allowed in updates
-        // Also exclude any other fields that shouldn't be updated
+        tecnicos: tecnicosIds, // Use the array of IDs instead of objects
       };
       
       await dispatch(updateTask({ 

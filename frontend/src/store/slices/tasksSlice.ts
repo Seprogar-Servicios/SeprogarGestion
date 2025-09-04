@@ -177,9 +177,17 @@ export const createTask = createAsyncThunk(
 
 export const updateTask = createAsyncThunk(
   'tasks/updateTask',
-  async ({ id, data }: { id: string; data: Partial<Task> }, { rejectWithValue }) => {
+  async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
     try {
-      const response = await api.put<ApiResponse<Task>>(`/tareas/${id}`, data);
+      // Ensure tecnicos is an array of strings (user IDs)
+      const taskData = { ...data };
+      if (Array.isArray(taskData.tecnicos)) {
+        taskData.tecnicos = taskData.tecnicos.map((t: any) => 
+          typeof t === 'string' ? t : t._id
+        );
+      }
+      
+      const response = await api.put<ApiResponse<Task>>(`/tareas/${id}`, taskData);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Error al actualizar tarea');

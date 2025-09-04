@@ -76,7 +76,13 @@ const AppRoutes = () => {
 function App() {
   return (
     <Provider store={store}>
-      <Router basename="/">
+      <Router 
+        basename="/"
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}
+      >
         <div className="App">
         <ToastContainer 
             position="top-right"

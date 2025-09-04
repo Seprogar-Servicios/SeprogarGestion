@@ -34,6 +34,13 @@ const Analytics: React.FC = () => {
   const [dateRange, setDateRange] = useState<{start: string, end: string}>(() => {
     const end = new Date();
     const start = subMonths(end, 3); // Por defecto, últimos 3 meses
+    
+    // Asegurarse de que las fechas sean válidas
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.error('Fechas inválidas al inicializar el rango');
+      return { start: '', end: '' };
+    }
+    
     return {
       start: format(start, 'yyyy-MM-dd'),
       end: format(end, 'yyyy-MM-dd')
@@ -60,15 +67,34 @@ const Analytics: React.FC = () => {
     if (tasks.length) {
       let filtered = [...tasks];
       
-      // Filtrar por fecha
+      // Filtrar por fecha de ejecución
       if (dateRange.start && dateRange.end) {
         const startDate = new Date(dateRange.start);
         const endDate = new Date(dateRange.end);
         endDate.setHours(23, 59, 59, 999); // Incluir todo el día final
         
         filtered = filtered.filter(task => {
-          const taskDate = new Date(task.fechaCreacion);
-          return taskDate >= startDate && taskDate <= endDate;
+          // Usar fechaEjecucion en lugar de fechaCreacion
+          if (!task.fechaEjecucion) return false; // Si no tiene fecha de ejecución, la filtramos
+          
+          // Convertir la fecha de ejecución a objeto Date
+          const taskDate = new Date(task.fechaEjecucion);
+          
+          // Asegurarse de que la fecha sea válida
+          if (isNaN(taskDate.getTime())) {
+            console.log('Fecha de ejecución inválida:', task.fechaEjecucion, 'en tarea:', task._id);
+            return false;
+          }
+          
+          const isInRange = taskDate >= startDate && taskDate <= endDate;
+          if (!isInRange) {
+            console.log('Tarea filtrada por fecha de ejecución:', {
+              id: task._id,
+              fechaEjecucion: task.fechaEjecucion,
+              rango: `${dateRange.start} a ${dateRange.end}`
+            });
+          }
+          return isInRange;
         });
       }
       
