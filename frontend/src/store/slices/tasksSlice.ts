@@ -24,7 +24,15 @@ const initialState: TasksState = {
   filters: {},
 };
 
-// Helper function to calculate date ranges for tasks
+// Helper function to get local date string in YYYY-MM-DD format
+const getLocalDateString = (date: Date) => {
+  // Use local timezone for date parts
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const getUpcomingDateRange = (filter: string) => {
   const now = new Date();
   const today = new Date(now);
@@ -37,55 +45,57 @@ const getUpcomingDateRange = (filter: string) => {
       // Tareas hasta ayer (inclusive)
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
-      yesterday.setHours(23, 59, 59, 999);
-      return { fechaHasta: yesterday.toISOString() };
+      return { 
+        fechaHasta: getLocalDateString(yesterday)
+      };
     }
 
     case 'current':
       // Desde hoy en adelante
-      return { fechaDesde: today.toISOString() };
+      return { 
+        fechaDesde: getLocalDateString(today)
+      };
 
     case 'next24h': {
-      // Próximas 24 horas
-      const next24h = new Date(now);
-      next24h.setHours(now.getHours() + 24);
-      return { fechaDesde: now.toISOString(), fechaHasta: next24h.toISOString() };
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      return {
+        fechaDesde: getLocalDateString(today),
+        fechaHasta: getLocalDateString(tomorrow),
+      };
     }
 
     case 'next48h': {
-      // Próximas 48 horas
-      const next48h = new Date(now);
-      next48h.setHours(now.getHours() + 48);
-      return { fechaDesde: now.toISOString(), fechaHasta: next48h.toISOString() };
+      const dayAfterTomorrow = new Date(today);
+      dayAfterTomorrow.setDate(today.getDate() + 2);
+      return {
+        fechaDesde: getLocalDateString(today),
+        fechaHasta: getLocalDateString(dayAfterTomorrow),
+      };
     }
 
     case 'nextWeek': {
-      // Lunes siguiente
       const nextMonday = new Date(today);
       let offset = (1 + 7 - today.getDay()) % 7;
-      if (offset === 0) offset = 7; // Siempre apunta al lunes siguiente
+      if (offset === 0) offset = 7;
       nextMonday.setDate(today.getDate() + offset);
 
-      // Domingo siguiente
       const nextSunday = new Date(nextMonday);
       nextSunday.setDate(nextMonday.getDate() + 6);
-      nextSunday.setHours(23, 59, 59, 999);
 
       return {
-        fechaDesde: nextMonday.toISOString(),
-        fechaHasta: nextSunday.toISOString()
+        fechaDesde: getLocalDateString(nextMonday),
+        fechaHasta: getLocalDateString(nextSunday),
       };
     }
 
     case 'nextMonth': {
-      // Primer y último día del próximo mes
       const firstDayNextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
       const lastDayNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-      lastDayNextMonth.setHours(23, 59, 59, 999);
 
       return {
-        fechaDesde: firstDayNextMonth.toISOString(),
-        fechaHasta: lastDayNextMonth.toISOString()
+        fechaDesde: getLocalDateString(firstDayNextMonth),
+        fechaHasta: getLocalDateString(lastDayNextMonth),
       };
     }
 
@@ -93,6 +103,7 @@ const getUpcomingDateRange = (filter: string) => {
       return {};
   }
 };
+
 
 // Async thunks
 export const fetchTaskById = createAsyncThunk(
@@ -136,17 +147,19 @@ export const fetchTasks = createAsyncThunk(
         
         // Handle date fields
         if (key === 'fechaDesde' || key === 'fechaHasta') {
-          try {
-            const date = new Date(value);
-            if (!isNaN(date.getTime())) {
-              // For fechaHasta, set to end of day
-              if (key === 'fechaHasta') {
-                date.setHours(23, 59, 59, 999);
+          // If the value is already in YYYY-MM-DD format (from getUpcomingDateRange), use it directly
+          if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            params.append(key, value);
+          } else {
+            // Otherwise, try to parse it as a date
+            try {
+              const date = new Date(value);
+              if (!isNaN(date.getTime())) {
+                params.append(key, getLocalDateString(date));
               }
-              params.append(key, date.toISOString());
+            } catch (e) {
+              console.error(`Error processing date ${key}:`, e);
             }
-          } catch (e) {
-            console.error(`Error processing date ${key}:`, e);
           }
           return;
         }

@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTaskById, clearCurrentTask, deleteTask, updateTask } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { showSuccess, showError } from '../../utils/toastUtils';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import type { User as UserType } from '../../types';
 import { es } from 'date-fns/locale';
 import {
@@ -73,6 +73,20 @@ const TaskDetails: React.FC = () => {
   // Update form data when currentTask changes
   useEffect(() => {
     if (currentTask) {
+      // Parse the date string manually to avoid timezone issues
+      let fechaEjecucion = '';
+      if (currentTask.fechaEjecucion) {
+        try {
+          const [year, month, day] = currentTask.fechaEjecucion.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            fechaEjecucion = format(date, 'yyyy-MM-dd');
+          }
+        } catch (error) {
+          console.error('Error al formatear fecha de ejecución:', error);
+        }
+      }
+
       setFormData(prev => ({
         ...prev,
         numero: currentTask.numero || '',
@@ -81,7 +95,7 @@ const TaskDetails: React.FC = () => {
         cliente: currentTask.cliente || '',
         numeroTitular: currentTask.numeroTitular || '',
         direccion: currentTask.direccion || '',
-        fechaEjecucion: currentTask.fechaEjecucion ? format(new Date(currentTask.fechaEjecucion), 'yyyy-MM-dd') : '',
+        fechaEjecucion,
         horaInicio: currentTask.franja_horaria?.split('-')[0]?.trim() || '',
         horaFin: currentTask.franja_horaria?.split('-')[1]?.trim() || '',
         franja_horaria: currentTask.franja_horaria || '',
@@ -178,12 +192,20 @@ const TaskDetails: React.FC = () => {
   const formatDate = (dateString: string | undefined): string => {
     if (!dateString) return 'No programada';
     try {
-      const date = parseISO(dateString);
-      // Ajustar para la zona horaria de Argentina (UTC-3)
-      date.setDate(date.getDate() + 1);
-      return format(date, 'EEEE d \'de\' MMMM \'de\' yyyy', { locale: es });
+      // Parse the date string manually to avoid timezone issues
+      const [year, month, day] = dateString.split('-').map(Number);
+      // Create a date in local time (months are 0-indexed in JS)
+      const date = new Date(year, month - 1, day);
+      
+      // Verify the date is valid
+      if (isNaN(date.getTime())) {
+        throw new Error('Fecha inválida');
+      }
+      
+      // Format as "Día DD de Mes de AAAA" (e.g., "Viernes 5 de Septiembre de 2025")
+      return format(date, "EEEE d 'de' MMMM 'de' yyyy", { locale: es });
     } catch (error) {
-      console.error('Error formatting date:', error);
+      console.error('Error al formatear fecha:', error);
       return 'Fecha inválida';
     }
   };

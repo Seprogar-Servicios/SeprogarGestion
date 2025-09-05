@@ -52,7 +52,24 @@ const TaskCalendar: React.FC = () => {
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  
+  // Get the first day of the week (0 = Sunday, 1 = Monday, etc.)
+  const firstDayOfWeek = 0; // 0 for Sunday, 1 for Monday, etc.
+  
+  // Calculate the start date to include the beginning of the week
+  let startDate = new Date(monthStart);
+  while (startDate.getDay() !== firstDayOfWeek) {
+    startDate.setDate(startDate.getDate() - 1);
+  }
+  
+  // Calculate the end date to include the end of the week
+  let endDate = new Date(monthEnd);
+  while (endDate.getDay() !== (firstDayOfWeek + 6) % 7) {
+    endDate.setDate(endDate.getDate() + 1);
+  }
+  
+  // Generate all days for the calendar view
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
   const getTasksForDate = (date: Date) => {
     if (!tasks || !Array.isArray(tasks)) {
@@ -270,14 +287,19 @@ const TaskCalendar: React.FC = () => {
             <div className="p-4 flex-grow overflow-auto">
               {/* Days of week header */}
               <div className="grid grid-cols-7 gap-1 mb-4 min-w-[600px]">
-                {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day) => (
-                  <div 
-                    key={day} 
-                    className="p-2 text-center text-sm font-medium rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/10"
-                  >
-                    {day}
-                  </div>
-                ))}
+                {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
+                  // Get the day of week using date-fns with Spanish locale
+                  const dayDate = new Date(2023, 0, dayIndex + 1); // Any date where we can get the day of week
+                  const dayName = format(dayDate, 'EEE', { locale: es });
+                  return (
+                    <div 
+                      key={dayIndex} 
+                      className="p-2 text-center text-sm font-medium rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/10"
+                    >
+                      {dayName}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Calendar days */}

@@ -62,16 +62,20 @@ exports.getTareas = async (req, res) => {
     if (usuario) filtro.tecnicos = usuario;
     if (estado) filtro.estado = estado;
     if (cliente) filtro.cliente = { $regex: cliente, $options: 'i' };
-    // Manejo de filtros de fecha para fechaEjecucion
+    // Manejo de filtros de fecha para fechaEjecucion (almacenada como string 'YYYY-MM-DD')
     if (fechaDesde || fechaHasta) {
-      filtro.fechaEjecucion = {};
+      const dateConditions = [];
       
       if (fechaDesde) {
         try {
-          const fechaDesdeDate = new Date(fechaDesde);
-          if (!isNaN(fechaDesdeDate.getTime())) {
-            fechaDesdeDate.setHours(0, 0, 0, 0); // Start of day
-            filtro.fechaEjecucion.$gte = fechaDesdeDate;
+          // Asegurarse de que la fecha tenga el formato correcto
+          if (/^\d{4}-\d{2}-\d{2}$/.test(fechaDesde)) {
+            dateConditions.push({
+              fechaEjecucion: { $gte: fechaDesde }
+            });
+            console.log('Filtrando por fecha desde:', fechaDesde);
+          } else {
+            console.error('Formato de fechaDesde inválido:', fechaDesde);
           }
         } catch (error) {
           console.error('Error al procesar fechaDesde:', error);
@@ -80,19 +84,25 @@ exports.getTareas = async (req, res) => {
       
       if (fechaHasta) {
         try {
-          const fechaHastaDate = new Date(fechaHasta);
-          if (!isNaN(fechaHastaDate.getTime())) {
-            fechaHastaDate.setHours(23, 59, 59, 999); // End of day
-            filtro.fechaEjecucion.$lte = fechaHastaDate;
+          // Asegurarse de que la fecha tenga el formato correcto
+          if (/^\d{4}-\d{2}-\d{2}$/.test(fechaHasta)) {
+            dateConditions.push({
+              fechaEjecucion: { $lte: fechaHasta }
+            });
+            console.log('Filtrando por fecha hasta:', fechaHasta);
+          } else {
+            console.error('Formato de fechaHasta inválido:', fechaHasta);
           }
         } catch (error) {
           console.error('Error al procesar fechaHasta:', error);
         }
       }
       
-      // Si no hay operadores válidos, eliminar el filtro de fecha
-      if (Object.keys(filtro.fechaEjecucion).length === 0) {
-        delete filtro.fechaEjecucion;
+      // Aplicar condiciones de fecha
+      if (dateConditions.length > 0) {
+        if (!filtro.$and) filtro.$and = [];
+        filtro.$and.push(...dateConditions);
+        console.log('Filtro de fecha aplicado:', JSON.stringify(dateConditions, null, 2));
       }
     }
     const tareas = await Tarea.find(filtro)

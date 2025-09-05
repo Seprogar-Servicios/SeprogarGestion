@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppSelector } from '../../store';
 import type { TaskFilters, User } from '../../types';
-import { format, startOfToday } from 'date-fns';
 
 interface TasksFilterProps {
   filters: TaskFilters;
@@ -13,7 +12,6 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
   const [tecnico, setTecnico] = useState<string>(filters.tecnico || '');
   const [estado, setEstado] = useState<string>(filters.estado || '');
   const [fechaDesde, setFechaDesde] = useState<string>('');
-  const [showOnlyFutureTasks, setShowOnlyFutureTasks] = useState<boolean>(false);
 
   // Filtrar usuarios que son técnicos (rol 'usuario')
   const tecnicos = users?.filter((user: User) => user.rol === 'usuario' && user.aprobado) || [];
@@ -39,14 +37,8 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
       newFilters.estado = estado;
     }
     
-    // Handle date filters
-    if (showOnlyFutureTasks) {
-      const today = format(startOfToday(), 'yyyy-MM-dd');
-      newFilters.fechaDesde = today;
-      // Clear any conflicting filters
-      delete newFilters.fechaHasta;
-      delete newFilters.upcomingFilter;
-    } else if (fechaDesde) {
+    // Handle date filter
+    if (fechaDesde) {
       newFilters.fechaDesde = fechaDesde;
     }
     
@@ -64,22 +56,8 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
     setTecnico('');
     setEstado('');
     setFechaDesde('');
-    setShowOnlyFutureTasks(true);
-    
-    // Reset to default filter (today's tasks)
-    const today = format(startOfToday(), 'yyyy-MM-dd');
-    const newFilters: TaskFilters = {
-      fechaDesde: today
-    };
-    
-    // Clear all other filters
-    Object.keys(filters).forEach(key => {
-      if (key !== 'fechaDesde') {
-        delete (newFilters as any)[key];
-      }
-    });
-    
-    onFiltersChange(newFilters);
+    // Clear all filters
+    onFiltersChange({});
   };
 
   const { user } = useAppSelector((state) => state.auth);
@@ -108,12 +86,7 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
                     delete newFilters.tecnico;
                   }
                   
-                  if (showOnlyFutureTasks) {
-                    // Usar la fecha actual sin hora para asegurar que se incluyan todas las tareas de hoy
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    newFilters.fechaDesde = format(today, 'yyyy-MM-dd');
-                  } else if (fechaDesde) {
+                  if (fechaDesde) {
                     newFilters.fechaDesde = fechaDesde;
                   } else {
                     delete newFilters.fechaDesde;
@@ -152,41 +125,7 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
           </div>
         </div>
 
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="showOnlyFutureTasks"
-            checked={showOnlyFutureTasks}
-            onChange={async (e) => {
-              const isChecked = e.target.checked;
-              setShowOnlyFutureTasks(isChecked);
-              
-              // Create a new filters object
-              const newFilters: TaskFilters = { ...filters };
-              
-              // Update date filter based on checkbox state
-              if (isChecked) {
-                const today = format(startOfToday(), 'yyyy-MM-dd');
-                newFilters.fechaDesde = today;
-              } else {
-                delete newFilters.fechaDesde;
-              }
-              
-              // Clear any conflicting date filters
-              delete newFilters.fechaHasta;
-              delete newFilters.upcomingFilter;
-              
-              // Apply the changes
-              onFiltersChange(newFilters);
-            }}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="showOnlyFutureTasks" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-            Mostrar solo tareas desde hoy en adelante
-          </label>
-        </div>
-
-        {!showOnlyFutureTasks && (
+        {(
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Fecha desde
