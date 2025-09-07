@@ -1,6 +1,78 @@
 /**
  * Parsers para extraer información de tareas de diferentes formatos de mensajes
+ * Optimizado para reducir el uso de memoria
  */
+
+// Patrones de expresiones regulares reutilizables
+const PEDIDO_PATTERNS = {
+  CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
+  FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
+  PEDIDO_NUM: /Pedido\s+(\d+)/i,
+  CLIENTE: /Cliente:\s*([^\n]+)/i,
+  WHATSAPP_TITULAR: /[Ww]hatsapp\s+titular:\s*([^\n]+)/i,
+  TELEFONO: /tel[eé]fono[^:]*:\s*([^\n]+)/i,
+  ANY_PHONE: /(?:tel[eé]fono|celular|contacto|llamar)[^\d]*(\d{8,})/i,
+  DESCRIPCION: /Descripción del servicio:\s*([^\n]+)/i,
+  DIRECCION_POLIZA: /Dirección póliza:\s*([^\n]+)/i,
+  DIRECCION_PEDIDO: /Dirección pedido:\s*([^\n]+)/i
+};
+
+// Patrones de fecha/hora precompilados
+const DATE_PATTERNS = [
+  // Formato 1: TURNO confirmado fecha DD/MM/AAAA HH:MM-HH:MM
+  {
+    pattern: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
+    handler: (match) => ({
+      date: match[1].split('/').reverse().join('-'),
+      time: `${match[2]} - ${match[3]}`
+    })
+  },
+  // Formato 2: TURNO...fecha...DD/MM/AAAA...HH:MM...-...HH:MM
+  {
+    pattern: /TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*-[^\n]*(\d{1,2}:\d{2})/i,
+    handler: (match) => ({
+      date: match[1].split('/').reverse().join('-'),
+      time: `${match[2]} - ${match[3]}`
+    })
+  },
+  // Formato 3: DD/MM/AAAA HH:MM-HH:MM
+  {
+    pattern: /(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
+    handler: (match) => ({
+      date: match[1].split('/').reverse().join('-'),
+      time: `${match[2]} - ${match[3]}`
+    })
+  },
+  // Formato 4: TURNO...fecha DD/MM/AAAA franja horaria H a H hs
+  {
+    pattern: /TURNO[^\n]*fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+franja\s+horaria\s+(\d{1,2})\s+a\s+(\d{1,2})\s+hs/i,
+    handler: (match) => ({
+      date: match[1].split('/').reverse().join('-'),
+      time: `${match[2].padStart(2, '0')}:00 - ${match[3].padStart(2, '0')}:00`
+    })
+  },
+  // Formato 5: DD/MM DE H A H HS
+  {
+    pattern: /(\d{1,2})\s*\/\s*(\d{1,2})\s+DE\s+(\d+)\s+A\s+(\d+)\s+HS/i,
+    handler: (match) => {
+      const year = new Date().getFullYear();
+      return {
+        date: `${year}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`,
+        time: `${match[3].padStart(2, '0')}:00 - ${match[4].padStart(2, '0')}:00`
+      };
+    }
+  }
+];
+
+/**
+ * Limita el tamaño de un mensaje para evitar consumo excesivo de memoria
+ * @param {string} message - Mensaje a limitar
+ * @param {number} maxLength - Longitud máxima (por defecto 2000 caracteres)
+ * @returns {string} - Mensaje truncado si es necesario
+ */
+function limitMessageSize(message, maxLength = 2000) {
+  return typeof message === 'string' ? message.substring(0, maxLength) : '';
+}
 
 /**
  * Parsea un mensaje en formato Pedido
@@ -9,15 +81,18 @@
  */
 function parsePedidoMessage(message) {
   try {
+    // Limitar el tamaño del mensaje para evitar consumo excesivo de memoria
+    message = limitMessageSize(message);
+    
     // Verificar si el mensaje contiene logs del sistema
     if (message.includes('[INFO]')) {
       // Buscar el mensaje limpio si está disponible
-      const cleanContentMatch = message.match(/\[INFO\] Contenido limpio: "([\s\S]*)"/i);
+      const cleanContentMatch = PEDIDO_PATTERNS.CLEAN_CONTENT.exec(message);
       if (cleanContentMatch && cleanContentMatch[1]) {
         message = cleanContentMatch[1];
       } else {
         // Si no hay contenido limpio, intentar extraer el mensaje completo
-        const fullMessageMatch = message.match(/\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i);
+        const fullMessageMatch = PEDIDO_PATTERNS.FULL_MESSAGE.exec(message);
         if (fullMessageMatch && fullMessageMatch[1]) {
           message = fullMessageMatch[1];
         }
@@ -31,7 +106,7 @@ function parsePedidoMessage(message) {
       .trim();
       
     // Extraer el número de pedido (con o sin asteriscos)
-    const numeroMatch = message.match(/Pedido\s+(\d+)/i);
+    const numeroMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(message);
     const numero = numeroMatch ? numeroMatch[1] : null;
     
     if (!numero) {
@@ -42,46 +117,43 @@ function parsePedidoMessage(message) {
     const titulo = `Pedido ${numero}`;
     
     // Extraer cliente
-    const clienteMatch = message.match(/Cliente:\s*([^\n]+)/i);
+    const clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(message);
     const cliente = clienteMatch ? clienteMatch[1].trim() : null;
     
-    // Extraer número de WhatsApp del titular (más flexible con mayúsculas/minúsculas)
+    // Extraer número de WhatsApp del titular
     let numeroTitular = '';
     
     // Patrón principal: "Whatsapp titular: 123456789"
-    const numeroTitularMatch = message.match(/[Ww]hatsapp\s+titular:\s*([^\n]+)/i);
-    if (numeroTitularMatch && numeroTitularMatch[1].trim()) {
+    const numeroTitularMatch = PEDIDO_PATTERNS.WHATSAPP_TITULAR.exec(message);
+    if (numeroTitularMatch && numeroTitularMatch[1]?.trim()) {
       numeroTitular = numeroTitularMatch[1].trim();
     } else {
       // Patrón alternativo: "teléfono de la persona que los recibe: 123456789"
-      const telefonoMatch = message.match(/tel[eé]fono[^:]*:\s*([^\n]+)/i);
-      if (telefonoMatch && telefonoMatch[1].trim()) {
+      const telefonoMatch = PEDIDO_PATTERNS.TELEFONO.exec(message);
+      if (telefonoMatch && telefonoMatch[1]?.trim()) {
         numeroTitular = telefonoMatch[1].trim();
       }
     }
     
     // Si aún no se encontró, buscar cualquier número de teléfono en el mensaje
     if (!numeroTitular) {
-      const anyPhoneMatch = message.match(/(?:tel[eé]fono|celular|contacto|llamar)[^\d]*(\d{8,})/i);
-      if (anyPhoneMatch) {
+      const anyPhoneMatch = PEDIDO_PATTERNS.ANY_PHONE.exec(message);
+      if (anyPhoneMatch?.[1]) {
         numeroTitular = anyPhoneMatch[1].trim();
-      } else {
-        // Si no se encuentra ningún número, usar un string vacío
-        numeroTitular = '';
       }
     }
     
     // Extraer la descripción del servicio
     let descripcion = null;
-    const descripcionMatch = message.match(/Descripción del servicio:\s*([^\n]+)/i);
-    if (descripcionMatch) {
+    const descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(message);
+    if (descripcionMatch?.[1]) {
       descripcion = descripcionMatch[1].trim();
     }
     
     // Si no se encontró descripción, intentar con un patrón más flexible
-    if (!descripcion || descripcion === '') {
+    if (!descripcion) {
       const lineas = message.split('\n');
-      for (let i = 0; i < lineas.length; i++) {
+      for (let i = 0; i < Math.min(lineas.length, 20); i++) { // Limitar a 20 líneas para evitar loops largos
         if (lineas[i].toLowerCase().includes('descripción del servicio')) {
           descripcion = lineas[i].split(':')[1]?.trim() || '';
           break;
@@ -89,93 +161,18 @@ function parsePedidoMessage(message) {
       }
     }
     
-    // Si aún no se encontró descripción, buscar en el mensaje completo
-    if (!descripcion || descripcion === '') {
-      // Buscar cualquier texto entre "Descripción del servicio:" y la siguiente línea
-      const fullDescMatch = message.match(/Descripción del servicio:([\s\S]*?)(?=Dirección|Barrio|TURNO|$)/i);
-      if (fullDescMatch && fullDescMatch[1]) {
-        descripcion = fullDescMatch[1].trim();
-      }
-    }
-    
     // Extraer dirección (puede ser "Dirección póliza" o "Dirección pedido")
-    let direccionMatch = message.match(/Dirección póliza:\s*([^\n]+)/i);
-    if (!direccionMatch) {
-      direccionMatch = message.match(/Dirección pedido:\s*([^\n]+)/i);
-    }
-    const direccion = direccionMatch ? direccionMatch[1].trim() : null;
+    let direccionMatch = PEDIDO_PATTERNS.DIRECCION_POLIZA.exec(message) || 
+                        PEDIDO_PATTERNS.DIRECCION_PEDIDO.exec(message);
+    const direccion = direccionMatch?.[1]?.trim() || null;
     
     // Extraer fecha de ejecución y franja horaria
     let fechaEjecucion = null;
     let franja_horaria = null;
     
-    // Intentar diferentes formatos de fecha y hora
-    const datePatterns = [
-      // Formato 1: TURNO confirmado fecha DD/MM/AAAA HH:MM-HH:MM
-      {
-        pattern: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
-        handler: (match) => {
-          const [_, date, startTime, endTime] = match;
-          const [day, month, year] = date.split('/');
-          return {
-            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
-            time: `${startTime} - ${endTime}`
-          };
-        }
-      },
-      // Formato 2: TURNO...fecha...DD/MM/AAAA...HH:MM...-...HH:MM
-      {
-        pattern: /TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*-[^\n]*(\d{1,2}:\d{2})/i,
-        handler: (match) => {
-          const [_, date, startTime, endTime] = match;
-          const [day, month, year] = date.split('/');
-          return {
-            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
-            time: `${startTime} - ${endTime}`
-          };
-        }
-      },
-      // Formato 3: DD/MM/AAAA HH:MM-HH:MM
-      {
-        pattern: /(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
-        handler: (match) => {
-          const [_, date, startTime, endTime] = match;
-          const [day, month, year] = date.split('/');
-          return {
-            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
-            time: `${startTime} - ${endTime}`
-          };
-        }
-      },
-      // Formato 4: TURNO...fecha DD/MM/AAAA franja horaria H a H hs
-      {
-        pattern: /TURNO[^\n]*fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+franja\s+horaria\s+(\d{1,2})\s+a\s+(\d{1,2})\s+hs/i,
-        handler: (match) => {
-          const [_, date, startHour, endHour] = match;
-          const [day, month, year] = date.split('/');
-          return {
-            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
-            time: `${startHour.padStart(2, '0')}:00 - ${endHour.padStart(2, '0')}:00`
-          };
-        }
-      },
-      // Formato 5: DD/MM DE H A H HS (nuevo formato)
-      {
-        pattern: /(\d{1,2})\s*\/\s*(\d{1,2})\s+DE\s+(\d+)\s+A\s+(\d+)\s+HS/i,
-        handler: (match) => {
-          const [_, day, month, startHour, endHour] = match;
-          const year = new Date().getFullYear();
-          return {
-            date: `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
-            time: `${startHour.padStart(2, '0')}:00 - ${endHour.padStart(2, '0')}:00`
-          };
-        }
-      }
-    ];
-
     // Probar cada patrón hasta encontrar una coincidencia
-    for (const { pattern, handler } of datePatterns) {
-      const match = message.match(pattern);
+    for (const { pattern, handler } of DATE_PATTERNS) {
+      const match = pattern.exec(message);
       if (match) {
         const result = handler(match);
         fechaEjecucion = result.date;
@@ -185,11 +182,11 @@ function parsePedidoMessage(message) {
     }
     
     // Crear objeto de tarea con tipos garantizados
-    return {
+    const taskData = {
       numero: numero || '',
       titulo: titulo || '',
       cliente: cliente || '',
-      numeroTitular: numeroTitular || '', // Garantizar que sea string
+      numeroTitular: numeroTitular || '',
       descripcion: descripcion || '',
       direccion: direccion || '',
       fechaEjecucion: fechaEjecucion || '',
@@ -197,14 +194,35 @@ function parsePedidoMessage(message) {
       estado: 'pendiente',
       tecnicos: [],
       creadoPor: process.env.DEFAULT_USER_ID || null,
-      fechaCreacion: new Date(),
-      fechaModificacion: new Date()
+      fechaCreacion: new Date().toISOString(),
+      fechaModificacion: new Date().toISOString(),
+      origen: 'whatsapp'
     };
+    
+    // Limpiar referencias a objetos grandes
+    message = null;
+    
+    return taskData;
   } catch (error) {
     console.error('Error al parsear mensaje de Pedido:', error);
+    // Forzar recolección de basura si está disponible
+    if (typeof global.gc === 'function') {
+      global.gc();
+    }
     return null;
   }
 }
+
+// Patrones para parsear mensajes de tarea
+const TAREA_PATTERNS = {
+  NUMERO: /Numero:\s*([^\n]+)/i,
+  TITULO: /Titulo:\s*([^\n]+)/i,
+  CLIENTE: /Cliente:\s*([^\n]+)/i,
+  DESCRIPCION: /Descripción:[\s\n]+([^]*?)(?=\n\S+:|$)/i,
+  DIRECCION: /Dirección:[\s\n]+([^\n]+)/i,
+  TELEFONO: /Tel[ée]fono:[\s\n]+([^\n]+)/i,
+  FECHA_HORA: /(\d{1,2}\/\d{1,2}\/\d{4})\s+de\s+(\d{1,2}:\d{1,2})\s+a\s+(\d{1,2}:\d{1,2})/i
+};
 
 /**
  * Parsea un mensaje en formato TAREA
@@ -213,61 +231,76 @@ function parsePedidoMessage(message) {
  */
 function parseTareaMessage(message) {
   try {
-    // Extraer campos usando expresiones regulares
-    const numeroMatch = message.match(/Numero:\s*([^\n]+)/i);
-    const numero = numeroMatch ? numeroMatch[1].trim() : null;
+    // Limitar el tamaño del mensaje
+    message = limitMessageSize(message)
+      .replace(/\*/g, '')
+      .trim();
+
+    // Extraer número de tarea
+    const numeroMatch = TAREA_PATTERNS.NUMERO.exec(message);
+    const numero = numeroMatch?.[1]?.trim() || null;
     
     if (!numero) {
       return null; // Si no hay número, no podemos continuar
     }
+
+    // Extraer otros campos
+    const tituloMatch = TAREA_PATTERNS.TITULO.exec(message);
+    const clienteMatch = TAREA_PATTERNS.CLIENTE.exec(message);
+    const descripcionMatch = TAREA_PATTERNS.DESCRIPCION.exec(message);
+    const direccionMatch = TAREA_PATTERNS.DIRECCION.exec(message);
+    const telefonoMatch = TAREA_PATTERNS.TELEFONO.exec(message);
     
-    const tituloMatch = message.match(/Titulo:\s*([^\n]+)/i);
-    const titulo = tituloMatch ? tituloMatch[1].trim() : null;
+    // Extraer fecha y hora si están presentes
+    let fechaEjecucion = '';
+    let franja_horaria = '';
+    const fechaHoraMatch = TAREA_PATTERNS.FECHA_HORA.exec(message);
     
-    const descripcionMatch = message.match(/Descripcion:\s*([^\n]+)/i);
-    const descripcion = descripcionMatch ? descripcionMatch[1].trim() : null;
-    
-    const clienteMatch = message.match(/Cliente:\s*([^\n]+)/i);
-    const cliente = clienteMatch ? clienteMatch[1].trim() : null;
-    
-    const numeroTitularMatch = message.match(/NumeroTitular:\s*([^\n]+)/i);
-    const numeroTitular = numeroTitularMatch ? numeroTitularMatch[1].trim() : null;
-    
-    const direccionMatch = message.match(/Direccion:\s*([^\n]+)/i);
-    const direccion = direccionMatch ? direccionMatch[1].trim() : null;
-    
-    const franjaMatch = message.match(/Franja:\s*([^\n]+)/i);
-    const franja_horaria = franjaMatch ? franjaMatch[1].trim() : null;
-    
-    const fechaEjecucionMatch = message.match(/FechaEjecucion:\s*([^\n]+)/i);
-    let fechaEjecucion = null;
-    
-    if (fechaEjecucionMatch) {
-      // La fecha ya debería estar en formato YYYY-MM-DD
-      fechaEjecucion = fechaEjecucionMatch[1].trim();
+    if (fechaHoraMatch) {
+      const [_, date, startTime, endTime] = fechaHoraMatch;
+      const [day, month, year] = date.split('/');
+      fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      franja_horaria = `${startTime} - ${endTime}`;
     }
-    
+
     // Crear objeto de tarea
-    return {
-      numero,
-      titulo,
-      descripcion,
-      cliente,
-      numeroTitular,
-      direccion,
-      fechaEjecucion,
-      franja_horaria,
+    const taskData = {
+      numero: numero,
+      titulo: tituloMatch?.[1]?.trim() || `Tarea ${numero}`,
+      cliente: clienteMatch?.[1]?.trim() || '',
+      descripcion: descripcionMatch?.[1]?.trim() || '',
+      direccion: direccionMatch?.[1]?.trim() || '',
+      numeroTitular: telefonoMatch?.[1]?.trim() || '',
+      fechaEjecucion: fechaEjecucion,
+      franja_horaria: franja_horaria,
       estado: 'pendiente',
       tecnicos: [],
       creadoPor: process.env.DEFAULT_USER_ID || null,
-      fechaCreacion: new Date(),
-      fechaModificacion: new Date()
+      fechaCreacion: new Date().toISOString(),
+      fechaModificacion: new Date().toISOString(),
+      origen: 'whatsapp'
     };
+
+    // Limpiar referencias
+    message = null;
+    
+    return taskData;
   } catch (error) {
-    console.error('Error al parsear mensaje de TAREA:', error);
+    console.error('Error al parsear mensaje de Tarea:', error);
+    if (typeof global.gc === 'function') global.gc();
     return null;
   }
 }
+
+// Patrones para parsear mensajes de expediente
+const EXPEDIENTE_PATTERNS = {
+  EXPEDIENTE: /Expediente:\s*([^\n]+)/i,
+  CLIENTE: /Cliente:[\s\n]+([^\n]+)/i,
+  DETALLE: /Detalle:[\s\n]+([^]*?)(?=\n\S+:|$)/i,
+  DOMICILIO: /Domicilio:[\s\n]+([^\n]+)/i,
+  CONTACTO: /Contacto:[\s\n]+([^\n]+)/i,
+  FECHA: /(\d{1,2}\/\d{1,2}\/\d{4})/i
+};
 
 /**
  * Parsea un mensaje en formato Expediente
@@ -276,97 +309,57 @@ function parseTareaMessage(message) {
  */
 function parseExpedienteMessage(message) {
   try {
-    // Extraer el número de expediente
-    const expedienteMatch = message.match(/Expediente:\s*(\d+)/i);
-    const numero = expedienteMatch ? expedienteMatch[1] : null;
+    // Limitar el tamaño del mensaje
+    message = limitMessageSize(message)
+      .replace(/\*/g, '')
+      .trim();
+
+    // Extraer número de expediente
+    const expedienteMatch = EXPEDIENTE_PATTERNS.EXPEDIENTE.exec(message);
+    const numero = expedienteMatch?.[1]?.trim() || null;
     
     if (!numero) {
-      return null; // Si no hay número de expediente, no podemos continuar
+      return null; // Si no hay número, no podemos continuar
     }
+
+    // Extraer otros campos
+    const clienteMatch = EXPEDIENTE_PATTERNS.CLIENTE.exec(message);
+    const detalleMatch = EXPEDIENTE_PATTERNS.DETALLE.exec(message);
+    const domicilioMatch = EXPEDIENTE_PATTERNS.DOMICILIO.exec(message);
+    const contactoMatch = EXPEDIENTE_PATTERNS.CONTACTO.exec(message);
     
-    // Extraer cliente (Cuenta)
-    const cuentaMatch = message.match(/Cuenta:\s*([^\n]+)/i);
-    const cliente = cuentaMatch ? cuentaMatch[1].trim() : null;
-    
-    // Extraer NU (Nombre del Usuario)
-    const nuMatch = message.match(/NU:\s*([^\n]+)/i);
-    const nombreUsuario = nuMatch ? nuMatch[1].trim() : null;
-    
-    // Extraer número de teléfono
-    const telefonoMatch = message.match(/Teléfono:\s*([^\n]+)/i);
-    const numeroTitular = telefonoMatch ? telefonoMatch[1].trim() : null;
-    
-    // Extraer servicio (título)
-    const servicioMatch = message.match(/Servicio:\s*([^\n]+)/i);
-    const titulo = servicioMatch ? servicioMatch[1].trim() : null;
-    
-    // Extraer sección Ocurrido
-    const ocurridoMatch = message.match(/Ocurrido:\s*([^\n]+)/i);
-    const ocurrido = ocurridoMatch ? ocurridoMatch[1].trim() : null;
-    
-    // Variables para almacenar los datos extraídos de Ocurrido
-    let descripcion = null;
-    let direccion = null;
-    let fechaEjecucion = null;
-    let franja_horaria = null;
-    
-    // Procesar la sección Ocurrido si existe
-    if (ocurrido) {
-      // Dividir usando //// como separador
-      const partes = ocurrido.split('////').map(parte => parte.trim());
-      
-      // Primera parte es la descripción
-      if (partes.length > 0) {
-        descripcion = partes[0].trim();
-      }
-      
-      // Segunda parte es la dirección
-      if (partes.length > 1) {
-        direccion = partes[1].trim();
-      }
-      
-      // Cuarta parte contiene fecha y franja horaria
-      if (partes.length > 3) {
-        const fechaFranjaStr = partes[3].trim();
-        
-        // Extraer fecha y franja horaria
-        // Formato esperado: "remedios de escalada, 28/08/2025 de 08:00 a 11:00"
-        const fechaFranjaMatch = fechaFranjaStr.match(/(\d{1,2}\/\d{1,2}\/\d{4})\s+de\s+(\d{1,2}:\d{1,2})\s+a\s+(\d{1,2}:\d{1,2})/i);
-        
-        if (fechaFranjaMatch) {
-          // Convertir fecha de formato DD/MM/YYYY a YYYY-MM-DD
-          const fechaParts = fechaFranjaMatch[1].split('/');
-          if (fechaParts.length === 3) {
-            const dia = fechaParts[0].padStart(2, '0');
-            const mes = fechaParts[1].padStart(2, '0');
-            const anio = fechaParts[2];
-            fechaEjecucion = `${anio}-${mes}-${dia}`;
-          }
-          
-          // Extraer franja horaria
-          franja_horaria = `${fechaFranjaMatch[2]} - ${fechaFranjaMatch[3]}`;
-        }
-      }
+    // Extraer fecha si existe
+    let fechaEjecucion = '';
+    const fechaMatch = EXPEDIENTE_PATTERNS.FECHA.exec(message);
+    if (fechaMatch?.[1]) {
+      const [day, month, year] = fechaMatch[1].split('/');
+      fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
-    
+
     // Crear objeto de tarea
-    return {
-      numero,
-      titulo,
-      descripcion,
-      cliente,
-      numeroTitular,
-      direccion,
-      fechaEjecucion,
-      franja_horaria,
+    const taskData = {
+      numero: numero,
+      titulo: `Expediente ${numero}`,
+      cliente: clienteMatch?.[1]?.trim() || '',
+      descripcion: detalleMatch?.[1]?.trim() || '',
+      direccion: domicilioMatch?.[1]?.trim() || '',
+      numeroTitular: contactoMatch?.[1]?.trim() || '',
+      fechaEjecucion: fechaEjecucion,
       estado: 'pendiente',
       tecnicos: [],
       creadoPor: process.env.DEFAULT_USER_ID || null,
-      fechaCreacion: new Date(),
-      fechaModificacion: new Date()
+      fechaCreacion: new Date().toISOString(),
+      fechaModificacion: new Date().toISOString(),
+      origen: 'whatsapp'
     };
+
+    // Limpiar referencias
+    message = null;
+    
+    return taskData;
   } catch (error) {
     console.error('Error al parsear mensaje de Expediente:', error);
+    if (typeof global.gc === 'function') global.gc();
     return null;
   }
 }
