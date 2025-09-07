@@ -37,43 +37,114 @@ async function initializeClient() {
     logger.info('='.repeat(60));
 
     const executablePath = await chromium.executablePath();
+    
+    // Configuración mejorada de Puppeteer
+    const puppeteerOptions = {
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu',
+        ...chromium.args
+      ],
+      executablePath,
+      defaultViewport: chromium.defaultViewport,
+      ignoreHTTPSErrors: true,
+      ignoreDefaultArgs: ['--disable-extensions'],
+    };
 
+    logger.info('Configurando cliente de WhatsApp...');
+    
     client = new Client({
       authStrategy: new LocalAuth({
         dataPath: AUTH_FOLDER,
         clientId: 'futurgas-worker',
       }),
-      puppeteer: {
-        headless: true,
-        args: chromium.args,
-        executablePath,
-        defaultViewport: chromium.defaultViewport,
-      },
+      puppeteer: puppeteerOptions,
+      session: null, // Forzar nueva sesión
+      qrTimeout: 0, // Deshabilitar timeout del QR
+      authTimeout: 0, // Deshabilitar timeout de autenticación
       takeoverOnConflict: true,
-      takeoverTimeoutMs: 30000,
-      qrTimeout: 0,
+      takeoverTimeoutMs: 60000, // Aumentar tiempo de espera
       restartOnAuthFail: true,
+      disableWelcome: true, // Deshabilitar mensaje de bienvenida
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     });
 
+    logger.info('Configurando manejadores de eventos...');
     setupEventHandlers();
-    client.initialize().catch((err) => handleInitializationError(err));
+    
+    logger.info('Inicializando cliente...');
+    await client.initialize();
+    
   } catch (err) {
+    logger.error('Error durante la inicialización:', err);
     handleInitializationError(err);
   }
 }
 
-function handleInitializationError(error) {
+async function handleInitializationError(error) {
   initializationAttempts++;
-  logger.error('❌ Error al inicializar el cliente:', error);
-
-  if (initializationAttempts >= MAX_INIT_ATTEMPTS) {
-    logger.error('Se alcanzó el máximo de intentos. Verifica configuración.');
-    return;
+  
+  // Limpiar cliente anterior si existe
+  try {
+    if (client) {
+      await client.destroy();
+      client = null;
+    }
+  } catch (cleanupError) {
+    logger.warn('Error al limpiar cliente anterior:', cleanupError);
   }
 
-  const retryDelay = initializationAttempts * 5000;
-  logger.warn(`Reintentando en ${retryDelay / 1000} segundos...`);
-  setTimeout(initializeClient, retryDelay);
+  // Analizar el error para dar mensajes más descriptivos
+  const errorMessage = error.message || 'Error desconocido';
+  let errorDetails = '';
+  
+  if (errorMessage.includes('Execution context was destroyed')) {
+    errorDetails = 'El contexto de ejecución de Puppeteer fue destruido. Esto puede pasar por problemas de memoria o tiempo de espera.';
+  } else if (errorMessage.includes('Failed to launch the browser process')) {
+    errorDetails = 'No se pudo iniciar el navegador. Verifica la configuración de Chromium.';
+  } else if (errorMessage.includes('Navigation timeout')) {
+    errorDetails = 'Tiempo de espera agotado al cargar WhatsApp Web. Verifica tu conexión a internet.';
+  } else if (errorMessage.includes('Failed to authenticate')) {
+    errorDetails = 'Error de autenticación. Intenta eliminar la carpeta de autenticación y escanear el código QR nuevamente.';
+  }
+
+  logger.error(`❌ [Intento ${initializationAttempts}/${MAX_INIT_ATTEMPTS}] Error al inicializar el cliente:`);
+  logger.error(`🔍 ${errorMessage}`);
+  if (errorDetails) {
+    logger.error(`ℹ️ ${errorDetails}`);
+  }
+  
+  if (error.stack) {
+    logger.debug('Stack trace:', error.stack);
+  }
+
+  if (initializationAttempts >= MAX_INIT_ATTEMPTS) {
+    logger.error('🚨 Se alcanzó el máximo de intentos. Se requiere intervención manual.');
+    logger.info('Sugerencias para solucionar el problema:');
+    logger.info('1. Verifica que no haya otra instancia del bot en ejecución');
+    logger.info('2. Elimina la carpeta .wwebjs_auth para forzar nueva autenticación');
+    logger.info('3. Verifica que el puerto 3000 no esté en uso');
+    logger.info('4. Revisa los logs anteriores para más detalles');
+    process.exit(1);
+  }
+
+  // Aumentar el tiempo de espera progresivamente
+  const retryDelay = Math.min(initializationAttempts * 10000, 60000); // Máximo 1 minuto
+  logger.warn(`🔄 Reintentando en ${retryDelay / 1000} segundos...`);
+  
+  setTimeout(() => {
+    logger.info('Reiniciando inicialización...');
+    initializeClient().catch(err => {
+      logger.error('Error en el reintento de inicialización:', err);
+    });
+  }, retryDelay);
 }
 
 function setupEventHandlers() {
@@ -103,8 +174,11 @@ function setupEventHandlers() {
     }
   });
 
-  client.on('message_create', processMessage);
-  client.on('message', logIncomingMessage);
+  // Usar solo message_create que se dispara para todos los mensajes
+  client.on('message_create', (message) => {
+    logIncomingMessage(message);
+    processMessage(message);
+  });
 
   client.on('auth_failure', (err) => {
     logger.error('🔥 Error crítico de autenticación:', err.message);
@@ -123,11 +197,25 @@ function setupEventHandlers() {
 
 // === Logging de mensajes entrantes ===
 async function logIncomingMessage(message) {
-  const chat = await message.getChat();
-  if (!chat.isGroup) return;
-  logger.debug(
-    `MENSAJE RECIBIDO [GRUPO: ${chat.name}] De: ${message.from} Contenido: ${message.body || '<SIN TEXTO>'}`
-  );
+  try {
+    const chat = await message.getChat();
+    if (!chat.isGroup) return;
+    
+    const contact = await message.getContact();
+    const contactName = contact?.pushname || contact?.name || 'Desconocido';
+    const timestamp = new Date().toISOString();
+    
+    logger.info('\n' + '='.repeat(60));
+    logger.info(`📩 NUEVO MENSAJE - ${timestamp}`);
+    logger.info('='.repeat(60));
+    logger.info(`👥 Grupo: ${chat.name}`);
+    logger.info(`👤 De: ${contactName} (${message.from})`);
+    logger.info(`💬 Contenido: ${message.body || '<SIN TEXTO>'}`);
+    logger.info('='.repeat(60) + '\n');
+    
+  } catch (error) {
+    logger.error('Error en logIncomingMessage:', error);
+  }
 }
 
 // === Procesamiento de mensajes ===
