@@ -332,6 +332,7 @@ function setupEventHandlers() {
       let lastError;
       let delay = initialDelay;
       let groupChats = []; // Inicializar groupChats
+      let chats = []; // Inicializar chats vacío
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
