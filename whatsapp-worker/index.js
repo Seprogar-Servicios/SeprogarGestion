@@ -331,6 +331,7 @@ function setupEventHandlers() {
     const loadChatsWithRetry = async (maxRetries = 3, initialDelay = 1000) => {
       let lastError;
       let delay = initialDelay;
+      let groupChats = []; // Inicializar groupChats
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -343,50 +344,44 @@ function setupEventHandlers() {
           // Cargar solo grupos permitidos
           const allowedGroups = await loadAllowedGroups();
           
-          logger.info(`📂 Grupos permitidos cargados: ${allowedGroups.length}`);
+          logger.info(`📂 Grupos permitidos cargados: ${allowedGroups?.length || 0}`);
           
           // Mostrar resultados
-          if (allowedGroups.length > 0) {
+          if (allowedGroups?.length > 0) {
             logger.info('✅ Grupos permitidos encontrados:');
             for (const group of allowedGroups) {
-              logger.info(`   - ${group.name} (${group.id})`);
+              if (group) { // Verificar que el grupo exista
+                logger.info(`   - ${group.name || 'Sin nombre'} (${group.id || 'Sin ID'})`);
+              }
             }
           } else {
             logger.warn('⚠️  No se encontraron los grupos permitidos. Verifica los nombres en GRUPOS_PERMITIDOS');
-            logger.info('Grupos configurados:', GRUPOS_PERMITIDOS.join(', '));
+            logger.info('Grupos configurados:', (GRUPOS_PERMITIDOS || []).join(', '));
             
             // Mostrar primeros 5 grupos disponibles para depuración
-            if (GROUP_CACHE.groups && GROUP_CACHE.groups.length > 0) {
-              logger.info('📋 Grupos disponibles (mostrando 5 de ' + GROUP_CACHE.groups.length + '):');
-              for (let i = 0; i < Math.min(5, GROUP_CACHE.groups.length); i++) {
-                logger.info(`   ${i + 1}. ${GROUP_CACHE.groups[i].name}`);
+            if (GROUP_CACHE?.groups?.length > 0) {
+              groupChats = GROUP_CACHE.groups.filter(g => g); // Filtrar grupos nulos
+              logger.info(`📋 Grupos disponibles (mostrando 5 de ${groupChats.length}):`);
+              for (let i = 0; i < Math.min(5, groupChats.length); i++) {
+                const group = groupChats[i];
+                if (group) { // Verificar que el grupo exista
+                  logger.info(`   ${i + 1}. ${group.name || 'Grupo sin nombre'}`);
+                }
               }
+            } else {
+              logger.info('ℹ️  No hay grupos disponibles en la caché');
             }
           }
           
           // Limpiar memoria intermedia
-          chats = null;
+          if (chats) {
+            chats.length = 0;
+            chats = null;
+          }
           
-          // Mostrar resultados
-          if (allowedGroups.length > 0) {
-            logger.info('✅ Grupos permitidos encontrados:');
-            for (const group of allowedGroups) {
-              logger.info(`   - ${group.name} (${group.id})`);
-            }
-            
-            // Limpiar memoria después de procesar
+          // Limpiar memoria después de procesar
+          if (allowedGroups?.length > 0) {
             allowedGroups.length = 0;
-          } else {
-            logger.warn('⚠️  No se encontraron los grupos permitidos. Verifica los nombres en GRUPOS_PERMITIDOS');
-            logger.info('Grupos configurados:', GRUPOS_PERMITIDOS.join(', '));
-            
-            // Mostrar primeros 5 grupos disponibles para depuración
-            if (groupChats.length > 0) {
-              logger.info('📋 Grupos disponibles (mostrando 5 de ' + groupChats.length + '):');
-              for (let i = 0; i < Math.min(5, groupChats.length); i++) {
-                logger.info(`   ${i + 1}. ${groupChats[i].name}`);
-              }
-            }
           }
           
           // Limpiar memoria antes de salir
