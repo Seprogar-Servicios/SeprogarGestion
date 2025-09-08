@@ -477,9 +477,13 @@ function setupEventHandlers() {
   });
 
   // Usar solo message_create que se dispara para todos los mensajes
-  client.on('message_create', (message) => {
-    logIncomingMessage(message);
-    processMessage(message);
+  client.on('message_create', async (message) => {
+    try {
+      await logIncomingMessage(message);
+      await processMessage(message);
+    } catch (error) {
+      logger.error('Error al procesar mensaje:', error);
+    }
   });
 
   client.on('auth_failure', (err) => {
@@ -487,17 +491,59 @@ function setupEventHandlers() {
     logger.error('Elimina la carpeta .wwebjs_auth y vuelve a iniciar.');
     process.exit(1);
   });
+  
+  // Función para procesar mensajes entrantes
+async function processMessage(message) {
+    try {
+      // Verificar si el mensaje es de un grupo
+      if (!message.from.endsWith('@g.us')) {
+        logger.debug('Mensaje ignorado: no es de un grupo');
+        return;
+      }
 
-  client.on('disconnected', (reason) => {
-    logger.warn(`Cliente desconectado: ${reason}`);
-    setTimeout(() => {
-      logger.info('Intentando reconectar...');
-      initializeClient();
-    }, 5000);
-  });
-}
+      // Verificar si el mensaje es de un grupo permitido
+      const allowedGroups = GROUP_CACHE.allowedGroups || [];
+      const isFromAllowedGroup = allowedGroups.some(g => g.id === message.from);
+      
+      if (!isFromAllowedGroup) {
+        logger.debug(`Mensaje ignorado: grupo no permitido (${message.from})`);
+        return;
+      }
 
-// === Logging de mensajes entrantes ===
+      // Verificar si el mensaje es un pedido
+      const content = message.body || '';
+      
+      if (content.toLowerCase().startsWith('pedido') || content.toLowerCase().includes('turno confirmado')) {
+        logger.info('📥 Nuevo pedido detectado, procesando...');
+        
+        // Extraer información del mensaje
+        const taskData = parsePedidoMessage(content);
+        
+        if (taskData) {
+          // Agregar metadatos adicionales
+          taskData.grupoOrigen = message.from;
+          taskData.mensajeOriginal = content;
+          taskData.fechaRecepcion = new Date().toISOString();
+          taskData.origen = 'whatsapp';
+          
+          // Enviar a la cola de procesamiento
+          MESSAGE_PROCESSING.QUEUE.push({
+            type: 'task',
+            data: taskData,
+            timestamp: Date.now()
+          });
+          
+          // Iniciar procesamiento si no está en curso
+          if (!MESSAGE_PROCESSING.PROCESSING) {
+            processMessageQueue();
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Error en processMessage:', error);
+      throw error; // Relanzar para que el manejador de eventos lo capture
+    }
+  }
 async function logIncomingMessage(message) {
   try {
     // Verificar si el mensaje es válido
@@ -571,6 +617,12 @@ const MESSAGE_PROCESSING = {
   MAX_CONCURRENT: 5,
   QUEUE: [],
   PROCESSING: false
+};
+
+// Cache de grupos permitidos
+const GROUP_CACHE = {
+  allowedGroups: [],
+  lastUpdated: 0
 };
 
 // Función para procesar la cola de mensajes
@@ -1069,3 +1121,4 @@ process.on('unhandledRejection', (reason, promise) => {
     stack: reason?.stack
   });
 });
+}
