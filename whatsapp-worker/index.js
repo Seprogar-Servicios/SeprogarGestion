@@ -148,27 +148,63 @@ async function handleInitializationError(error) {
 }
 
 function setupEventHandlers() {
+  // Evento QR
   client.on('qr', (qr) => {
-    logger.info('📱 Escanea este QR para iniciar sesión:');
+    logger.info('\n' + '='.repeat(60));
+    logger.info('📱 ESCANEA ESTE CÓDIGO QR CON WHATSAPP');
+    logger.info('='.repeat(60));
     qrcode.generate(qr, { small: true });
+    logger.info('='.repeat(60) + '\n');
   });
 
-  client.on('authenticated', () => {
-    logger.info('✅ Autenticación exitosa');
+  // Evento de autenticación exitosa
+  client.on('authenticated', (session) => {
+    logger.info('\n' + '='.repeat(60));
+    logger.info('✅ AUTENTICACIÓN EXITOSA');
+    logger.info('='.repeat(60) + '\n');
   });
 
+  // Evento de cliente listo
   client.on('ready', async () => {
-    logger.info('🚀 Cliente listo y conectado a WhatsApp');
+    logger.info('\n' + '='.repeat(60));
+    logger.info('🚀 CLIENTE LISTO Y CONECTADO A WHATSAPP');
+    logger.info('='.repeat(60));
+    
     try {
+      // Obtener información de los chats
       const chats = await client.getChats();
       const groups = chats.filter((c) => c.isGroup);
+      
       logger.info(`📱 Chats cargados: ${chats.length}`);
       logger.info(`👥 Grupos detectados: ${groups.length}`);
-      groups.forEach((g, i) => {
-        const allowed = GRUPOS_PERMITIDOS.includes(g.name.trim()) ? '✅' : '❌';
-        logger.info(` ${i + 1}. ${g.name} ${allowed}`);
-      });
-      logger.info('👂 Escuchando mensajes...');
+      
+      // Mostrar información de grupos
+      if (groups.length > 0) {
+        logger.info('\n📋 LISTA DE GRUPOS:');
+        logger.info('='.repeat(60));
+        groups.forEach((g, i) => {
+          const allowed = GRUPOS_PERMITIDOS.includes(g.name.trim()) ? '✅' : '❌';
+          logger.info(` ${i + 1}. ${g.name} ${allowed} (${g.id._serialized})`);
+        });
+        logger.info('='.repeat(60));
+      }
+      
+      // Verificar si hay grupos permitidos
+      if (GRUPOS_PERMITIDOS.length === 0) {
+        logger.warn('⚠️  No hay grupos configurados en GRUPOS_PERMITIDOS');
+        logger.warn('El bot no procesará mensajes hasta que se configuren grupos permitidos');
+      } else {
+        logger.info('\n🔍 GRUPOS PERMITIDOS CONFIGURADOS:');
+        logger.info('='.repeat(60));
+        GRUPOS_PERMITIDOS.forEach((g, i) => {
+          const found = groups.some(grp => grp.name.trim() === g);
+          logger.info(` ${i + 1}. ${g} ${found ? '✅' : '❌ (No encontrado)'}`);
+        });
+        logger.info('='.repeat(60));
+      }
+      
+      logger.info('\n👂 ESCUCHANDO MENSAJES...\n');
+      
     } catch (err) {
       logger.error('Error al cargar chats:', err);
     }
@@ -198,89 +234,208 @@ function setupEventHandlers() {
 // === Logging de mensajes entrantes ===
 async function logIncomingMessage(message) {
   try {
+    // Verificar si el mensaje es válido
+    if (!message) {
+      logger.warn('Mensaje nulo recibido en logIncomingMessage');
+      return;
+    }
+
+    // Obtener información del chat
     const chat = await message.getChat();
-    if (!chat.isGroup) return;
+    if (!chat) {
+      logger.warn('No se pudo obtener el chat del mensaje');
+      return;
+    }
+
+    // Solo procesar mensajes de grupo
+    if (!chat.isGroup) {
+      logger.debug(`Mensaje de chat privado de ${message.from} ignorado`);
+      return;
+    }
+
+    // Obtener información del contacto
+    let contactInfo = 'Desconocido';
+    try {
+      const contact = await message.getContact();
+      contactInfo = contact?.pushname || contact?.name || contact?.number || 'Desconocido';
+    } catch (contactError) {
+      logger.warn('Error al obtener información del contacto:', contactError);
+    }
+
+    // Mostrar información del mensaje
+    const timestamp = new Date().toLocaleString('es-AR', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      hour12: false
+    });
+
+    logger.info('\n' + '='.repeat(80));
+    logger.info(`📩 MENSAJE RECIBIDO - ${timestamp}`);
+    logger.info('='.repeat(80));
+    logger.info(`👥 GRUPO: ${chat.name} (${chat.id._serialized})`);
+    logger.info(`👤 REMITENTE: ${contactInfo} (${message.from})`);
+    logger.info(`📌 TIPO: ${message.type}`);
+    logger.info('💬 CONTENIDO:');
+    logger.info(message.body || '<SIN TEXTO>');
+    logger.info('='.repeat(80) + '\n');
     
-    const contact = await message.getContact();
-    const contactName = contact?.pushname || contact?.name || 'Desconocido';
-    const timestamp = new Date().toISOString();
-    
-    logger.info('\n' + '='.repeat(60));
-    logger.info(`📩 NUEVO MENSAJE - ${timestamp}`);
-    logger.info('='.repeat(60));
-    logger.info(`👥 Grupo: ${chat.name}`);
-    logger.info(`👤 De: ${contactName} (${message.from})`);
-    logger.info(`💬 Contenido: ${message.body || '<SIN TEXTO>'}`);
-    logger.info('='.repeat(60) + '\n');
+    // Registrar metadatos adicionales en modo debug
+    logger.debug('Metadatos del mensaje:', {
+      messageId: message.id.id,
+      timestamp: message.timestamp,
+      hasMedia: message.hasMedia,
+      hasQuotedMsg: !!message.hasQuotedMsg,
+      isForwarded: message.isForwarded,
+      isStatus: message.isStatus,
+      fromMe: message.fromMe,
+      ack: message.ack
+    });
     
   } catch (error) {
-    logger.error('Error en logIncomingMessage:', error);
+    logger.error('Error en logIncomingMessage:', {
+      error: error.message,
+      stack: error.stack,
+      messageId: message?.id?.id || 'desconocido'
+    });
   }
 }
 
 // === Procesamiento de mensajes ===
 async function processMessage(message) {
+  // Verificar si el mensaje es válido
+  if (!message) {
+    logger.warn('Mensaje nulo recibido en processMessage');
+    return;
+  }
+
   try {
-    const chat = await message.getChat();
+    logger.debug('Iniciando procesamiento de mensaje...');
+    
+    // Obtener información del chat
+    const chat = await message.getChat().catch(err => {
+      logger.error('Error al obtener información del chat:', err);
+      return null;
+    });
 
-    if (!chat.isGroup) return;
-    const groupName = chat.name.trim();
-    if (!GRUPOS_PERMITIDOS.includes(groupName)) return;
-
-    logger.info('=== NUEVO MENSAJE ===');
-    logger.info(`De: ${message.from}`);
-    logger.info(`Grupo: ${groupName}`);
-    logger.info(`Contenido: ${message.body || '<SIN TEXTO>'}`);
-
-    if (!message.body || message.body.trim() === '') {
-      logger.info('Mensaje vacío o no texto, ignorando...');
+    if (!chat) {
+      logger.warn('No se pudo obtener el chat del mensaje');
       return;
     }
 
-    const cleanContent = message.body.replace(/\*/g, '').trim();
+    // Solo procesar mensajes de grupo
+    if (!chat.isGroup) {
+      logger.debug(`Mensaje de chat privado de ${message.from} ignorado`);
+      return;
+    }
+
+    const groupName = chat.name.trim();
+    
+    // Verificar si el grupo está en la lista de permitidos
+    if (!GRUPOS_PERMITIDOS.includes(groupName)) {
+      logger.debug(`Mensaje de grupo no permitido: ${groupName}`);
+      return;
+    }
+
+    logger.info('\n' + '='.repeat(80));
+    logger.info('🔄 PROCESANDO NUEVO MENSAJE');
+    logger.info('='.repeat(80));
+    
+    // Verificar si el mensaje tiene contenido
+    if (!message.body || message.body.trim() === '') {
+      logger.info('Mensaje vacío o sin texto, ignorando...');
+      logger.info('='.repeat(80) + '\n');
+      return;
+    }
+
+    // Limpiar y normalizar el contenido del mensaje
+    const cleanContent = message.body
+      .replace(/\*/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    logger.debug('Contenido limpio del mensaje:', cleanContent);
+
+    // Determinar el tipo de mensaje y procesarlo
     let taskData = null;
     let messageType = 'desconocido';
+    let parser = null;
 
-    if (cleanContent.startsWith('Pedido')) {
+    // Verificar el tipo de mensaje
+    if (cleanContent.startsWith('Pedido') || cleanContent.includes('TURNO')) {
       messageType = 'pedido';
-      taskData = parsePedidoMessage(message.body);
+      parser = parsePedidoMessage;
     } else if (cleanContent.startsWith('TAREA:')) {
       messageType = 'tarea';
-      taskData = parseTareaMessage(message.body);
+      parser = parseTareaMessage;
     } else if (cleanContent.startsWith('Expediente:')) {
       messageType = 'expediente';
-      taskData = parseExpedienteMessage(message.body);
-    } else {
-      logger.info('Formato de mensaje no reconocido, ignorando...');
+      parser = parseExpedienteMessage;
+    }
+
+    // Si no se reconoció el formato, registrar y salir
+    if (!parser) {
+      logger.info('⚠️  Formato de mensaje no reconocido');
+      logger.info('Formatos soportados:');
+      logger.info('1. Pedido: Debe comenzar con "Pedido" o contener "TURNO"');
+      logger.info('2. Tarea: Debe comenzar con "TAREA:"');
+      logger.info('3. Expediente: Debe comenzar con "Expediente:"');
+      logger.info('='.repeat(80) + '\n');
       return;
     }
 
+    // Procesar el mensaje con el parser correspondiente
+    logger.info(`📋 Tipo de mensaje detectado: ${messageType}`);
+    taskData = parser(cleanContent);
+
+    // Verificar si se pudo extraer información
     if (!taskData) {
-      logger.error('No se pudo extraer información del mensaje');
+      logger.error('❌ No se pudo extraer información del mensaje');
+      logger.info('='.repeat(80) + '\n');
       return;
     }
 
-    logger.info(`Datos extraídos (${messageType}): ${JSON.stringify(taskData, null, 2)}`);
+    // Agregar metadatos adicionales
+    taskData = {
+      ...taskData,
+      grupoOrigen: groupName,
+      mensajeOriginal: cleanContent,
+      fechaRecepcion: new Date().toISOString(),
+      origen: 'whatsapp'
+    };
 
+    logger.info('✅ Datos extraídos correctamente:', JSON.stringify(taskData, null, 2));
+
+    // Verificar si la tarea ya existe
     const isDuplicate = await checkDuplicateTask(taskData.numero);
     if (isDuplicate) {
-      logger.warn(`Tarea #${taskData.numero} ya existe, ignorando...`);
+      logger.warn(`⚠️  Tarea #${taskData.numero} ya existe, ignorando...`);
+      logger.info('='.repeat(80) + '\n');
       return;
     }
 
+    // Enviar a la API
+    logger.info('📤 Enviando tarea a la API...');
     const success = await sendToAPI(taskData);
+    
     if (success) {
-      logger.info(`Tarea #${taskData.numero} creada exitosamente`);
+      logger.info(`✅ Tarea #${taskData.numero} creada exitosamente`);
     } else {
-      logger.error('Error al crear la tarea en la API');
+      logger.error('❌ Error al crear la tarea en la API');
     }
 
-    // Separador solo cuando hay un procesamiento válido
-    logger.info('='.repeat(50));
+    logger.info('='.repeat(80) + '\n');
 
   } catch (error) {
-    logger.error('Error crítico al procesar mensaje:', error);
-    logger.error('Stack trace:', error.stack);
+    logger.error('🔥 ERROR CRÍTICO al procesar mensaje:', {
+      error: error.message,
+      stack: error.stack,
+      messageId: message?.id?.id || 'desconocido',
+      from: message?.from || 'desconocido'
+    });
+    
+    // Intentar forzar la recolección de basura en caso de error
+    if (typeof global.gc === 'function') {
+      global.gc();
+    }
   }
 }
 
