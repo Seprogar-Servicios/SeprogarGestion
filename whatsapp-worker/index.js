@@ -166,48 +166,92 @@ function setupEventHandlers() {
 
   // Evento de cliente listo
   client.on('ready', async () => {
-    logger.info('\n' + '='.repeat(60));
-    logger.info('🚀 CLIENTE LISTO Y CONECTADO A WHATSAPP');
-    logger.info('='.repeat(60));
+    logger.info('🚀 Cliente listo y conectado a WhatsApp');
     
-    try {
-      // Obtener información de los chats
-      const chats = await client.getChats();
-      const groups = chats.filter((c) => c.isGroup);
+    // Esperar un momento para asegurar que el cliente esté completamente listo
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Función para cargar chats con reintentos
+    const loadChatsWithRetry = async (maxRetries = 3, delay = 2000) => {
+      let lastError;
       
-      logger.info(`📱 Chats cargados: ${chats.length}`);
-      logger.info(`👥 Grupos detectados: ${groups.length}`);
-      
-      // Mostrar información de grupos
-      if (groups.length > 0) {
-        logger.info('\n📋 LISTA DE GRUPOS:');
-        logger.info('='.repeat(60));
-        groups.forEach((g, i) => {
-          const allowed = GRUPOS_PERMITIDOS.includes(g.name.trim()) ? '✅' : '❌';
-          logger.info(` ${i + 1}. ${g.name} ${allowed} (${g.id._serialized})`);
-        });
-        logger.info('='.repeat(60));
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          logger.info(`🔍 Intentando cargar chats (intento ${attempt}/${maxRetries})...`);
+          
+          // Verificar si el cliente está listo
+          if (!client.pupPage || !client.pupPage.isConnected()) {
+            throw new Error('La página de Puppeteer no está lista');
+          }
+          
+          // Cargar chats
+          const chats = await client.getChats();
+          const groupChats = chats.filter(chat => chat.isGroup);
+          
+          logger.info(`📂 Chats cargados: ${chats.length} (${groupChats.length} grupos)`);
+          
+          // Verificar grupos permitidos
+          const allowedGroups = groupChats.filter(chat => 
+            chat.name && GRUPOS_PERMITIDOS.includes(chat.name.trim())
+          );
+          
+          if (allowedGroups.length > 0) {
+            logger.info('✅ Grupos permitidos encontrados:');
+            allowedGroups.forEach(chat => {
+              logger.info(`   - ${chat.name} (${chat.id._serialized})`);
+            });
+          } else {
+            logger.warn('⚠️  No se encontraron los grupos permitidos. Verifica los nombres en GRUPOS_PERMITIDOS');
+            GRUPOS_PERMITIDOS.forEach(group => {
+              logger.info(`   - Grupo configurado: ${group}`);
+            });
+            
+            // Mostrar los nombres de los grupos disponibles para depuración
+            if (groupChats.length > 0) {
+              logger.info('📋 Grupos disponibles:');
+              groupChats.slice(0, 10).forEach((chat, i) => {
+                logger.info(`   ${i + 1}. ${chat.name} (${chat.id._serialized})`);
+              });
+              if (groupChats.length > 10) {
+                logger.info(`   ...y ${groupChats.length - 10} grupos más`);
+              }
+            }
+          }
+          
+          return; // Éxito, salir de la función
+          
+        } catch (error) {
+          lastError = error;
+          logger.warn(`⚠️  Intento ${attempt} fallido: ${error.message}`);
+          
+          if (attempt < maxRetries) {
+            logger.info(`⏳ Reintentando en ${delay/1000} segundos...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
       }
       
-      // Verificar si hay grupos permitidos
-      if (GRUPOS_PERMITIDOS.length === 0) {
-        logger.warn('⚠️  No hay grupos configurados en GRUPOS_PERMITIDOS');
-        logger.warn('El bot no procesará mensajes hasta que se configuren grupos permitidos');
-      } else {
-        logger.info('\n🔍 GRUPOS PERMITIDOS CONFIGURADOS:');
-        logger.info('='.repeat(60));
-        GRUPOS_PERMITIDOS.forEach((g, i) => {
-          const found = groups.some(grp => grp.name.trim() === g);
-          logger.info(` ${i + 1}. ${g} ${found ? '✅' : '❌ (No encontrado)'}`);
-        });
-        logger.info('='.repeat(60));
+      // Si llegamos aquí, todos los intentos fallaron
+      logger.error('❌ No se pudieron cargar los chats después de varios intentos');
+      if (lastError) {
+        logger.error('Último error:', lastError);
       }
       
-      logger.info('\n👂 ESCUCHANDO MENSAJES...\n');
-      
-    } catch (err) {
-      logger.error('Error al cargar chats:', err);
-    }
+      // Mostrar los grupos permitidos configurados
+      logger.info('\n🔍 GRUPOS PERMITIDOS CONFIGURADOS:');
+      logger.info('='.repeat(60));
+      GRUPOS_PERMITIDOS.forEach((g, i) => {
+        logger.info(` ${i + 1}. ${g}`);
+      });
+      logger.info('='.repeat(60));
+    };
+    
+    // Iniciar la carga de chats
+    loadChatsWithRetry().catch(error => {
+      logger.error('Error en la carga de chats:', error);
+    });
+    
+    logger.info('\n👂 ESCUCHANDO MENSAJES...\n');
   });
 
   // Usar solo message_create que se dispara para todos los mensajes
