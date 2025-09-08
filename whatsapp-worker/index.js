@@ -164,6 +164,24 @@ function setupEventHandlers() {
     logger.info('='.repeat(60) + '\n');
   });
 
+  // Función para limpieza de memoria
+  const cleanupMemory = () => {
+    try {
+      if (global.gc) {
+        global.gc();
+        logger.debug('Recolección de basura forzada');
+      }
+      // Limpiar caché de módulos si es necesario
+      Object.keys(require.cache).forEach(key => {
+        if (!key.includes('node_modules') && !key.includes('whatsapp-web.js')) {
+          delete require.cache[key];
+        }
+      });
+    } catch (error) {
+      logger.warn('Error durante limpieza de memoria:', error.message);
+    }
+  };
+
   // Evento de cliente listo
   client.on('ready', async () => {
     logger.info('🚀 Cliente listo y conectado a WhatsApp');
@@ -171,79 +189,178 @@ function setupEventHandlers() {
     // Esperar un momento para asegurar que el cliente esté completamente listo
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Función para cargar chats con reintentos
+    // Función para verificar si el cliente está listo
+    const isClientReady = () => {
+      try {
+        // Verificar si el cliente y la página de Puppeteer están disponibles
+        return client && 
+               client.pupPage && 
+               typeof client.pupPage === 'object' && 
+               typeof client.pupPage.isClosed === 'function' &&
+               !client.pupPage.isClosed();
+      } catch (error) {
+        logger.warn('Error en isClientReady:', error.message);
+        return false;
+      } finally {
+        // Forzar limpieza de memoria en cada verificación
+        cleanupMemory();
+      }
+    };
+
+    // Función para cargar chats con manejo de memoria optimizado
     const loadChatsWithRetry = async (maxRetries = 3, delay = 2000) => {
       let lastError;
       
+      // Limpiar memoria antes de comenzar
+      cleanupMemory();
+      
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        let chats = [];
+        let groupChats = [];
+        
         try {
           logger.info(`🔍 Intentando cargar chats (intento ${attempt}/${maxRetries})...`);
           
           // Verificar si el cliente está listo
-          if (!client.pupPage || !client.pupPage.isConnected()) {
-            throw new Error('La página de Puppeteer no está lista');
+          if (!isClientReady()) {
+            throw new Error('El cliente de WhatsApp no está completamente inicializado');
           }
           
-          // Cargar chats
-          const chats = await client.getChats();
-          const groupChats = chats.filter(chat => chat.isGroup);
+          // Cargar solo los chats necesarios
+          chats = await client.getChats();
+          
+          // Filtrar solo grupos de manera eficiente
+          groupChats = [];
+          for (const chat of chats) {
+            if (chat.isGroup) {
+              groupChats.push({
+                name: chat.name,
+                id: chat.id._serialized
+              });
+              
+              // Liberar memoria del objeto chat
+              chat.delete = null;
+            }
+          }
           
           logger.info(`📂 Chats cargados: ${chats.length} (${groupChats.length} grupos)`);
           
-          // Verificar grupos permitidos
-          const allowedGroups = groupChats.filter(chat => 
-            chat.name && GRUPOS_PERMITIDOS.includes(chat.name.trim())
-          );
+          // Verificar grupos permitidos de manera eficiente
+          const allowedGroups = [];
+          const groupNames = new Set(GRUPOS_PERMITIDOS.map(g => g.trim().toLowerCase()));
           
+          for (const chat of groupChats) {
+            if (chat.name && groupNames.has(chat.name.trim().toLowerCase())) {
+              allowedGroups.push(chat);
+            }
+          }
+          
+          // Limpiar memoria intermedia
+          chats = null;
+          
+          // Mostrar resultados
           if (allowedGroups.length > 0) {
             logger.info('✅ Grupos permitidos encontrados:');
-            allowedGroups.forEach(chat => {
-              logger.info(`   - ${chat.name} (${chat.id._serialized})`);
-            });
+            for (const group of allowedGroups) {
+              logger.info(`   - ${group.name} (${group.id})`);
+            }
+            
+            // Limpiar memoria después de procesar
+            allowedGroups.length = 0;
           } else {
             logger.warn('⚠️  No se encontraron los grupos permitidos. Verifica los nombres en GRUPOS_PERMITIDOS');
-            GRUPOS_PERMITIDOS.forEach(group => {
-              logger.info(`   - Grupo configurado: ${group}`);
-            });
+            logger.info('Grupos configurados:', GRUPOS_PERMITIDOS.join(', '));
             
-            // Mostrar los nombres de los grupos disponibles para depuración
+            // Mostrar primeros 5 grupos disponibles para depuración
             if (groupChats.length > 0) {
-              logger.info('📋 Grupos disponibles:');
-              groupChats.slice(0, 10).forEach((chat, i) => {
-                logger.info(`   ${i + 1}. ${chat.name} (${chat.id._serialized})`);
-              });
-              if (groupChats.length > 10) {
-                logger.info(`   ...y ${groupChats.length - 10} grupos más`);
+              logger.info('📋 Grupos disponibles (mostrando 5 de ' + groupChats.length + '):');
+              for (let i = 0; i < Math.min(5, groupChats.length); i++) {
+                logger.info(`   ${i + 1}. ${groupChats[i].name}`);
               }
             }
           }
           
+          // Limpiar memoria antes de salir
+          cleanupMemory();
           return; // Éxito, salir de la función
           
         } catch (error) {
           lastError = error;
-          logger.warn(`⚠️  Intento ${attempt} fallido: ${error.message}`);
+          const errorMessage = error.message || 'Error desconocido';
+          const stackTrace = error.stack ? `\n${error.stack}` : '';
+          
+          logger.warn(`⚠️  Intento ${attempt} fallido: ${errorMessage}${stackTrace}`);
           
           if (attempt < maxRetries) {
-            logger.info(`⏳ Reintentando en ${delay/1000} segundos...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            const retryDelay = Math.min(delay * attempt, 10000); // Backoff exponencial con máximo 10s
+            logger.info(`⏳ Reintentando en ${retryDelay/1000} segundos...`);
+            
+            // Limpiar memoria antes de reintentar
+            cleanupMemory();
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+          }
+        } finally {
+          // Limpiar referencias para liberar memoria
+          if (chats && chats.length > 0) {
+            chats.length = 0;
+          }
+          if (groupChats && groupChats.length > 0) {
+            groupChats.length = 0;
+          }
+          
+          // Forzar recolección de basura si está disponible
+          if (global.gc) {
+            global.gc();
           }
         }
       }
       
       // Si llegamos aquí, todos los intentos fallaron
       logger.error('❌ No se pudieron cargar los chats después de varios intentos');
+      
+      // Mostrar información detallada del error
       if (lastError) {
-        logger.error('Último error:', lastError);
+        logger.error('Detalles del error:', {
+          message: lastError.message || 'Sin mensaje de error',
+          stack: lastError.stack || 'Sin stack trace',
+          code: lastError.code || 'Código no disponible'
+        });
       }
       
-      // Mostrar los grupos permitidos configurados
-      logger.info('\n🔍 GRUPOS PERMITIDOS CONFIGURADOS:');
-      logger.info('='.repeat(60));
-      GRUPOS_PERMITIDOS.forEach((g, i) => {
-        logger.info(` ${i + 1}. ${g}`);
-      });
-      logger.info('='.repeat(60));
+      // Mostrar información de diagnóstico
+      try {
+        logger.info('\n🔍 INFORMACIÓN DE DIAGNÓSTICO');
+        logger.info('='.repeat(60));
+        
+        // Mostrar grupos permitidos configurados
+        logger.info('\n📋 GRUPOS PERMITIDOS CONFIGURADOS:');
+        logger.info('='.repeat(30));
+        if (GRUPOS_PERMITIDOS && GRUPOS_PERMITIDOS.length > 0) {
+          GRUPOS_PERMITIDOS.forEach((g, i) => {
+            logger.info(` ${i + 1}. ${g}`);
+          });
+        } else {
+          logger.warn('No hay grupos permitidos configurados (GRUPOS_PERMITIDOS está vacío)');
+        }
+        
+        // Mostrar información del cliente
+        logger.info('\n📱 ESTADO DEL CLIENTE:');
+        logger.info('='.repeat(30));
+        logger.info(`Conectado: ${client ? 'Sí' : 'No'}`);
+        if (client) {
+          logger.info(`Página de Puppeteer: ${client.pupPage ? 'Disponible' : 'No disponible'}`);
+          if (client.pupPage) {
+            logger.info(`Página cerrada: ${client.pupPage.isClosed() ? 'Sí' : 'No'}`);
+          }
+        }
+        
+        logger.info('='.repeat(60));
+      } catch (diagError) {
+        logger.error('Error al generar diagnóstico:', diagError);
+      }
+      
+      // Limpiar memoria antes de salir
+      cleanupMemory();
     };
     
     // Iniciar la carga de chats
