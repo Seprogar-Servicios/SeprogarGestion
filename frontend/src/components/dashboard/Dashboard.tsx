@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTasks, setFilters } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
+import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
 import type { TaskFilters } from '../../types';
 import { 
@@ -17,7 +18,9 @@ import {
   ChevronRight,
   BarChart2,
   Settings,
-  ArrowRight
+  ArrowRight,
+  XCircle,
+  Tag
 } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -26,21 +29,46 @@ const Dashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   const { tasks, loading: tasksLoading } = useAppSelector((state) => state.tasks);
   const { users } = useAppSelector((state) => state.users);
+  const { especialidades } = useAppSelector((state) => state.especialidades);
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const todayStr = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0')
+  ].join('-')
+
+  const todayTasks = tasks?.filter(task => {
+    if (!task.fechaEjecucion) return false;
+
+    const taskDate = new Date(task.fechaEjecucion);
+    taskDate.setDate(taskDate.getDate() + 1);
+    
+    const taskDateStr = [
+      taskDate.getFullYear(),
+      String(taskDate.getMonth() + 1).padStart(2, '0'),
+      String(taskDate.getDate()).padStart(2, '0')
+    ].join('-')
+    
+    return taskDateStr === todayStr;
+  }) || [];
+  
   const [currentFilters, setCurrentFilters] = useState<TaskFilters>({});
 
   useEffect(() => {
     dispatch(fetchTasks(currentFilters));
     if (user?.rol === 'admin') {
       dispatch(fetchUsers());
+      dispatch(fetchEspecialidades());
     }
   }, [dispatch, user?.rol, currentFilters]);
 
   const handleFiltersChange = (updatedFilters: TaskFilters) => {
-    // Merge the new filters with the current ones
     const mergedFilters = {
       ...currentFilters,
       ...updatedFilters,
-      // Ensure we don't have undefined values that would override existing ones
       ...Object.fromEntries(
         Object.entries(updatedFilters).filter(([_, v]) => v !== undefined)
       )
@@ -53,6 +81,7 @@ const Dashboard: React.FC = () => {
   const completedTasks = tasks?.filter(task => task.estado === 'completada').length || 0;
   const pendingTasks = tasks?.filter(task => task.estado === 'pendiente').length || 0;
   const inProgressTasks = tasks?.filter(task => task.estado === 'en progreso').length || 0;
+  const canceledTasks = tasks?.filter(task => task.estado === 'cancelada').length || 0;
   const myTasks = tasks?.filter(task => 
     task.creadoPor?._id === user?._id || 
     task.tecnicos?.some(tecnico => tecnico._id === user?._id)
@@ -63,6 +92,7 @@ const Dashboard: React.FC = () => {
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const progressRate = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
   const pendingRate = totalTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0;
+  const canceledRate = totalTasks > 0 ? Math.round((canceledTasks / totalTasks) * 100) : 0;
 
   const stats = [
     {
@@ -96,24 +126,60 @@ const Dashboard: React.FC = () => {
       name: 'Pendientes',
       value: pendingTasks,
       icon: AlertCircle,
-      color: 'bg-red-500',
+      color: 'bg-amber-500',
       change: `${pendingRate}% del total`,
       changeType: pendingRate > 70 ? 'negative' : 'neutral'
+    },
+    {
+      name: 'Canceladas',
+      value: canceledTasks,
+      icon: XCircle,
+      color: 'bg-red-500',
+      change: `${canceledRate}% del total`,
+      changeType: 'neutral',
+      description: 'Tareas que han sido canceladas',
+      showDescription: false
     }
   ];
 
+  // Add today's tasks card for all users
+  stats.push({
+    name: 'Tareas del Día',
+    value: todayTasks.length,
+    icon: Calendar,
+    color: 'bg-cyan-500',
+    change: 'Ver tareas de hoy',
+    changeType: 'neutral',
+    hideChange: false,
+    description: 'Tareas programadas para hoy',
+    showDescription: true
+  });
+
   if (user?.rol === 'admin') {
-    stats.push({
-      name: 'Usuarios',
-      value: users?.length || 0,
-      icon: Users,
-      color: 'bg-purple-500',
-      change: 'Gestionar usuarios',
-      changeType: 'neutral',
-      hideChange: false,
-      description: 'Administra los usuarios del sistema',
-      showDescription: true
-    });
+    stats.push(
+      {
+        name: 'Usuarios',
+        value: users?.length || 0,
+        icon: Users,
+        color: 'bg-purple-500',
+        change: 'Gestionar usuarios',
+        changeType: 'neutral',
+        hideChange: false,
+        description: 'Administra los usuarios del sistema',
+        showDescription: true
+      },
+      {
+        name: 'Especialidades',
+        value: especialidades?.length || 0,
+        icon: Tag,
+        color: 'bg-teal-500',
+        change: 'Gestionar especialidades',
+        changeType: 'neutral',
+        hideChange: false,
+        description: 'Administra las especialidades',
+        showDescription: true
+      }
+    );
   }
 
   const recentTasks = tasks
@@ -185,8 +251,8 @@ const Dashboard: React.FC = () => {
                 stat.name === 'Tareas Totales' ? 'border-purple-500' :
                 'border-indigo-500'
               } transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:shadow-lg
-              ${(stat.name === 'Usuarios' || stat.name === 'Tareas Totales' || 
-                (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes'))) ? 
+              ${(stat.name === 'Usuarios' || stat.name === 'Tareas Totales' || stat.name === 'Tareas del Día' || stat.name === 'Especialidades' || 
+                (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes' || stat.name === 'Canceladas'))) ? 
                 'cursor-pointer' : ''}`}
               style={{
                 animationDelay: `${100 + (stats.indexOf(stat) * 100)}ms`
@@ -196,7 +262,11 @@ const Dashboard: React.FC = () => {
                   navigate('/admin/users');
                 } else if (stat.name === 'Tareas Totales') {
                   navigate('/tasks');
-                } else if (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes')) {
+                } else if (stat.name === 'Tareas del Día') {
+                  navigate('/tasks?fecha=' + today.toISOString().split('T')[0]);
+                } else if (stat.name === 'Especialidades') {
+                  navigate('/admin/especialidades');
+                } else if (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes' || stat.name === 'Canceladas')) {
                   navigate('/admin/analytics');
                 }
               }}
@@ -208,16 +278,18 @@ const Dashboard: React.FC = () => {
                       stat.name === 'Completadas' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
                       stat.name === 'En Progreso' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' :
                       stat.name === 'Pendientes' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
-                      'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
-                    }`}>
+                      stat.name === 'Canceladas' ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' :
+                      stat.name === 'Especialidades' ? 'bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400' :
+                      stat.name === 'Tareas del Día' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400' :
+                      'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                       {stat.name}
                     </p>
                   </div>
-                  {(stat.name === 'Usuarios' || stat.name === 'Tareas Totales' || 
-                    (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes'))) && (
+                  {(stat.name === 'Usuarios' || stat.name === 'Tareas Totales' || stat.name === 'Tareas del Día' || stat.name === 'Especialidades' || 
+                    (user?.rol === 'admin' && (stat.name === 'Completadas' || stat.name === 'En Progreso' || stat.name === 'Pendientes' || stat.name === 'Canceladas'))) && (
                     <ArrowUpRight className="h-4 w-4 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" />
                   )}
                 </div>
