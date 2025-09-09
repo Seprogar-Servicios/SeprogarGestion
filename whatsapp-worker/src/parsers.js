@@ -8,13 +8,14 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /Cliente:\s*([^\n]+)/i,
-  WHATSAPP_TITULAR: /[Ww]hatsapp\s+titular:\s*([^\n]+)/i,
-  TELEFONO: /tel[eé]fono[^:]*:\s*([^\n]+)/i,
-  ANY_PHONE: /(?:tel[eé]fono|celular|contacto|llamar)[^\d]*(\d{8,})/i,
-  DESCRIPCION: /Descripción del servicio:\s*([^\n]+)/i,
-  DIRECCION_POLIZA: /Dirección póliza:\s*([^\n]+)/i,
-  DIRECCION_PEDIDO: /Dirección pedido:\s*([^\n]+)/i
+  CLIENTE: /Cliente:\s*([^\n]+?)(?=\s*Whatsapp|$)/i,
+  WHATSAPP_TITULAR: /[Ww]hatsapp\s+titular:\s*([^\n]+?)(?=\s*Descripción|$)/i,
+  TELEFONO: /tel[ée]fono[^:]*:\s*([^\n]+)/i,
+  ANY_PHONE: /(?:tel[ée]fono|celular|contacto|llamar)[^\d]*(\d{8,})/i,
+  DESCRIPCION: /Descripción del servicio:\s*([^\n]+?)(?=\s*Dirección|$)/i,
+  DIRECCION_POLIZA: /Dirección póliza:\s*([^\n]+?)(?=\s*TURNO|$)/i,
+  DIRECCION_PEDIDO: /Dirección pedido:\s*([^\n]+?)(?=\s*TURNO|$)/i,
+  TURNO: /(TURNO[\s\S]*?)(?=\s*$|\s*Recuerde|\.\.\.)/i
 };
 
 // Patrones de fecha/hora precompilados
@@ -144,35 +145,31 @@ function parsePedidoMessage(message) {
     }
     
     // Extraer la descripción del servicio
-    let descripcion = null;
+    let descripcion = '';
     const descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(message);
     if (descripcionMatch?.[1]) {
       descripcion = descripcionMatch[1].trim();
     }
     
-    // Si no se encontró descripción, intentar con un patrón más flexible
-    if (!descripcion) {
-      const lineas = message.split('\n');
-      for (let i = 0; i < Math.min(lineas.length, 20); i++) { // Limitar a 20 líneas para evitar loops largos
-        if (lineas[i].toLowerCase().includes('descripción del servicio')) {
-          descripcion = lineas[i].split(':')[1]?.trim() || '';
-          break;
-        }
-      }
+    // Extraer dirección (puede ser "Dirección póliza" o "Dirección pedido")
+    let direccion = '';
+    const direccionMatch = PEDIDO_PATTERNS.DIRECCION_POLIZA.exec(message) || 
+                          PEDIDO_PATTERNS.DIRECCION_PEDIDO.exec(message);
+    if (direccionMatch?.[1]) {
+      direccion = direccionMatch[1].trim();
     }
     
-    // Extraer dirección (puede ser "Dirección póliza" o "Dirección pedido")
-    let direccionMatch = PEDIDO_PATTERNS.DIRECCION_POLIZA.exec(message) || 
-                        PEDIDO_PATTERNS.DIRECCION_PEDIDO.exec(message);
-    const direccion = direccionMatch?.[1]?.trim() || null;
-    
     // Extraer fecha de ejecución y franja horaria
-    let fechaEjecucion = null;
-    let franja_horaria = null;
+    let fechaEjecucion = '';
+    let franja_horaria = '';
+    
+    // Intentar extraer la sección de TURNO primero para un análisis más preciso
+    const turnoMatch = PEDIDO_PATTERNS.TURNO.exec(message);
+    const turnoText = turnoMatch ? turnoMatch[0] : message;
     
     // Probar cada patrón hasta encontrar una coincidencia
     for (const { pattern, handler } of DATE_PATTERNS) {
-      const match = pattern.exec(message);
+      const match = pattern.exec(turnoText);
       if (match) {
         const result = handler(match);
         fechaEjecucion = result.date;

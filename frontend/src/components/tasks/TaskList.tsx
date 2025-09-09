@@ -576,9 +576,6 @@ const TaskList: React.FC = () => {
     });
     
     message += '*Tareas listadas correctamente*\n';
-    message += '*Recorda:* Puedes usar este mensaje como recordatorio de tus tareas pendientes.';
-    message += '\n\n*Nota:* También puedes descargar estas tareas como eventos para tu calendario.';
-    
     // Codificar el mensaje para URL
     const encodedMessage = encodeURIComponent(message);
     
