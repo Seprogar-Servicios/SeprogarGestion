@@ -2,10 +2,10 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /Cliente:\s*([^\n]+?)(?=\s*(?:Telefono|Whatsapp|$))/i,
+  CLIENTE: /Cliente:\s*([^\n]+?)(?=\s*(?:Whatsapp|Telefono|Descripción|Dirección|Domicilio|Barrio|TURNO|$))/i,
   TELEFONO: /Telefono\s*(?:alt\.?)?\s*:?\s*([^\n\d]*\d[^\n]*?)(?=\s*(?:Descripción|$))/i,
-  WHATSAPP_TITULAR: /[Ww]hatsapp\s*titular\s*:?\s*([^\n\d]*\d[^\n]*?)(?=\s*(?:Descripción|$))/i,
-  DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([^\n]+?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$))/i,
+  WHATSAPP_TITULAR: /[Ww]hatsapp\s*(?:titular)?\s*:?\s*([^\n\d]*(?:\d[\d\s-]*\d))(?:\s|$)/i,
+  DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$))/i,
   DIRECCION: /(?:Dirección\s*(?:póliza|pedido)|Domicilio)\s*:?\s*([^\n]+?)(?=\s*(?:Barrio|TURNO|$))/i,
   BARRIO: /Barrio\s*:?\s*([^\n]+?)(?=\s*TURNO|$)/i,
   TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})/i
