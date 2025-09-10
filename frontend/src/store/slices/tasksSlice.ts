@@ -41,6 +41,21 @@ const getUpcomingDateRange = (filter: string) => {
   if (!filter) return {};
 
   switch (filter) {
+    case 'today': {
+      // Tareas creadas hoy
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      
+      return {
+        fechaDesde: getLocalDateString(today),
+        fechaHasta: getLocalDateString(tomorrow),
+        field: 'fechaCreacion',
+        useCreatedAt: 'true'  // Enviar como string para el query param
+      };
+    }
+    
     case 'past': {
       // Tareas hasta ayer (inclusive)
       const yesterday = new Date(today);
@@ -130,7 +145,14 @@ export const fetchTasks = createAsyncThunk(
         // Skip if we have explicit date filters to avoid conflicts
         if (!filters.fechaDesde && !filters.fechaHasta) {
           Object.entries(dateRange).forEach(([key, value]) => {
-            if (value) params.set(key, value);
+            if (value !== undefined && value !== null) {
+              // Special handling for useCreatedAt flag
+              if (key === 'useCreatedAt') {
+                params.set(key, 'true');
+              } else {
+                params.set(key, value);
+              }
+            }
           });
         }
       }

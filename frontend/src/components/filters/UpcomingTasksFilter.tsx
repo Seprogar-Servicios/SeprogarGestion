@@ -20,6 +20,7 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
 }) => {
   const filterOptions: FilterOption[] = [
     { value: '', label: 'Todas las tareas', icon: List, default: true },
+    { value: 'today', label: 'Creadas hoy', icon: Calendar },
     { value: 'past', label: 'Tareas antiguas', icon: Clock },
     { value: 'current', label: 'Tareas actuales', icon: Calendar },
     { value: 'next24h', label: 'Próximas 24h', icon: Clock },
