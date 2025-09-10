@@ -2,7 +2,7 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /Cliente:\s*([^\n]+?)(?=\s*(?:Whatsapp|Telefono|Descripción|Dirección|Domicilio|Barrio|TURNO|$))/i,
+  CLIENTE: /^Cliente:\s*([^\n]+?)(?=\s*(?:Whatsapp|Telefono|Descripción|Dirección|Domicilio|Barrio|TURNO|$))/im,
   TELEFONO: /Telefono\s*(?:alt\.?)?\s*:?\s*([^\n\d]*\d[^\n]*?)(?=\s*(?:Descripción|$))/i,
   WHATSAPP_TITULAR: /[Ww]hatsapp\s*(?:titular)?\s*:?\s*([^\n\d]*(?:\d[\d\s-]*\d))(?:\s|$)/i,
   DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$))/i,
@@ -105,22 +105,43 @@ function parsePedidoMessage(message) {
     }
     
     // Extraer información del cliente
-    const clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(message);
-    const cliente = clienteMatch?.[1]?.trim() || 'Cliente no especificado';
-    
-    // Extraer número de teléfono (intentar múltiples patrones)
+    let cliente = 'Cliente no especificado';
     let numeroTitular = '';
     
-    // 1. Intentar con el patrón WHATSAPP_TITULAR primero
-    const whatsappMatch = PEDIDO_PATTERNS.WHATSAPP_TITULAR.exec(message);
-    if (whatsappMatch?.[1]?.trim()) {
-      numeroTitular = whatsappMatch[1].trim();
-    } 
-    // 2. Si no se encontró, intentar con el patrón TELEFONO
-    else {
-      const telefonoMatch = PEDIDO_PATTERNS.TELEFONO.exec(message);
-      if (telefonoMatch?.[1]?.trim()) {
+    // Primero, dividir el mensaje en líneas para un procesamiento más preciso
+    const lines = message.split('\n').map(line => line.trim()).filter(line => line);
+    
+    // Buscar el cliente en las primeras líneas
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+      const line = lines[i];
+      
+      // Extraer nombre del cliente
+      const clienteMatch = line.match(/^Cliente:\s*(.+)/i);
+      if (clienteMatch) {
+        cliente = clienteMatch[1].trim();
+        continue;
+      }
+      
+      // Extraer número de WhatsApp
+      const whatsappMatch = line.match(/Whatsapp\s*titular\s*:?\s*([\d\s+()-]+)/i);
+      if (whatsappMatch) {
+        numeroTitular = whatsappMatch[1].trim();
+        continue;
+      }
+      
+      // Extraer teléfono alternativo
+      const telefonoMatch = line.match(/Telefono\s*(?:alt\.?)?\s*:?\s*([\d\s+()-]+)/i);
+      if (telefonoMatch && !numeroTitular) {
         numeroTitular = telefonoMatch[1].trim();
+        continue;
+      }
+      
+      // Si ya tenemos el cliente pero no el teléfono, buscar en la misma línea
+      if (cliente !== 'Cliente no especificado' && !numeroTitular) {
+        const phoneInLine = line.match(/(\+?\d[\d\s-]{8,}\d)/);
+        if (phoneInLine) {
+          numeroTitular = phoneInLine[1].trim();
+        }
       }
     }
     
@@ -131,17 +152,59 @@ function parsePedidoMessage(message) {
     
     // Extraer descripción del servicio
     let descripcion = '';
-    const descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(message);
-    if (descripcionMatch?.[1]) {
-      descripcion = descripcionMatch[1].trim();
+    let descripcionStart = -1;
+    
+    // Buscar la línea de descripción
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].toLowerCase().includes('descripción')) {
+        descripcionStart = i;
+        break;
+      }
+    }
+    
+    if (descripcionStart >= 0) {
+      // Tomar las siguientes líneas hasta encontrar Dirección, Domicilio o Barrio
+      const descripcionLines = [];
+      for (let i = descripcionStart + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.match(/^(Dirección|Domicilio|Barrio|TURNO)/i)) {
+          break;
+        }
+        descripcionLines.push(line);
+      }
+      descripcion = descripcionLines.join('\n').trim();
     }
     
     // Extraer dirección
     let direccion = '';
     try {
-      const direccionMatch = PEDIDO_PATTERNS.DIRECCION.exec(message);
-      if (direccionMatch?.[1]) {
-        direccion = direccionMatch[1].trim();
+      // Buscar la línea de dirección
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const direccionMatch = line.match(/(?:Dirección\s*(?:póliza|pedido)|Domicilio)\s*:?\s*(.+)/i);
+        if (direccionMatch) {
+          direccion = direccionMatch[1].trim();
+          
+          // Verificar si la dirección continúa en las siguientes líneas
+          let j = i + 1;
+          const direccionLines = [direccion];
+          
+          while (j < lines.length && !lines[j].match(/^(Barrio|TURNO|Whatsapp|Telefono|Descripción)/i)) {
+            direccionLines.push(lines[j]);
+            j++;
+          }
+          
+          direccion = direccionLines.join(', ').trim();
+          break;
+        }
+      }
+      
+      // Si no se encontró dirección, intentar encontrar una dirección en el mensaje
+      if (!direccion) {
+        const direccionMatch = message.match(/Dirección[^\n]*\n([^\n]+)/i);
+        if (direccionMatch) {
+          direccion = direccionMatch[1].trim();
+        }
       }
     } catch (error) {
       console.error('Error al extraer dirección:', error);
