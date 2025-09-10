@@ -1,26 +1,17 @@
-/**
- * Parsers para extraer información de tareas de diferentes formatos de mensajes
- * Optimizado para reducir el uso de memoria
- */
-
-// Patrones de expresiones regulares reutilizables
 const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /Cliente:\s*([^\n]+?)(?=\s*Whatsapp|$)/i,
+  CLIENTE: /Cliente:\s*([^\n]+?)(?=\s*Telefono|$)/i,
+  TELEFONO: /Telefono alt:\s*([^\n]+?)(?=\s*Descripción|$)/i,
   WHATSAPP_TITULAR: /[Ww]hatsapp\s+titular:\s*([^\n]+?)(?=\s*Descripción|$)/i,
-  TELEFONO: /tel[ée]fono[^:]*:\s*([^\n]+)/i,
-  ANY_PHONE: /(?:tel[ée]fono|celular|contacto|llamar)[^\d]*(\d{8,})/i,
   DESCRIPCION: /Descripción del servicio:\s*([^\n]+?)(?=\s*Dirección|$)/i,
-  DIRECCION_POLIZA: /Dirección póliza:\s*([^\n]+?)(?=\s*TURNO|$)/i,
-  DIRECCION_PEDIDO: /Dirección pedido:\s*([^\n]+?)(?=\s*TURNO|$)/i,
-  TURNO: /(TURNO[\s\S]*?)(?=\s*$|\s*Recuerde|\.\.\.)/i
+  DIRECCION_POLIZA: /Dirección póliza:\s*([^\n]+?)(?=\s*Barrio|$)/i,
+  BARRIO: /Barrio:\s*([^\n]+?)(?=\s*TURNO|$)/i,
+  TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{1,2}:\d{2}-\d{1,2}:\d{2})/i
 };
 
-// Patrones de fecha/hora precompilados
 const DATE_PATTERNS = [
-  // Formato 1: TURNO confirmado fecha DD/MM/AAAA HH:MM-HH:MM
   {
     pattern: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
     handler: (match) => ({
@@ -28,7 +19,6 @@ const DATE_PATTERNS = [
       time: `${match[2]} - ${match[3]}`
     })
   },
-  // Formato 2: TURNO...fecha...DD/MM/AAAA...HH:MM...-...HH:MM
   {
     pattern: /TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*-[^\n]*(\d{1,2}:\d{2})/i,
     handler: (match) => ({
@@ -36,7 +26,6 @@ const DATE_PATTERNS = [
       time: `${match[2]} - ${match[3]}`
     })
   },
-  // Formato 3: DD/MM/AAAA HH:MM-HH:MM
   {
     pattern: /(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
     handler: (match) => ({
@@ -44,7 +33,6 @@ const DATE_PATTERNS = [
       time: `${match[2]} - ${match[3]}`
     })
   },
-  // Formato 4: TURNO...fecha DD/MM/AAAA franja horaria H a H hs
   {
     pattern: /TURNO[^\n]*fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+franja\s+horaria\s+(\d{1,2})\s+a\s+(\d{1,2})\s+hs/i,
     handler: (match) => ({
@@ -52,7 +40,6 @@ const DATE_PATTERNS = [
       time: `${match[2].padStart(2, '0')}:00 - ${match[3].padStart(2, '0')}:00`
     })
   },
-  // Formato 5: DD/MM DE H A H HS
   {
     pattern: /(\d{1,2})\s*\/\s*(\d{1,2})\s+DE\s+(\d+)\s+A\s+(\d+)\s+HS/i,
     handler: (match) => {
@@ -80,78 +67,62 @@ function limitMessageSize(message, maxLength = 2000) {
  * @param {string} message - Contenido del mensaje
  * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
  */
+/**
+ * Parsea un mensaje de WhatsApp en formato Pedido
+ * @param {string} message - Contenido del mensaje a parsear
+ * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
+ */
 function parsePedidoMessage(message) {
   try {
     // Limitar el tamaño del mensaje para evitar consumo excesivo de memoria
     message = limitMessageSize(message);
     
-    // Verificar si el mensaje contiene logs del sistema
+    // Extraer el mensaje limpio si está en formato de log
     if (message.includes('[INFO]')) {
-      // Buscar el mensaje limpio si está disponible
       const cleanContentMatch = PEDIDO_PATTERNS.CLEAN_CONTENT.exec(message);
-      if (cleanContentMatch && cleanContentMatch[1]) {
-        message = cleanContentMatch[1];
+      if (cleanContentMatch?.[1]) {
+        message = cleanContentMatch[1].trim();
       } else {
-        // Si no hay contenido limpio, intentar extraer el mensaje completo
         const fullMessageMatch = PEDIDO_PATTERNS.FULL_MESSAGE.exec(message);
-        if (fullMessageMatch && fullMessageMatch[1]) {
-          message = fullMessageMatch[1];
+        if (fullMessageMatch?.[1]) {
+          message = fullMessageMatch[1].trim();
         }
       }
     }
     
-    // Limpiar el mensaje: eliminar asteriscos y normalizar saltos de línea
+    // Limpiar formato del mensaje
     message = message
-      .replace(/\*/g, '') // Eliminar asteriscos
-      .replace(/\n\s*\n/g, '\n') // Normalizar múltiples saltos de línea
+      .replace(/\*/g, '')        // Eliminar asteriscos
+      .replace(/\n\s*\n/g, '\n')  // Normalizar saltos de línea
       .trim();
-      
-    // Extraer el número de pedido (con o sin asteriscos)
+    
+    // Extraer número de pedido (obligatorio)
     const numeroMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(message);
-    const numero = numeroMatch ? numeroMatch[1] : null;
-    
+    const numero = numeroMatch?.[1]?.trim();
     if (!numero) {
-      return null; // Si no hay número de pedido, no podemos continuar
+      console.log('No se encontró número de pedido en el mensaje');
+      return null;
     }
     
-    // Extraer el título (será "Pedido" + número)
-    const titulo = `Pedido ${numero}`;
-    
-    // Extraer cliente
+    // Extraer información del cliente
     const clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(message);
-    const cliente = clienteMatch ? clienteMatch[1].trim() : null;
+    const cliente = clienteMatch?.[1]?.trim() || 'Cliente no especificado';
     
-    // Extraer número de WhatsApp del titular
+    // Extraer número de teléfono (intentar múltiples patrones)
     let numeroTitular = '';
-    
-    // Patrón principal: "Whatsapp titular: 123456789"
-    const numeroTitularMatch = PEDIDO_PATTERNS.WHATSAPP_TITULAR.exec(message);
-    if (numeroTitularMatch && numeroTitularMatch[1]?.trim()) {
-      numeroTitular = numeroTitularMatch[1].trim();
-    } else {
-      // Patrón alternativo: "teléfono de la persona que los recibe: 123456789"
-      const telefonoMatch = PEDIDO_PATTERNS.TELEFONO.exec(message);
-      if (telefonoMatch && telefonoMatch[1]?.trim()) {
-        numeroTitular = telefonoMatch[1].trim();
-      }
+    const telefonoMatch = PEDIDO_PATTERNS.TELEFONO.exec(message);
+    if (telefonoMatch?.[1]?.trim()) {
+      numeroTitular = telefonoMatch[1].trim();
     }
     
-    // Si aún no se encontró, buscar cualquier número de teléfono en el mensaje
-    if (!numeroTitular) {
-      const anyPhoneMatch = PEDIDO_PATTERNS.ANY_PHONE.exec(message);
-      if (anyPhoneMatch?.[1]) {
-        numeroTitular = anyPhoneMatch[1].trim();
-      }
-    }
-    
-    // Extraer la descripción del servicio
+    // Extraer descripción del servicio
     let descripcion = '';
     const descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(message);
     if (descripcionMatch?.[1]) {
       descripcion = descripcionMatch[1].trim();
     }
     
-    // Extraer dirección (puede ser "Dirección póliza" o "Dirección pedido")
+    // Extraer dirección (probar ambos formatos)
     let direccion = '';
     const direccionMatch = PEDIDO_PATTERNS.DIRECCION_POLIZA.exec(message) || 
                           PEDIDO_PATTERNS.DIRECCION_PEDIDO.exec(message);
@@ -159,50 +130,87 @@ function parsePedidoMessage(message) {
       direccion = direccionMatch[1].trim();
     }
     
-    // Extraer fecha de ejecución y franja horaria
+    let barrio = '';
+    const barrioMatch = PEDIDO_PATTERNS.BARRIO.exec(message);
+    if (barrioMatch?.[1]) {
+      barrio = barrioMatch[1].trim();
+    }
+    
     let fechaEjecucion = '';
-    let franja_horaria = '';
-    
-    // Intentar extraer la sección de TURNO primero para un análisis más preciso
+    let franjaHoraria = '';
     const turnoMatch = PEDIDO_PATTERNS.TURNO.exec(message);
-    const turnoText = turnoMatch ? turnoMatch[0] : message;
     
-    // Probar cada patrón hasta encontrar una coincidencia
-    for (const { pattern, handler } of DATE_PATTERNS) {
-      const match = pattern.exec(turnoText);
-      if (match) {
-        const result = handler(match);
-        fechaEjecucion = result.date;
-        franja_horaria = result.time;
-        break;
+    // 1. Intentar con el patrón TURNO directo
+    if (turnoMatch?.[1] && turnoMatch[2]) {
+      try {
+        const [day, month, year] = turnoMatch[1].split('/');
+        if (day && month && year) {
+          fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          franjaHoraria = turnoMatch[2];
+        }
+      } catch (e) {
+        console.error('Error al parsear fecha de turno:', e);
       }
     }
     
-    // Crear objeto de tarea con tipos garantizados
+    // 2. Si no se encontró, intentar con DATE_PATTERNS
+    if (!franjaHoraria) {
+      const turnoText = turnoMatch?.[0] || message;
+      
+      for (const { pattern, handler } of DATE_PATTERNS) {
+        try {
+          const match = pattern.exec(turnoText);
+          if (match) {
+            const result = handler(match);
+            if (result?.date) fechaEjecucion = result.date;
+            if (result?.time) franjaHoraria = result.time;
+            if (fechaEjecucion && franjaHoraria) break;
+          }
+        } catch (e) {
+          console.error('Error al procesar patrón de fecha:', e);
+        }
+      }
+    }
+    
+    // 3. Si no hay fecha, usar la fecha actual
+    if (!fechaEjecucion) {
+      const today = new Date();
+      fechaEjecucion = today.toISOString().split('T')[0];
+    }
+    
+    // 4. Si no hay franja horaria, usar horario por defecto
+    if (!franjaHoraria) {
+      franjaHoraria = '09:00 - 18:00';
+    }
+    
+    // Crear objeto de tarea con valores por defecto
     const taskData = {
-      numero: numero || '',
-      titulo: titulo || '',
-      cliente: cliente || '',
-      numeroTitular: numeroTitular || '',
-      descripcion: descripcion || '',
-      direccion: direccion || '',
-      fechaEjecucion: fechaEjecucion || '',
-      franja_horaria: franja_horaria || '',
+      numero: numero,
+      titulo: `Pedido ${numero}`,
+      cliente: cliente,
+      numeroTitular: numeroTitular.replace(/\D/g, '').substring(0, 15), // Limpiar y limitar teléfono
+      descripcion: descripcion || 'Sin descripción',
+      direccion: direccion || 'Dirección no especificada',
+      barrio: barrio || '',
+      fechaEjecucion: fechaEjecucion,
+      franja_horaria: franjaHoraria,
       estado: 'pendiente',
       tecnicos: [],
       creadoPor: process.env.DEFAULT_USER_ID || null,
       fechaCreacion: new Date().toISOString(),
       fechaModificacion: new Date().toISOString(),
-      origen: 'whatsapp'
+      origen: 'whatsapp',
+      metadata: {
+        parsedAt: new Date().toISOString(),
+        parserVersion: '1.2.0'
+      }
     };
     
-    // Limpiar referencias a objetos grandes
     message = null;
     
     return taskData;
   } catch (error) {
     console.error('Error al parsear mensaje de Pedido:', error);
-    // Forzar recolección de basura si está disponible
     if (typeof global.gc === 'function') {
       global.gc();
     }
@@ -210,7 +218,6 @@ function parsePedidoMessage(message) {
   }
 }
 
-// Patrones para parsear mensajes de tarea
 const TAREA_PATTERNS = {
   NUMERO: /Numero:\s*([^\n]+)/i,
   TITULO: /Titulo:\s*([^\n]+)/i,
@@ -221,34 +228,25 @@ const TAREA_PATTERNS = {
   FECHA_HORA: /(\d{1,2}\/\d{1,2}\/\d{4})\s+de\s+(\d{1,2}:\d{1,2})\s+a\s+(\d{1,2}:\d{1,2})/i
 };
 
-/**
- * Parsea un mensaje en formato TAREA
- * @param {string} message - Contenido del mensaje
- * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
- */
 function parseTareaMessage(message) {
   try {
-    // Limitar el tamaño del mensaje
     message = limitMessageSize(message)
       .replace(/\*/g, '')
       .trim();
 
-    // Extraer número de tarea
     const numeroMatch = TAREA_PATTERNS.NUMERO.exec(message);
     const numero = numeroMatch?.[1]?.trim() || null;
     
     if (!numero) {
-      return null; // Si no hay número, no podemos continuar
+      return null;
     }
 
-    // Extraer otros campos
     const tituloMatch = TAREA_PATTERNS.TITULO.exec(message);
     const clienteMatch = TAREA_PATTERNS.CLIENTE.exec(message);
     const descripcionMatch = TAREA_PATTERNS.DESCRIPCION.exec(message);
     const direccionMatch = TAREA_PATTERNS.DIRECCION.exec(message);
     const telefonoMatch = TAREA_PATTERNS.TELEFONO.exec(message);
     
-    // Extraer fecha y hora si están presentes
     let fechaEjecucion = '';
     let franja_horaria = '';
     const fechaHoraMatch = TAREA_PATTERNS.FECHA_HORA.exec(message);
@@ -260,7 +258,6 @@ function parseTareaMessage(message) {
       franja_horaria = `${startTime} - ${endTime}`;
     }
 
-    // Crear objeto de tarea
     const taskData = {
       numero: numero,
       titulo: tituloMatch?.[1]?.trim() || `Tarea ${numero}`,
@@ -278,7 +275,6 @@ function parseTareaMessage(message) {
       origen: 'whatsapp'
     };
 
-    // Limpiar referencias
     message = null;
     
     return taskData;
@@ -289,7 +285,6 @@ function parseTareaMessage(message) {
   }
 }
 
-// Patrones para parsear mensajes de expediente
 const EXPEDIENTE_PATTERNS = {
   EXPEDIENTE: /Expediente:\s*([^\n]+)/i,
   CLIENTE: /Cliente:[\s\n]+([^\n]+)/i,
@@ -299,33 +294,23 @@ const EXPEDIENTE_PATTERNS = {
   FECHA: /(\d{1,2}\/\d{1,2}\/\d{4})/i
 };
 
-/**
- * Parsea un mensaje en formato Expediente
- * @param {string} message - Contenido del mensaje
- * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
- */
 function parseExpedienteMessage(message) {
   try {
-    // Limitar el tamaño del mensaje
     message = limitMessageSize(message)
       .replace(/\*/g, '')
       .trim();
-
-    // Extraer número de expediente
     const expedienteMatch = EXPEDIENTE_PATTERNS.EXPEDIENTE.exec(message);
     const numero = expedienteMatch?.[1]?.trim() || null;
     
     if (!numero) {
-      return null; // Si no hay número, no podemos continuar
+      return null;
     }
 
-    // Extraer otros campos
     const clienteMatch = EXPEDIENTE_PATTERNS.CLIENTE.exec(message);
     const detalleMatch = EXPEDIENTE_PATTERNS.DETALLE.exec(message);
     const domicilioMatch = EXPEDIENTE_PATTERNS.DOMICILIO.exec(message);
     const contactoMatch = EXPEDIENTE_PATTERNS.CONTACTO.exec(message);
     
-    // Extraer fecha si existe
     let fechaEjecucion = '';
     const fechaMatch = EXPEDIENTE_PATTERNS.FECHA.exec(message);
     if (fechaMatch?.[1]) {
@@ -333,7 +318,6 @@ function parseExpedienteMessage(message) {
       fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
 
-    // Crear objeto de tarea
     const taskData = {
       numero: numero,
       titulo: `Expediente ${numero}`,
@@ -350,7 +334,6 @@ function parseExpedienteMessage(message) {
       origen: 'whatsapp'
     };
 
-    // Limpiar referencias
     message = null;
     
     return taskData;
