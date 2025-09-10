@@ -6,7 +6,7 @@ const PEDIDO_PATTERNS = {
   TELEFONO: /Telefono alt:\s*([^\n]+?)(?=\s*Descripción|$)/i,
   WHATSAPP_TITULAR: /[Ww]hatsapp\s+titular:\s*([^\n]+?)(?=\s*Descripción|$)/i,
   DESCRIPCION: /Descripción del servicio:\s*([^\n]+?)(?=\s*Dirección|$)/i,
-  DIRECCION_POLIZA: /Dirección póliza:\s*([^\n]+?)(?=\s*Barrio|$)/i,
+  DIRECCION: /(?:Dirección\s*(?:póliza|pedido)|Domicilio):\s*([^\n]+?)(?=\s*(?:Barrio|TURNO|$))/i,
   BARRIO: /Barrio:\s*([^\n]+?)(?=\s*TURNO|$)/i,
   TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{1,2}:\d{2}-\d{1,2}:\d{2})/i
 };
@@ -122,12 +122,15 @@ function parsePedidoMessage(message) {
       descripcion = descripcionMatch[1].trim();
     }
     
-    // Extraer dirección (probar ambos formatos)
+    // Extraer dirección
     let direccion = '';
-    const direccionMatch = PEDIDO_PATTERNS.DIRECCION_POLIZA.exec(message) || 
-                          PEDIDO_PATTERNS.DIRECCION_PEDIDO.exec(message);
-    if (direccionMatch?.[1]) {
-      direccion = direccionMatch[1].trim();
+    try {
+      const direccionMatch = PEDIDO_PATTERNS.DIRECCION.exec(message);
+      if (direccionMatch?.[1]) {
+        direccion = direccionMatch[1].trim();
+      }
+    } catch (error) {
+      console.error('Error al extraer dirección:', error);
     }
     
     let barrio = '';
@@ -140,20 +143,39 @@ function parsePedidoMessage(message) {
     let franjaHoraria = '';
     const turnoMatch = PEDIDO_PATTERNS.TURNO.exec(message);
     
-    // 1. Intentar con el patrón TURNO directo
+    // 1. Intentar con el patrón TURNO directo primero
     if (turnoMatch?.[1] && turnoMatch[2]) {
       try {
         const [day, month, year] = turnoMatch[1].split('/');
         if (day && month && year) {
-          fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          franjaHoraria = turnoMatch[2];
+          // Validar que los componentes de la fecha sean números válidos
+          const dayNum = parseInt(day, 10);
+          const monthNum = parseInt(month, 10);
+          const yearNum = parseInt(year, 10);
+          
+          if (!isNaN(dayNum) && !isNaN(monthNum) && !isNaN(yearNum) && 
+              monthNum >= 1 && monthNum <= 12 && 
+              dayNum >= 1 && dayNum <= 31) {
+            
+            // Formato estándar: YYYY-MM-DD
+            fechaEjecucion = `${yearNum}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+            
+            // Validar formato de franja horaria (HH:MM-HH:MM)
+            const horarioMatch = turnoMatch[2].match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
+            if (horarioMatch) {
+              franjaHoraria = turnoMatch[2];
+            } else {
+              console.warn('Formato de franja horaria inválido, usando valor por defecto');
+              franjaHoraria = '09:00 - 18:00';
+            }
+          }
         }
       } catch (e) {
         console.error('Error al parsear fecha de turno:', e);
       }
     }
     
-    // 2. Si no se encontró, intentar con DATE_PATTERNS
+    // 2. Si no se pudo extraer con el patrón directo, intentar con DATE_PATTERNS
     if (!franjaHoraria) {
       const turnoText = turnoMatch?.[0] || message;
       
@@ -161,10 +183,25 @@ function parsePedidoMessage(message) {
         try {
           const match = pattern.exec(turnoText);
           if (match) {
-            const result = handler(match);
-            if (result?.date) fechaEjecucion = result.date;
-            if (result?.time) franjaHoraria = result.time;
-            if (fechaEjecucion && franjaHoraria) break;
+            try {
+              const result = handler(match);
+              if (result?.date) {
+                // Validar formato de fecha resultante
+                const dateParts = result.date.split('-');
+                if (dateParts.length === 3) {
+                  fechaEjecucion = result.date;
+                }
+              }
+              if (result?.time) {
+                // Validar formato de hora
+                if (result.time.includes(':') && result.time.includes('-')) {
+                  franjaHoraria = result.time;
+                }
+              }
+              if (fechaEjecucion && franjaHoraria) break;
+            } catch (e) {
+              console.error('Error en el manejador de fecha:', e);
+            }
           }
         } catch (e) {
           console.error('Error al procesar patrón de fecha:', e);
@@ -172,15 +209,43 @@ function parsePedidoMessage(message) {
       }
     }
     
-    // 3. Si no hay fecha, usar la fecha actual
+    // 3. Validar y asegurar formato correcto de fecha
     if (!fechaEjecucion) {
-      const today = new Date();
-      fechaEjecucion = today.toISOString().split('T')[0];
+      // Intentar extraer cualquier fecha del mensaje como último recurso
+      const dateMatch = message.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      if (dateMatch) {
+        try {
+          let [_, day, month, year] = dateMatch;
+          year = year.length === 2 ? `20${year}` : year; // Asumir siglo 21 para años de 2 dígitos
+          
+          // Validar rangos de fecha
+          const dayNum = parseInt(day, 10);
+          const monthNum = parseInt(month, 10);
+          
+          if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+            fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          }
+        } catch (e) {
+          console.error('Error al procesar fecha alternativa:', e);
+        }
+      }
+      
+      // Si después de todo no hay fecha, usar la actual
+      if (!fechaEjecucion) {
+        const today = new Date();
+        fechaEjecucion = today.toISOString().split('T')[0];
+      }
     }
     
-    // 4. Si no hay franja horaria, usar horario por defecto
+    // 4. Validar y asegurar formato correcto de franja horaria
     if (!franjaHoraria) {
-      franjaHoraria = '09:00 - 18:00';
+      // Intentar extraer cualquier horario del mensaje
+      const timeMatch = message.match(/(\d{1,2}:\d{2})\s*[-a]\s*(\d{1,2}:\d{2})/i);
+      if (timeMatch) {
+        franjaHoraria = `${timeMatch[1].trim()} - ${timeMatch[2].trim()}`;
+      } else {
+        franjaHoraria = '09:00 - 18:00'; // Valor por defecto
+      }
     }
     
     // Crear objeto de tarea con valores por defecto
