@@ -2,13 +2,13 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /Cliente:\s*([^\n]+?)(?=\s*Telefono|$)/i,
-  TELEFONO: /Telefono alt:\s*([^\n]+?)(?=\s*Descripción|$)/i,
-  WHATSAPP_TITULAR: /[Ww]hatsapp\s+titular:\s*([^\n]+?)(?=\s*Descripción|$)/i,
-  DESCRIPCION: /Descripción del servicio:\s*([^\n]+?)(?=\s*Dirección|$)/i,
-  DIRECCION: /(?:Dirección\s*(?:póliza|pedido)|Domicilio):\s*([^\n]+?)(?=\s*(?:Barrio|TURNO|$))/i,
-  BARRIO: /Barrio:\s*([^\n]+?)(?=\s*TURNO|$)/i,
-  TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{1,2}:\d{2}-\d{1,2}:\d{2})/i
+  CLIENTE: /Cliente:\s*([^\n]+?)(?=\s*(?:Telefono|Whatsapp|$))/i,
+  TELEFONO: /Telefono\s*(?:alt\.?)?\s*:?\s*([^\n\d]*\d[^\n]*?)(?=\s*(?:Descripción|$))/i,
+  WHATSAPP_TITULAR: /[Ww]hatsapp\s*titular\s*:?\s*([^\n\d]*\d[^\n]*?)(?=\s*(?:Descripción|$))/i,
+  DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([^\n]+?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$))/i,
+  DIRECCION: /(?:Dirección\s*(?:póliza|pedido)|Domicilio)\s*:?\s*([^\n]+?)(?=\s*(?:Barrio|TURNO|$))/i,
+  BARRIO: /Barrio\s*:?\s*([^\n]+?)(?=\s*TURNO|$)/i,
+  TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})/i
 };
 
 const DATE_PATTERNS = [
@@ -110,9 +110,23 @@ function parsePedidoMessage(message) {
     
     // Extraer número de teléfono (intentar múltiples patrones)
     let numeroTitular = '';
-    const telefonoMatch = PEDIDO_PATTERNS.TELEFONO.exec(message);
-    if (telefonoMatch?.[1]?.trim()) {
-      numeroTitular = telefonoMatch[1].trim();
+    
+    // 1. Intentar con el patrón WHATSAPP_TITULAR primero
+    const whatsappMatch = PEDIDO_PATTERNS.WHATSAPP_TITULAR.exec(message);
+    if (whatsappMatch?.[1]?.trim()) {
+      numeroTitular = whatsappMatch[1].trim();
+    } 
+    // 2. Si no se encontró, intentar con el patrón TELEFONO
+    else {
+      const telefonoMatch = PEDIDO_PATTERNS.TELEFONO.exec(message);
+      if (telefonoMatch?.[1]?.trim()) {
+        numeroTitular = telefonoMatch[1].trim();
+      }
+    }
+    
+    // Limpiar el número de teléfono (solo mantener dígitos)
+    if (numeroTitular) {
+      numeroTitular = numeroTitular.replace(/\D/g, '');
     }
     
     // Extraer descripción del servicio
