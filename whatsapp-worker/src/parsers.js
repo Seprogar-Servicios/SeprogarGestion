@@ -2,11 +2,11 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /^Cliente:\s*([^\n]+?)(?=\s*(?:Whatsapp|Telefono|Descripción|Dirección|Domicilio|Barrio|TURNO|$))/im,
+  CLIENTE: /^Cliente:\s*([^\n]+?)(?=\s*(?:Whatsapp|Tel[ée]fono|Descripci[óo]n|Direcci[óo]n|Domicilio|Barrio|TURNO|$)|\n\s*\n)/im,
   TELEFONO: /Telefono\s*(?:alt\.?)?\s*:?\s*([^\n\d]*\d[^\n]*?)(?=\s*(?:Descripción|$))/i,
-  WHATSAPP_TITULAR: /[Ww]hatsapp\s*(?:titular)?\s*:?\s*([^\n\d]*(?:\d[\d\s-]*\d))(?:\s|$)/i,
-  DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$))/i,
-  DIRECCION: /(?:Dirección\s*(?:póliza|pedido)|Domicilio)\s*:?\s*([^\n]+?)(?=\s*(?:Barrio|TURNO|$))/i,
+  WHATSAPP_TITULAR: /[Ww]hatsapp\s*(?:titular)?\s*:?\s*([^\n\d]*(?:\d[\d\s-]*\d))(?:\s|$|\n)/i,
+  DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$)|\n\s*\n)/i,
+  DIRECCION: /(?:Dirección\s*(?:póliza|pedido|pedido:)|Domicilio)\s*:?\s*([^\n]+?)(?=\s*(?:Barrio|TURNO|$)|\n\s*\n)/i,
   BARRIO: /Barrio\s*:?\s*([^\n]+?)(?=\s*TURNO|$)/i,
   TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})/i
 };
@@ -98,18 +98,12 @@ function parsePedidoMessage(message) {
     
     // Extraer número de pedido (obligatorio)
     const numeroMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(message);
-    const numero = numeroMatch?.[1]?.trim();
-    if (!numero) {
-      console.log('No se encontró número de pedido en el mensaje');
-      return null;
-    }
     
     // Extraer información del cliente
     let cliente = 'Cliente no especificado';
     let numeroTitular = '';
-    
-    // Primero, dividir el mensaje en líneas para un procesamiento más preciso
-    const lines = message.split('\n').map(line => line.trim()).filter(line => line);
+    let descripcion = '';
+    let direccion = '';
     
     // Buscar el cliente en las primeras líneas
     for (let i = 0; i < Math.min(10, lines.length); i++) {
@@ -147,15 +141,12 @@ function parsePedidoMessage(message) {
     }
     
     // Extraer descripción del servicio
-    let descripcion = '';
     let descripcionStart = -1;
     
     // Buscar la línea de descripción (maneja diferentes formatos)
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].toLowerCase().includes('descripción') || 
-          lines[i].toLowerCase().includes('descripcion') ||
-          lines[i].toLowerCase().includes('descripci') ||
-          lines[i].toLowerCase().includes('servicio:')) {
+      const line = lines[i].toLowerCase();
+      if (line.includes('descripción') || line.includes('descripcion') || line.includes('servicio:')) {
         descripcionStart = i;
         // Extraer el texto después de 'Descripción del servicio:' si está en la misma línea
         const descMatch = lines[i].split(/[:\-]\s*/);
@@ -170,21 +161,23 @@ function parsePedidoMessage(message) {
       }
     }
     
+    // Si encontramos el inicio de la descripción, extraer hasta encontrar otra sección
     if (descripcionStart >= 0) {
-      // Tomar las siguientes líneas hasta encontrar Dirección, Domicilio, Barrio o TURNO
       const descripcionLines = [];
       for (let i = descripcionStart; i < lines.length; i++) {
         const line = lines[i];
-        if (line.match(/^(Dirección|Domicilio|Barrio|TURNO|Pedido|Cliente|Whatsapp|Telefono)/i)) {
+        // Detener si encontramos el inicio de otra sección
+        if (line.match(/^(Dirección|Domicilio|Barrio|TURNO|Pedido|Cliente|Whatsapp|Tel[ée]fono)/i)) {
           break;
         }
+        // Agregar línea a la descripción si no está vacía
         if (line.trim()) {
           descripcionLines.push(line.trim());
         }
       }
       
-      // Si no encontramos descripción en líneas posteriores, usar la que ya tenemos
-      if (descripcionLines.length > 0 || !descripcion) {
+      // Unir las líneas de la descripción
+      if (descripcionLines.length > 0) {
         const newDesc = descripcionLines.join('\n').trim();
         if (newDesc) {
           descripcion = newDesc;
@@ -192,8 +185,39 @@ function parsePedidoMessage(message) {
       }
     }
     
+    // Extraer y limpiar la descripción del servicio
+    if (descripcionMatch && descripcionMatch[1]) {
+      descripcion = descripcionMatch[1]
+        .split('\n')  // Dividir en líneas
+        .map(line => line.trim())  // Limpiar cada línea
+        .filter(line => {  // Filtrar líneas vacías o que no aportan información
+          const lowerLine = line.toLowerCase();
+          return line && 
+                 !lowerLine.startsWith('dirección') && 
+                 !lowerLine.startsWith('domicilio') &&
+                 !lowerLine.startsWith('turno');
+        })
+        .join('\n')  // Unir con saltos de línea
+        .replace(/\s*\n\s*/g, '\n')  // Normalizar saltos de línea
+        .replace(/\s+/g, ' ')  // Normalizar espacios
+        .trim();
+    }
+    
+    // Extraer y limpiar el nombre del cliente
+    if (clienteMatch && clienteMatch[1]) {
+      cliente = clienteMatch[1]
+        .replace(/^\s*:\s*/, '')  // Eliminar dos puntos iniciales si existen
+        .replace(/\s+/g, ' ')     // Normalizar espacios
+        .trim();
+        
+      // Limpiar cualquier texto adicional después del nombre
+      const cleanCliente = cliente.split('\n')[0].trim();
+      if (cleanCliente) {
+        cliente = cleanCliente;
+      }
+    }
+    
     // Extraer dirección
-    let direccion = '';
     try {
       // Buscar la línea de dirección
       for (let i = 0; i < lines.length; i++) {
@@ -338,6 +362,8 @@ function parsePedidoMessage(message) {
           const monthNum = parseInt(month, 10);
           
           if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+            
+            // Formato estándar: YYYY-MM-DD
             fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
           }
         } catch (e) {
@@ -412,20 +438,33 @@ function parseTareaMessage(message) {
   try {
     message = limitMessageSize(message)
       .replace(/\*/g, '')
-      .trim();
-
-    const numeroMatch = TAREA_PATTERNS.NUMERO.exec(message);
-    const numero = numeroMatch?.[1]?.trim() || null;
+     // Extraer datos del mensaje
+    // Primero intentamos extraer el cliente con el patrón principal
+    let clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(message);
     
-    if (!numero) {
-      return null;
+    // Si no se encuentra, intentamos con patrones alternativos
+    if (!clienteMatch) {
+      clienteMatch = [/Cliente:\s*([^\n]+)/i, /Cliente:[\s\n]+([^\n]+)/i]
+        .map(regex => regex.exec(message))
+        .find(match => match !== null);
     }
-
-    const tituloMatch = TAREA_PATTERNS.TITULO.exec(message);
-    const clienteMatch = TAREA_PATTERNS.CLIENTE.exec(message);
-    const descripcionMatch = TAREA_PATTERNS.DESCRIPCION.exec(message);
-    const direccionMatch = TAREA_PATTERNS.DIRECCION.exec(message);
-    const telefonoMatch = TAREA_PATTERNS.TELEFONO.exec(message);
+    
+    // Extraer teléfono y WhatsApp
+    const telefonoMatch = PEDIDO_PATTERNS.TELEFONO.exec(message);
+    const whatsappMatch = PEDIDO_PATTERNS.WHATSAPP_TITULAR.exec(message);
+    
+    // Extraer dirección con manejo mejorado
+    let direccionMatch = PEDIDO_PATTERNS.DIRECCION.exec(message);
+    
+    // Extraer descripción con manejo mejorado
+    let descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(message);
+    
+    // Si no encontramos la descripción con el patrón, intentamos extraerla manualmente
+    if (!descripcionMatch || !descripcionMatch[1]?.trim()) {
+      // Buscamos desde "Descripción del servicio" hasta "Dirección" o doble salto de línea
+      const descripcionRegex = /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$)|\n\s*\n)/i;
+      descripcionMatch = descripcionRegex.exec(message);
+    }
     
     let fechaEjecucion = '';
     let franja_horaria = '';
