@@ -90,16 +90,24 @@ function parsePedidoMessage(message) {
       }
     }
     
-    // Limpiar formato del mensaje
-    message = message
+    // Limpiar y normalizar el mensaje
+    const cleanMessage = message
       .replace(/\*/g, '')        // Eliminar asteriscos
       .replace(/\n\s*\n/g, '\n')  // Normalizar saltos de línea
       .trim();
     
-    // Extraer número de pedido (obligatorio)
-    const numeroMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(message);
+    // Dividir en líneas para procesamiento
+    const lines = cleanMessage.split('\n').map(line => line.trim()).filter(line => line);
     
-    // Extraer información del cliente
+    // Extraer número de pedido (obligatorio)
+    const numeroMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
+    if (!numeroMatch) {
+      console.log('No se encontró número de pedido en el mensaje');
+      return null;
+    }
+    const numero = numeroMatch[1].trim();
+    
+    // Inicializar variables
     let cliente = 'Cliente no especificado';
     let numeroTitular = '';
     let descripcion = '';
