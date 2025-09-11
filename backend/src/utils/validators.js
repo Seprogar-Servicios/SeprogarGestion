@@ -34,14 +34,21 @@ const tareaSchema = Joi.object({
   numero: Joi.string().required(),
   titulo: Joi.string().required(),
   descripcion: Joi.string().allow('').optional(),
-  estado: Joi.string().valid('pendiente', 'en progreso', 'completada', 'cancelada').optional(),
-  tecnicos: Joi.array().items(Joi.string()),
-  fechaEjecucion: Joi.date().optional(),
+  estado: Joi.string().valid('pendiente', 'en progreso', 'completada', 'cancelada').default('pendiente'),
+  tecnicos: Joi.array().items(Joi.string()).default([]),
+  fechaEjecucion: Joi.alternatives().try(
+    Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
+    Joi.date()
+  ).optional(),
   franja_horaria: Joi.string().allow('').optional(),
-  cliente: Joi.string().optional(),
+  cliente: Joi.string().allow('').optional(),
   numeroTitular: Joi.string().allow('').optional(),
   direccion: Joi.string().allow('').optional(),
-});
+  origen: Joi.string().valid('whatsapp', 'sistema', 'web').default('sistema'),
+  grupoOrigen: Joi.string().allow('').optional(),
+  mensajeOriginal: Joi.string().allow('').optional(),
+  fechaRecepcion: Joi.date().optional(),
+}).unknown(false); // No permitir campos adicionales
 
 module.exports = {
   userRegisterSchema,

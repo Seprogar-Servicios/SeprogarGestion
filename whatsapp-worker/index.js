@@ -621,15 +621,25 @@ async function sendToAPI(taskData) {
     const dataToSend = { ...taskData };
     const camposPermitidos = [
       'numero', 'titulo', 'descripcion', 'estado', 'tecnicos',
-      'fechaEjecucion', 'franja_horaria', 'cliente', 'numeroTitular', 'direccion'
+      'fechaEjecucion', 'franja_horaria', 'cliente', 'numeroTitular', 'direccion',
+      'origen', 'grupoOrigen', 'mensajeOriginal', 'fechaRecepcion'
     ];
 
     const datosLimpios = {};
     camposPermitidos.forEach(campo => {
-      if (dataToSend[campo] !== undefined) {
-        datosLimpios[campo] = dataToSend[campo];
+      if (dataToSend[campo] !== undefined && dataToSend[campo] !== null) {
+        // Asegurarse de que los campos de texto no estén vacíos
+        if (typeof dataToSend[campo] === 'string') {
+          datosLimpios[campo] = dataToSend[campo].trim();
+        } else {
+          datosLimpios[campo] = dataToSend[campo];
+        }
       }
     });
+    
+    // Asegurar que los campos obligatorios tengan valores por defecto
+    if (!datosLimpios.estado) datosLimpios.estado = 'pendiente';
+    if (!datosLimpios.titulo) datosLimpios.titulo = `Pedido ${datosLimpios.numero || 'Nuevo'}`;
 
     const camposEliminados = Object.keys(dataToSend).filter(campo => !camposPermitidos.includes(campo));
     if (camposEliminados.length > 0) {
