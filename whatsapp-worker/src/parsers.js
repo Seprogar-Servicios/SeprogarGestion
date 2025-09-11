@@ -73,16 +73,9 @@ function limitMessageSize(message, maxLength = 2000) {
  * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
  */
 function parsePedidoMessage(message) {
-  // Inicializar todas las variables de coincidencia de regex
+  // Inicializar solo las variables que necesitan ser accedidas fuera del bloque try
   let cleanContentMatch = null;
   let fullMessageMatch = null;
-  let clienteMatch = null;
-  let descripcionMatch = null;
-  let turnoMatch = null;
-  let direccionMatch = null;
-  let whatsappMatch = null;
-  let barrioMatch = null;
-  let pedidoNumMatch = null;
   
   try {
     // Limitar el tamaño del mensaje para evitar consumo excesivo de memoria
@@ -111,12 +104,12 @@ function parsePedidoMessage(message) {
     const lines = cleanMessage.split('\n').map(line => line.trim()).filter(line => line);
     
     // Realizar todas las búsquedas de patrones
-    clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(cleanMessage);
-    pedidoNumMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
-    descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
+    const clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(cleanMessage);
+    const pedidoNumMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
+    const descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
     
-    // Extraer número de pedido (obligatorio)
-    const numeroMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
+    // Extraer número de pedido (obligatorio) - reutilizar resultado anterior si está disponible
+    const numeroMatch = pedidoNumMatch || PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
     if (!numeroMatch) {
       console.log('No se encontró número de pedido en el mensaje');
       return null;
@@ -166,7 +159,6 @@ function parsePedidoMessage(message) {
     
     // Extraer descripción del servicio
     let descripcionStart = -1;
-    let descripcionMatch = null;
     
     // Primero intentar con el patrón de descripción
     descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
