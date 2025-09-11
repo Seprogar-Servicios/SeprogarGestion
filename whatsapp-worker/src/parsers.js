@@ -150,27 +150,38 @@ function parsePedidoMessage(message) {
     
     // Extraer descripción del servicio
     let descripcionStart = -1;
+    let descripcionMatch = null;
     
-    // Buscar la línea de descripción (maneja diferentes formatos)
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].toLowerCase();
-      if (line.includes('descripción') || line.includes('descripcion') || line.includes('servicio:')) {
-        descripcionStart = i;
-        // Extraer el texto después de 'Descripción del servicio:' si está en la misma línea
-        const descMatch = lines[i].split(/[:\-]\s*/);
-        if (descMatch.length > 1) {
-          const descText = descMatch.slice(1).join(':').trim();
-          if (descText) {
-            descripcion = descText;
-            descripcionStart = i + 1; // Empezar a buscar más texto en la siguiente línea
+    // Primero intentar con el patrón de descripción
+    descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
+    
+    // Si no se encontró con el patrón, buscar manualmente
+    if (!descripcionMatch || !descripcionMatch[1]?.trim()) {
+      // Buscar la línea de descripción (maneja diferentes formatos)
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].toLowerCase();
+        if (line.includes('descripción') || line.includes('descripcion') || line.includes('servicio:')) {
+          descripcionStart = i;
+          // Extraer el texto después de 'Descripción del servicio:' si está en la misma línea
+          const descMatch = lines[i].split(/[:\-]\s*/);
+          if (descMatch.length > 1) {
+            const descText = descMatch.slice(1).join(':').trim();
+            if (descText) {
+              descripcion = descText;
+              descripcionStart = i + 1; // Empezar a buscar más texto en la siguiente línea
+            }
           }
+          break;
         }
-        break;
       }
     }
     
     // Si encontramos el inicio de la descripción, extraer hasta encontrar otra sección
-    if (descripcionStart >= 0) {
+    if (descripcionMatch?.[1]?.trim()) {
+      // Usar la descripción extraída por el patrón
+      descripcion = descripcionMatch[1].trim();
+    } else if (descripcionStart >= 0) {
+      // Extraer manualmente si no se usó el patrón
       const descripcionLines = [];
       for (let i = descripcionStart; i < lines.length; i++) {
         const line = lines[i];
