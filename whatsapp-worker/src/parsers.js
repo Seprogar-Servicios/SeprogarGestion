@@ -73,17 +73,28 @@ function limitMessageSize(message, maxLength = 2000) {
  * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
  */
 function parsePedidoMessage(message) {
+  // Inicializar todas las variables de coincidencia de regex
+  let cleanContentMatch = null;
+  let fullMessageMatch = null;
+  let clienteMatch = null;
+  let descripcionMatch = null;
+  let turnoMatch = null;
+  let direccionMatch = null;
+  let whatsappMatch = null;
+  let barrioMatch = null;
+  let pedidoNumMatch = null;
+  
   try {
     // Limitar el tamaño del mensaje para evitar consumo excesivo de memoria
     message = limitMessageSize(message);
     
     // Extraer el mensaje limpio si está en formato de log
     if (message.includes('[INFO]')) {
-      const cleanContentMatch = PEDIDO_PATTERNS.CLEAN_CONTENT.exec(message);
+      cleanContentMatch = PEDIDO_PATTERNS.CLEAN_CONTENT.exec(message);
       if (cleanContentMatch?.[1]) {
         message = cleanContentMatch[1].trim();
       } else {
-        const fullMessageMatch = PEDIDO_PATTERNS.FULL_MESSAGE.exec(message);
+        fullMessageMatch = PEDIDO_PATTERNS.FULL_MESSAGE.exec(message);
         if (fullMessageMatch?.[1]) {
           message = fullMessageMatch[1].trim();
         }
@@ -98,6 +109,11 @@ function parsePedidoMessage(message) {
     
     // Dividir en líneas para procesamiento
     const lines = cleanMessage.split('\n').map(line => line.trim()).filter(line => line);
+    
+    // Realizar todas las búsquedas de patrones
+    clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(cleanMessage);
+    pedidoNumMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
+    descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
     
     // Extraer número de pedido (obligatorio)
     const numeroMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
