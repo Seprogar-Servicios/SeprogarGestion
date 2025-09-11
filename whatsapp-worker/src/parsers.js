@@ -126,20 +126,37 @@ function parsePedidoMessage(message) {
     for (let i = 0; i < Math.min(10, lines.length); i++) {
       const line = lines[i];
       
-      // Extraer nombre del cliente (maneja formato con o sin dos puntos)
-      const clienteMatch = line.match(/^Cliente[:\s]+(.+)/i);
+      // Extraer nombre del cliente (maneja formato con o sin dos puntos y con comas)
+      const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i);
       if (clienteMatch) {
-        cliente = clienteMatch[1].trim();
+        cliente = clienteMatch[1]
+          // Reemplazar espacios especiales con espacios normales
+          .replace(/\u00A0/g, ' ')
+          // Eliminar asteriscos si existen
+          .replace(/\*/g, '')
+          .trim()
+          // Normalizar espacios alrededor de comas
+          .replace(/\s*,\s*/g, ', ')
+          // Eliminar comas al final
+          .replace(/,\s*$/, '')
+          // Normalizar múltiples espacios
+          .replace(/\s+/g, ' ')
+          .trim();
+          
         // Verificar si el nombre del cliente continúa en la siguiente línea
-        if (i + 1 < lines.length && !lines[i+1].match(/^Whatsapp|Telefono|Descripción|Dirección|TURNO/i)) {
-          cliente += ' ' + lines[i+1].trim();
-          i++; // Saltar la siguiente línea ya que la procesamos
+        if (i + 1 < lines.length && !lines[i+1].match(/^Whatsapp|Telefono|Descripci[óo]n|Direcci[óo]n|TURNO|Pedido/i)) {
+          const nextLine = lines[i+1].trim();
+          // Solo agregar si la siguiente línea no parece ser otro campo
+          if (!nextLine.match(/^\d+$/) && !nextLine.match(/^[\d\s-]+$/) && !nextLine.match(/^[A-Za-z]+:/)) {
+            cliente += ' ' + nextLine;
+            i++; // Saltar la siguiente línea ya que la procesamos
+          }
         }
         continue;
       }
       
       // Extraer número de WhatsApp (maneja diferentes formatos)
-      const whatsappMatch = line.match(/Whatsapp\s*(?:titular)?\s*[:\s]+([\d\s+()-]+)/i);
+      const whatsappMatch = line.match(/Whatsapp\s*(?:titular)?\s*[\s:]+([\d\s+()-]+)/i);
       if (whatsappMatch) {
         numeroTitular = whatsappMatch[1].trim();
         continue;
