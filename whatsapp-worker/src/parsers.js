@@ -106,7 +106,7 @@ function parsePedidoMessage(message) {
     // Realizar todas las búsquedas de patrones
     const clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(cleanMessage);
     const pedidoNumMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
-    const descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
+    let descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
     
     // Extraer número de pedido (obligatorio) - reutilizar resultado anterior si está disponible
     const numeroMatch = pedidoNumMatch || PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
