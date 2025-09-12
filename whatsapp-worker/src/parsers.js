@@ -63,25 +63,17 @@ function limitMessageSize(message, maxLength = 2000) {
 }
 
 /**
- * Parsea un mensaje en formato Pedido
- * @param {string} message - Contenido del mensaje
- * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
- */
-/**
  * Parsea un mensaje de WhatsApp en formato Pedido
  * @param {string} message - Contenido del mensaje a parsear
  * @returns {Object|null} - Datos de la tarea o null si no se pudo parsear
  */
 function parsePedidoMessage(message) {
-  // Inicializar solo las variables que necesitan ser accedidas fuera del bloque try
   let cleanContentMatch = null;
   let fullMessageMatch = null;
   
   try {
-    // Limitar el tamaño del mensaje para evitar consumo excesivo de memoria
     message = limitMessageSize(message);
     
-    // Extraer el mensaje limpio si está en formato de log
     if (message.includes('[INFO]')) {
       cleanContentMatch = PEDIDO_PATTERNS.CLEAN_CONTENT.exec(message);
       if (cleanContentMatch?.[1]) {
@@ -94,21 +86,17 @@ function parsePedidoMessage(message) {
       }
     }
     
-    // Limpiar y normalizar el mensaje
     const cleanMessage = message
-      .replace(/\*/g, '')        // Eliminar asteriscos
-      .replace(/\n\s*\n/g, '\n')  // Normalizar saltos de línea
+      .replace(/\*/g, '')        
+      .replace(/\n\s*\n/g, '\n')  
       .trim();
     
-    // Dividir en líneas para procesamiento
     const lines = cleanMessage.split('\n').map(line => line.trim()).filter(line => line);
     
-    // Realizar todas las búsquedas de patrones
     const clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(cleanMessage);
     const pedidoNumMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
     let descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
     
-    // Extraer número de pedido (obligatorio) - reutilizar resultado anterior si está disponible
     const numeroMatch = pedidoNumMatch || PEDIDO_PATTERNS.PEDIDO_NUM.exec(cleanMessage);
     if (!numeroMatch) {
       console.log('No se encontró número de pedido en el mensaje');
@@ -116,41 +104,41 @@ function parsePedidoMessage(message) {
     }
     const numero = numeroMatch[1].trim();
     
-    // Inicializar variables
-    let cliente = ''; // Inicializar como string vacío para forzar la asignación
+    let cliente = ''; 
     let numeroTitular = '';
     let descripcion = '';
     let direccion = '';
     
-    // Buscar el cliente en las primeras líneas
     for (let i = 0; i < Math.min(10, lines.length); i++) {
       const line = lines[i];
       
-      // Extraer nombre del cliente - tomar todo lo que venga después de Cliente:
       const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i);
       if (clienteMatch) {
-        // Obtener el nombre del cliente y limpiarlo
-        let nombreCliente = clienteMatch[1].trim();
+        let nombreCliente = clienteMatch[1]
+          .replace(/\u00A0/g, ' ')  
+          .replace(/\s+/g, ' ')    
+          .trim();
         
-        // Verificar si el nombre del cliente continúa en la siguiente línea
         if (i + 1 < lines.length && !lines[i+1].match(/^Whatsapp|Telefono|Descripci[óo]n|Direcci[óo]n|TURNO|Pedido|\d+\s*[\d\s-]*$|^[A-Za-z]+:/i)) {
-          nombreCliente += ' ' + lines[i+1].trim();
-          i++; // Saltar la siguiente línea ya que la procesamos
+          nombreCliente += ' ' + lines[i+1]
+            .replace(/\u00A0/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          i++; 
         }
         
-        // Asignar el nombre del cliente, asegurando que no esté vacío
+        nombreCliente = nombreCliente.replace(/\s*,\s*/g, ', ');
+        
         cliente = nombreCliente.trim() || 'Cliente no especificado';
         continue;
       }
       
-      // Extraer número de WhatsApp (maneja diferentes formatos)
       const whatsappMatch = line.match(/Whatsapp\s*(?:titular)?\s*[\s:]+([\d\s+()-]+)/i);
       if (whatsappMatch) {
         numeroTitular = whatsappMatch[1].trim();
         continue;
       }
       
-      // Extraer teléfono alternativo
       const telefonoMatch = line.match(/Telefono\s*(?:alt\.?)?\s*:?\s*([\d\s+()-]+)/i);
       if (telefonoMatch && !numeroTitular) {
         numeroTitular = telefonoMatch[1].trim();
@@ -162,26 +150,22 @@ function parsePedidoMessage(message) {
       numeroTitular = numeroTitular.replace(/\D/g, '');
     }
     
-    // Extraer descripción del servicio
     let descripcionStart = -1;
     
-    // Primero intentar con el patrón de descripción
     descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
     
-    // Si no se encontró con el patrón, buscar manualmente
     if (!descripcionMatch || !descripcionMatch[1]?.trim()) {
-      // Buscar la línea de descripción (maneja diferentes formatos)
+      
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].toLowerCase();
         if (line.includes('descripción') || line.includes('descripcion') || line.includes('servicio:')) {
           descripcionStart = i;
-          // Extraer el texto después de 'Descripción del servicio:' si está en la misma línea
           const descMatch = lines[i].split(/[:\-]\s*/);
           if (descMatch.length > 1) {
             const descText = descMatch.slice(1).join(':').trim();
             if (descText) {
               descripcion = descText;
-              descripcionStart = i + 1; // Empezar a buscar más texto en la siguiente línea
+              descripcionStart = i + 1;
             }
           }
           break;
@@ -189,26 +173,20 @@ function parsePedidoMessage(message) {
       }
     }
     
-    // Si encontramos el inicio de la descripción, extraer hasta encontrar otra sección
     if (descripcionMatch?.[1]?.trim()) {
-      // Usar la descripción extraída por el patrón
       descripcion = descripcionMatch[1].trim();
     } else if (descripcionStart >= 0) {
-      // Extraer manualmente si no se usó el patrón
       const descripcionLines = [];
       for (let i = descripcionStart; i < lines.length; i++) {
         const line = lines[i];
-        // Detener si encontramos el inicio de otra sección
         if (line.match(/^(Dirección|Domicilio|Barrio|TURNO|Pedido|Cliente|Whatsapp|Tel[ée]fono)/i)) {
           break;
         }
-        // Agregar línea a la descripción si no está vacía
         if (line.trim()) {
           descripcionLines.push(line.trim());
         }
       }
       
-      // Unir las líneas de la descripción
       if (descripcionLines.length > 0) {
         const newDesc = descripcionLines.join('\n').trim();
         if (newDesc) {
@@ -217,62 +195,52 @@ function parsePedidoMessage(message) {
       }
     }
     
-    // Extraer y limpiar la descripción del servicio
     if (descripcionMatch && descripcionMatch[1]) {
       descripcion = descripcionMatch[1]
-        .split('\n')  // Dividir en líneas
-        .map(line => line.trim())  // Limpiar cada línea
-        .filter(line => {  // Filtrar líneas vacías o que no aportan información
+        .split('\n')  
+        .map(line => line.trim())  
+        .filter(line => {  
           const lowerLine = line.toLowerCase();
           return line && 
                  !lowerLine.startsWith('dirección') && 
                  !lowerLine.startsWith('domicilio') &&
                  !lowerLine.startsWith('turno');
         })
-        .join('\n')  // Unir con saltos de línea
-        .replace(/\s*\n\s*/g, '\n')  // Normalizar saltos de línea
-        .replace(/\s+/g, ' ')  // Normalizar espacios
+        .join('\n')  
+        .replace(/\s*\n\s*/g, '\n')  
+        .replace(/\s+/g, ' ')  
         .trim();
     }
     
-    // Extraer y limpiar el nombre del cliente
     if (clienteMatch && clienteMatch[1]) {
       cliente = clienteMatch[1]
-        .replace(/^\s*:\s*/, '')  // Eliminar dos puntos iniciales si existen
-        .replace(/\s+/g, ' ')     // Normalizar espacios
+        .replace(/^\s*:\s*/, '')  
+        .replace(/\s+/g, ' ')     
         .trim();
         
-      // Limpiar cualquier texto adicional después del nombre
       const cleanCliente = cliente.split('\n')[0].trim();
       if (cleanCliente) {
         cliente = cleanCliente;
       }
     }
     
-    // Extraer dirección
     try {
-      // Buscar la línea de dirección
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const direccionMatch = line.match(/(?:Dirección\s*(?:póliza|pedido)|Domicilio)\s*:?\s*(.+)/i);
         if (direccionMatch) {
-          // Extraer solo hasta el final de la línea o hasta TURNO
           let direccionText = direccionMatch[1].split(/\s+TURNO\s+/i)[0].trim();
           direccion = direccionText;
           
-          // Verificar si la dirección continúa en las siguientes líneas
           let j = i + 1;
           const direccionLines = [direccion];
           
           while (j < lines.length) {
-            // Detenerse si encontramos TURNO, Barrio u otra sección
             if (lines[j].match(/^(TURNO|Barrio|Whatsapp|Telefono|Descripción|Cliente|Pedido)/i)) {
               break;
             }
-            // Agregar la línea si no está vacía
             const lineText = lines[j].trim();
             if (lineText) {
-              // Detenerse si encontramos un patrón de fecha/hora que podría ser parte de TURNO
               if (lineText.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/) || 
                   lineText.match(/\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/)) {
                 break;
@@ -282,18 +250,16 @@ function parsePedidoMessage(message) {
             j++;
           }
           
-          // Unir las líneas de dirección y limpiar el texto
           direccion = direccionLines.join(', ')
-            .replace(/\s*,\s*,/g, ', ')  // Limpiar comas múltiples
-            .replace(/\s{2,}/g, ' ')     // Limpiar múltiples espacios
+            .replace(/\s*,\s*,/g, ', ')  
+            .replace(/\s{2,}/g, ' ')     
             .trim()
-            .replace(/\s*,\s*$/, '');   // Eliminar coma final
+            .replace(/\s*,\s*$/, '');   
             
           break;
         }
       }
       
-      // Si no se encontró dirección, intentar encontrar una dirección en el mensaje
       if (!direccion) {
         const direccionMatch = message.match(/Dirección[^\n]*\n([^\n]+)/i);
         if (direccionMatch) {
@@ -314,12 +280,10 @@ function parsePedidoMessage(message) {
     let franjaHoraria = '';
     const turnoMatch = PEDIDO_PATTERNS.TURNO.exec(message);
     
-    // 1. Intentar con el patrón TURNO directo primero
     if (turnoMatch?.[1] && turnoMatch[2]) {
       try {
         const [day, month, year] = turnoMatch[1].split('/');
         if (day && month && year) {
-          // Validar que los componentes de la fecha sean números válidos
           const dayNum = parseInt(day, 10);
           const monthNum = parseInt(month, 10);
           const yearNum = parseInt(year, 10);
@@ -328,10 +292,8 @@ function parsePedidoMessage(message) {
               monthNum >= 1 && monthNum <= 12 && 
               dayNum >= 1 && dayNum <= 31) {
             
-            // Formato estándar: YYYY-MM-DD
             fechaEjecucion = `${yearNum}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
             
-            // Validar formato de franja horaria (HH:MM-HH:MM)
             const horarioMatch = turnoMatch[2].match(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/);
             if (horarioMatch) {
               franjaHoraria = turnoMatch[2];
@@ -346,7 +308,6 @@ function parsePedidoMessage(message) {
       }
     }
     
-    // 2. Si no se pudo extraer con el patrón directo, intentar con DATE_PATTERNS
     if (!franjaHoraria) {
       const turnoText = turnoMatch?.[0] || message;
       
@@ -357,14 +318,12 @@ function parsePedidoMessage(message) {
             try {
               const result = handler(match);
               if (result?.date) {
-                // Validar formato de fecha resultante
                 const dateParts = result.date.split('-');
                 if (dateParts.length === 3) {
                   fechaEjecucion = result.date;
                 }
               }
               if (result?.time) {
-                // Validar formato de hora
                 if (result.time.includes(':') && result.time.includes('-')) {
                   franjaHoraria = result.time;
                 }
@@ -380,22 +339,19 @@ function parsePedidoMessage(message) {
       }
     }
     
-    // 3. Validar y asegurar formato correcto de fecha
     if (!fechaEjecucion) {
-      // Intentar extraer cualquier fecha del mensaje como último recurso
       const dateMatch = message.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
       if (dateMatch) {
         try {
           let [_, day, month, year] = dateMatch;
-          year = year.length === 2 ? `20${year}` : year; // Asumir siglo 21 para años de 2 dígitos
+          year = year.length === 2 ? `20${year}` : year;
           
-          // Validar rangos de fecha
           const dayNum = parseInt(day, 10);
           const monthNum = parseInt(month, 10);
           
           if (monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
             
-            // Formato estándar: YYYY-MM-DD
+            fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
             fechaEjecucion = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
           }
         } catch (e) {
@@ -403,35 +359,30 @@ function parsePedidoMessage(message) {
         }
       }
       
-      // Si después de todo no hay fecha, usar la actual
       if (!fechaEjecucion) {
         const today = new Date();
         fechaEjecucion = today.toISOString().split('T')[0];
       }
     }
     
-    // 4. Validar y asegurar formato correcto de franja horaria
     if (!franjaHoraria) {
-      // Intentar extraer cualquier horario del mensaje
       const timeMatch = message.match(/(\d{1,2}:\d{2})\s*[-a]\s*(\d{1,2}:\d{2})/i);
       if (timeMatch) {
         franjaHoraria = `${timeMatch[1].trim()} - ${timeMatch[2].trim()}`;
       } else {
-        franjaHoraria = '09:00 - 18:00'; // Valor por defecto
+        franjaHoraria = '09:00 - 18:00'; 
       }
     }
     
-    // Asegurar que el cliente tenga un valor por defecto si está vacío
     if (!cliente || cliente.trim() === '') {
       cliente = 'Cliente no especificado';
     }
     
-    // Crear objeto de tarea con valores por defecto
     const taskData = {
       numero: numero,
       titulo: `Pedido ${numero}`,
       cliente: cliente,
-      numeroTitular: numeroTitular.replace(/\D/g, '').substring(0, 15), // Limpiar y limitar teléfono
+      numeroTitular: numeroTitular.replace(/\D/g, '').substring(0, 15), 
       descripcion: descripcion || 'Sin descripción',
       direccion: direccion || 'Dirección no especificada',
       barrio: barrio || '',
@@ -475,30 +426,22 @@ function parseTareaMessage(message) {
   try {
     message = limitMessageSize(message)
       .replace(/\*/g, '')
-     // Extraer datos del mensaje
-    // Primero intentamos extraer el cliente con el patrón principal
     let clienteMatch = PEDIDO_PATTERNS.CLIENTE.exec(message);
     
-    // Si no se encuentra, intentamos con patrones alternativos
     if (!clienteMatch) {
       clienteMatch = [/Cliente:\s*([^\n]+)/i, /Cliente:[\s\n]+([^\n]+)/i]
         .map(regex => regex.exec(message))
         .find(match => match !== null);
     }
     
-    // Extraer teléfono y WhatsApp
     const telefonoMatch = PEDIDO_PATTERNS.TELEFONO.exec(message);
     const whatsappMatch = PEDIDO_PATTERNS.WHATSAPP_TITULAR.exec(message);
     
-    // Extraer dirección con manejo mejorado
     let direccionMatch = PEDIDO_PATTERNS.DIRECCION.exec(message);
     
-    // Extraer descripción con manejo mejorado
     let descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(message);
     
-    // Si no encontramos la descripción con el patrón, intentamos extraerla manualmente
     if (!descripcionMatch || !descripcionMatch[1]?.trim()) {
-      // Buscamos desde "Descripción del servicio" hasta "Dirección" o doble salto de línea
       const descripcionRegex = /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$)|\n\s*\n)/i;
       descripcionMatch = descripcionRegex.exec(message);
     }
