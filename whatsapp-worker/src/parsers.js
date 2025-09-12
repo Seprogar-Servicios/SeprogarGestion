@@ -117,7 +117,7 @@ function parsePedidoMessage(message) {
     const numero = numeroMatch[1].trim();
     
     // Inicializar variables
-    let cliente = 'Cliente no especificado';
+    let cliente = ''; // Inicializar como string vacío para forzar la asignación
     let numeroTitular = '';
     let descripcion = '';
     let direccion = '';
@@ -129,13 +129,17 @@ function parsePedidoMessage(message) {
       // Extraer nombre del cliente - tomar todo lo que venga después de Cliente:
       const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i);
       if (clienteMatch) {
-        cliente = clienteMatch[1].trim();
+        // Obtener el nombre del cliente y limpiarlo
+        let nombreCliente = clienteMatch[1].trim();
         
         // Verificar si el nombre del cliente continúa en la siguiente línea
         if (i + 1 < lines.length && !lines[i+1].match(/^Whatsapp|Telefono|Descripci[óo]n|Direcci[óo]n|TURNO|Pedido|\d+\s*[\d\s-]*$|^[A-Za-z]+:/i)) {
-          cliente += ' ' + lines[i+1].trim();
+          nombreCliente += ' ' + lines[i+1].trim();
           i++; // Saltar la siguiente línea ya que la procesamos
         }
+        
+        // Asignar el nombre del cliente, asegurando que no esté vacío
+        cliente = nombreCliente.trim() || 'Cliente no especificado';
         continue;
       }
       
@@ -415,6 +419,11 @@ function parsePedidoMessage(message) {
       } else {
         franjaHoraria = '09:00 - 18:00'; // Valor por defecto
       }
+    }
+    
+    // Asegurar que el cliente tenga un valor por defecto si está vacío
+    if (!cliente || cliente.trim() === '') {
+      cliente = 'Cliente no especificado';
     }
     
     // Crear objeto de tarea con valores por defecto
