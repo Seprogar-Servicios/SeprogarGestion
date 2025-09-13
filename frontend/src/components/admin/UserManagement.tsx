@@ -60,6 +60,7 @@ const UserManagement: React.FC = () => {
     nombre: string;
     email: string;
     telefono: string;
+    direccion?: string;
     rol: 'admin' | 'usuario';
     password?: string;
     confirmPassword?: string;
@@ -69,6 +70,7 @@ const UserManagement: React.FC = () => {
     nombre: '',
     email: '',
     telefono: '',
+    direccion: '',
     rol: 'usuario',
     password: '',
     confirmPassword: ''
@@ -79,6 +81,7 @@ const UserManagement: React.FC = () => {
     nombre: '',
     email: '',
     telefono: '',
+    direccion: '',
     password: '',
     confirmPassword: '',
     rol: 'usuario' as 'admin' | 'usuario',
@@ -166,6 +169,7 @@ const UserManagement: React.FC = () => {
       nombre: '',
       email: '',
       telefono: '',
+      direccion: '',
       rol: 'usuario',
       password: '',
       confirmPassword: ''
@@ -177,6 +181,7 @@ const UserManagement: React.FC = () => {
       nombre: '',
       email: '',
       telefono: '',
+      direccion: '',
       password: '',
       confirmPassword: '',
       rol: 'usuario',
@@ -198,6 +203,7 @@ const UserManagement: React.FC = () => {
         nombre: createFormData.nombre,
         email: createFormData.email,
         telefono: createFormData.telefono,
+        direccion: createFormData.direccion || undefined,
         password: createFormData.password,
         rol: createFormData.rol,
         especialidad: createFormData.especialidad || undefined
@@ -220,7 +226,10 @@ const UserManagement: React.FC = () => {
       nombre: user.nombre,
       email: user.email,
       telefono: user.telefono || '',
-      rol: user.rol
+      direccion: user.direccion || '',
+      rol: user.rol,
+      password: '',
+      confirmPassword: ''
     });
     setShowEditModal(true);
   };
@@ -847,6 +856,27 @@ const UserManagement: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Dirección
+                  </label>
+                  <div className="relative rounded-lg shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.direccion || ''}
+                      onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                      className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      placeholder="Dirección del usuario"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Rol *
@@ -993,6 +1023,27 @@ const UserManagement: React.FC = () => {
                       placeholder="+54 9 11 12345678"
                       pattern="[0-9+\s]+"
                       title="Solo se permiten números, el signo + y espacios"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Dirección
+                  </label>
+                  <div className="relative rounded-lg shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={createFormData.direccion}
+                      onChange={(e) => setCreateFormData({ ...createFormData, direccion: e.target.value })}
+                      className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      placeholder="Dirección del usuario"
                     />
                   </div>
                 </div>

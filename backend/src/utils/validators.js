@@ -7,6 +7,7 @@ const userRegisterSchema = Joi.object({
   rol: Joi.string().valid('admin', 'usuario').required(),
   especialidad: Joi.string().optional().allow(null, ''),
   telefono: Joi.string().optional().allow(null, ''),
+  direccion: Joi.string().optional().allow(null, ''),
 });
 
 const userUpdateSchema = Joi.object({
@@ -17,6 +18,7 @@ const userUpdateSchema = Joi.object({
   especialidad: Joi.string().optional().allow(null, ''),
   aprobado: Joi.boolean().optional(),
   telefono: Joi.string().optional().allow(null, ''),
+  direccion: Joi.string().optional().allow(null, ''),
 });
 
 const especialidadSchema = Joi.object({

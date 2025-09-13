@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   aprobado: { type: Boolean, default: false },
   notificationToken: { type: String, default: null },
   telefono: { type: String, default: null },
+  direccion: { type: String, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Usuario', userSchema);

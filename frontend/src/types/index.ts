@@ -8,6 +8,7 @@ export interface User {
   especialidad?: string;
   aprobado: boolean;
   telefono?: string;
+  direccion?: string;
   createdAt: string;
   updatedAt: string;
 }
