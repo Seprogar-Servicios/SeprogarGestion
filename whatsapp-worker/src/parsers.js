@@ -109,28 +109,39 @@ function parsePedidoMessage(message) {
     let descripcion = '';
     let direccion = '';
     
-    for (let i = 0; i < Math.min(10, lines.length); i++) {
+    // Buscar línea que contenga "Cliente:" y tomar todo lo que sigue
+    for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      const clienteMatch = line.match(/Cliente[\s:]+(.+)/i);
       
-      const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i);
-      if (clienteMatch) {
-        let nombreCliente = clienteMatch[1]
-          .replace(/\u00A0/g, ' ')  
-          .replace(/\s+/g, ' ')    
+      if (clienteMatch && clienteMatch[1]) {
+        // Tomar todo después de "Cliente:" y limpiar espacios extra
+        cliente = clienteMatch[1]
+          .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF]+/g, ' ')  // Reemplazar todo tipo de espacios por espacio simple
+          .replace(/\s*,\s*/g, ', ')  // Normalizar espacios alrededor de comas
           .trim();
-        
-        if (i + 1 < lines.length && !lines[i+1].match(/^Whatsapp|Telefono|Descripci[óo]n|Direcci[óo]n|TURNO|Pedido|\d+\s*[\d\s-]*$|^[A-Za-z]+:/i)) {
-          nombreCliente += ' ' + lines[i+1]
-            .replace(/\u00A0/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          i++; 
+          
+        // Si el nombre está vacío, intentar con la siguiente línea
+        if (!cliente && i + 1 < lines.length) {
+          cliente = lines[i+1].trim();
+          i++;
         }
         
-        nombreCliente = nombreCliente.replace(/\s*,\s*/g, ', ');
+        // Si aún no hay nombre, buscar cualquier línea que parezca un nombre
+        if (!cliente) {
+          for (let j = 0; j < lines.length; j++) {
+            const potentialName = lines[j].trim();
+            if (potentialName && potentialName.length > 3 && 
+                !potentialName.match(/^\d+$/) &&
+                !potentialName.match(/Whatsapp|Telefono|Descripci[óo]n|Direcci[óo]n|TURNO|Pedido|^[A-Za-z]+:/i)) {
+              cliente = potentialName;
+              break;
+            }
+          }
+        }
         
-        cliente = nombreCliente.trim() || 'Cliente no especificado';
-        continue;
+        cliente = cliente.trim() || 'Cliente no especificado';
+        break;
       }
       
       const whatsappMatch = line.match(/Whatsapp\s*(?:titular)?\s*[\s:]+([\d\s+()-]+)/i);
