@@ -159,7 +159,8 @@ function parsePedidoMessage(message) {
     
     let descripcionStart = -1;
     
-    descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
+    // Buscar descripción
+    let descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
     
     if (!descripcionMatch || !descripcionMatch[1]?.trim()) {
       
@@ -219,12 +220,8 @@ function parsePedidoMessage(message) {
         .trim();
     }
     
-    if (clienteMatch && clienteMatch[1]) {
-      cliente = clienteMatch[1]
-        .replace(/^\s*:\s*/, '')  
-        .replace(/\s+/g, ' ')     
-        .trim();
-        
+    // Clean up client name if it contains multiple lines
+    if (cliente) {
       const cleanCliente = cliente.split('\n')[0].trim();
       if (cleanCliente) {
         cliente = cleanCliente;
