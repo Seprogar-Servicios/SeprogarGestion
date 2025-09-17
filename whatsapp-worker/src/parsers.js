@@ -110,7 +110,7 @@ function parsePedidoMessage(message) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
-      // Buscar línea de cliente
+      // Buscar línea de cliente (formato: "Cliente: NOMBRE")
       const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i);
       if (clienteMatch && clienteMatch[1]) {
         cliente = clienteMatch[1]
@@ -118,19 +118,32 @@ function parsePedidoMessage(message) {
           .replace(/\s*,\s*/g, ', ')
           .trim();
         
-        // Verificar si en la misma línea hay un número de teléfono
-        const telefonoEnLinea = line.match(/(?:Whatsapp|Tel[ée]fono)[\s:]+([\d\s+()-]+)/i);
+        // Verificar si en la misma línea o la siguiente está el teléfono
+        let telefonoEncontrado = false;
+        
+        // Buscar en la misma línea
+        const telefonoEnLinea = line.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
         if (telefonoEnLinea && telefonoEnLinea[1]) {
           numeroTitular = telefonoEnLinea[1].trim();
+          telefonoEncontrado = true;
         }
         
-        // Si no se encontró teléfono, buscar en la siguiente línea
-        if (!numeroTitular && i + 1 < lines.length) {
+        // Si no se encontró teléfono, buscar en la línea siguiente
+        if (!telefonoEncontrado && i + 1 < lines.length) {
           const nextLine = lines[i + 1];
-          const telefonoSiguienteLinea = nextLine.match(/(?:Whatsapp|Tel[ée]fono)[\s:]+([\d\s+()-]+)/i);
+          const telefonoSiguienteLinea = nextLine.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
           if (telefonoSiguienteLinea && telefonoSiguienteLinea[1]) {
             numeroTitular = telefonoSiguienteLinea[1].trim();
             i++; // Saltar la línea del teléfono
+            telefonoEncontrado = true;
+          }
+        }
+        
+        // Si aún no se encontró, buscar en cualquier parte del mensaje
+        if (!telefonoEncontrado) {
+          const telefonoEnCualquierLinea = cleanMessage.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
+          if (telefonoEnCualquierLinea && telefonoEnCualquierLinea[1]) {
+            numeroTitular = telefonoEnCualquierLinea[1].trim();
           }
         }
         
@@ -158,6 +171,37 @@ function parsePedidoMessage(message) {
     }
     
     let descripcionStart = -1;
+    
+    // Buscar dirección (preferir 'Dirección pedido' sobre 'Dirección póliza')
+    let direccionMatch = cleanMessage.match(/Dirección\s*pedido\s*:?\s*([^\n]+)/i);
+    if (!direccionMatch) {
+      direccionMatch = cleanMessage.match(/Dirección\s*póliza\s*:?\s*([^\n]+)/i);
+    }
+    
+    if (direccionMatch && direccionMatch[1]) {
+      direccion = direccionMatch[1]
+        .replace(/^\s*:\s*/, '')
+        .replace(/\s+/g, ' ')
+        .replace(/(?<=\d)\s*\([^)]+\)/g, '') // Eliminar texto entre paréntesis después de números
+        .replace(/,\s*undefined/g, '') // Eliminar ', undefined' de la dirección
+        .replace(/\s*Descripción dirección póliza:.*/i, '') // Eliminar descripción de póliza si existe
+        .replace(/\s*Dirección pedido:.*/i, '') // Eliminar etiqueta si quedó
+        .replace(/\s*Dirección póliza:.*/i, '') // Eliminar etiqueta si quedó
+        .replace(/\s{2,}/g, ' ') // Normalizar espacios múltiples
+        .trim();
+        
+      // Si la dirección parece estar vacía o es muy corta, intentar con la descripción de la póliza
+      if (direccion.length < 10) {
+        const descripcionMatch = cleanMessage.match(/Descripción dirección póliza:\s*([^\n]+)/i);
+        if (descripcionMatch && descripcionMatch[1]) {
+          direccion = descripcionMatch[1]
+            .replace(/^\s*:\s*/, '')
+            .replace(/\s+/g, ' ')
+            .replace(/undefined/g, '')
+            .trim();
+        }
+      }
+    }
     
     // Buscar descripción
     let descripcionMatch = PEDIDO_PATTERNS.DESCRIPCION.exec(cleanMessage);
