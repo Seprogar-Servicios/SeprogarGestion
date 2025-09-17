@@ -2,7 +2,7 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /^Cliente[\s:]+([^\n]+?)(?=\s*(?:Whatsapp|Tel[ée]fono|Descripci[óo]n|Direcci[óo]n|Domicilio|Barrio|TURNO|$)|\n\s*\n)/im,
+  CLIENTE: /Cliente:\s*([^\n]+)/i,
   TELEFONO: /(?:Telefono|Teléfono|Whatsapp)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   WHATSAPP_TITULAR: /(?:Whatsapp|Tel[ée]fono)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$)|\n\s*\n)/i,
