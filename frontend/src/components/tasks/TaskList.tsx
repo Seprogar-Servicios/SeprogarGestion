@@ -5,6 +5,7 @@ import { fetchTasks, createTask, updateTask, deleteTask, deleteMultipleTasks, se
 import { fetchUsers } from '../../store/slices/usersSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
 import TasksFilter from '../filters/TasksFilter';
+import TaskTextExportModal from './TaskTextExportModal';
 import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPin, CheckCircle, Hash, CheckSquare, Square, Send, Download, XCircle, Edit, Clock, ChevronDown, RefreshCw } from 'lucide-react';
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
@@ -34,6 +35,7 @@ const TaskList: React.FC = () => {
   const [newStatus, setNewStatus] = useState<Status>('pendiente');
   const [selectedTecnico, setSelectedTecnico] = useState<string | null>(null);
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
+  const [showTextExportModal, setShowTextExportModal] = useState(false);
   
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -816,6 +818,25 @@ const TaskList: React.FC = () => {
               <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showFilters ? 'transform rotate-180' : ''}`} />
             </button>
             
+            {/* Export Text Button */}
+            <button
+              onClick={() => setShowTextExportModal(true)}
+              disabled={selectedTasks.length === 0}
+              className={`px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg ${
+                selectedTasks.length > 0 
+                  ? 'opacity-100 hover:from-purple-600 hover:to-indigo-700' 
+                  : 'opacity-50 cursor-not-allowed'
+              } transition-all duration-200 text-sm font-semibold flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-purple-600 dark:border-purple-400`}
+            >
+              <FileText className="h-4 w-4" />
+              Exportar texto
+              {selectedTasks.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 bg-white/20 text-white text-xs rounded-full font-bold">
+                  {selectedTasks.length}
+                </span>
+              )}
+            </button>
+
             {/* WhatsApp Button */}
             <button
               onClick={() => setShowWhatsAppPanel(!showWhatsAppPanel)}
@@ -1609,6 +1630,14 @@ const TaskList: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Text Export Modal */}
+      {showTextExportModal && (
+        <TaskTextExportModal
+          tasks={tasks.filter(task => selectedTasks.includes(task._id))}
+          onClose={() => setShowTextExportModal(false)}
+        />
       )}
     </div>
   );
