@@ -603,12 +603,41 @@ async function processMessage(message) {
 // === Funciones auxiliares ===
 async function checkDuplicateTask(numero) {
   try {
-    const url = `${process.env.CHECK_DUPLICATE_URL}/${numero}`;
+    // Si el número ya está vacío o no es válido, asumir que es un duplicado para evitar errores
+    if (!numero || typeof numero !== 'string' || numero.trim() === '') {
+      logger.warn('Número de expediente no válido, asumiendo duplicado');
+      return true;
+    }
+
+    // Limpiar el número de expediente (eliminar espacios y caracteres no numéricos)
+    const expedienteNumero = numero.toString().trim().replace(/\D/g, '');
+    
+    // Si después de limpiar no hay número, asumir duplicado
+    if (!expedienteNumero) {
+      logger.warn('No se pudo extraer número de expediente, asumiendo duplicado');
+      return true;
+    }
+
+    const url = `${process.env.CHECK_DUPLICATE_URL}/${expedienteNumero}`;
     const apiKey = process.env.API_KEY || '';
-    const res = await axios.get(url, { headers: { Authorization: `Bearer ${apiKey}` } });
-    return res.data?.exists || false;
-  } catch {
-    logger.warn(`No se pudo verificar duplicado para ${numero}, asumiendo existente.`);
+    
+    logger.debug(`Verificando duplicado para expediente: ${expedienteNumero}`);
+    
+    const res = await axios.get(url, { 
+      headers: { 
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000 // 10 segundos de timeout
+    });
+    
+    const isDuplicate = res.data?.exists || false;
+    logger.debug(`Resultado verificación duplicado para ${expedienteNumero}: ${isDuplicate ? 'DUPLICADO' : 'NUEVO'}`);
+    
+    return isDuplicate;
+  } catch (error) {
+    logger.warn(`No se pudo verificar duplicado para ${numero}: ${error.message}`);
+    // En caso de error, asumir que es un duplicado para evitar duplicados
     return true;
   }
 }
