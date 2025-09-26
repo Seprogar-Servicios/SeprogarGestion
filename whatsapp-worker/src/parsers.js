@@ -533,36 +533,36 @@ function parseTareaMessage(message) {
 }
 
 const EXPEDIENTE_PATTERNS = {
-  // Format 1: Expediente: 3205646 (perdida de gas en cocina a gas)
-  EXPEDIENTE: /Expediente:\s*([^\n(]+)(?:\(([^)]+)\))?/i,
-  CUENTA: /Cuenta:\s*([^\n]+)/i,
-  CLIENTE: /(?:Cliente|usuario):[\s\n]*([^\n]+)/i,
-  TELEFONO: /(?:Tel[ée]fono|telefono):[\s\n]*([^\n]+)/i,
-  DIRECCION: /(?:Direccion|direccion|Domicilio|domicilio):[\s\n]*([^\n]+)/i,
-  PROBLEMA: /(?:Problema|problema|Descripci[oó]n):[\s\n]*([^\n]+)/i,
-  // Date formats:
-  // - Cita: Viernes 26/09 de 14:30hs a 17:30hs
-  // - cita: dia viernes 26/9 de 10 a 13 hs
-  // - Cita: Martes 30/09  de 14hs a 16hs
-  FECHA_HORA: /(?:Cita|cita):[\s\n]*(?:d[ií]a)?[\s\n]*(?:[a-zA-ZáéíóúÁÉÍÓÚ]+[\s\n]*)?(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)(?:[\s\n]*de)?[\s\n]*(?:a las?)?[\s\n]*(\d{1,2}:?\d{0,2})[\s\n]*(?:hs?\s*[aA]\s*)?(\d{1,2}:?\d{0,2})?[\s\n]*(?:hs)?/i,
+  // Format: Expediente: 3207230
+  EXPEDIENTE: /Expediente:[\s\n]*([^\n]+)/i,
+  CUENTA: /Cuenta:[\s\n]*([^\n]+)/i,
+  CLIENTE: /Cliente:[\s\n]*([^\n]+)/i,
+  TELEFONO: /Tel[ée]fono:[\s\n]*([^\n]+)/i,
+  DIRECCION: /(?:Direccion|Domicilio):[\s\n]*([^\n]+)/i,
+  PROBLEMA: /Problema:[\s\n]*([^]+?)(?=\n\s*\n|$)/i,
+  // Date format: Cita: Martes 30/09 de 14hs a 16hs
+  FECHA_HORA: /Cita:[\s\n]*[a-zA-ZáéíóúÁÉÍÓÚ]+[\s\n]*(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)[\s\n]*(?:de)?[\s\n]*(\d{1,2}):?(\d{2})?[\s-]*(?:a|y)[\s-]*(\d{1,2}):?(\d{2})?[\s\n]*(?:hs)?/i,
   // Fallback date pattern
   FECHA_SIMPLE: /(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)/i
 };
 
 function parseExpedienteMessage(message) {
   try {
+    // Clean and normalize the message
     message = limitMessageSize(message)
-      .replace(/\*/g, '')
+      .replace(/\*/g, '')  // Remove asterisks
+      .replace(/[\u00A0\u1680\u2000-\u200D\u202F\u205F\u3000\uFEFF]/g, ' ') // Replace different space characters with normal space
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
       .trim();
     
-    // Parse expediente number and optional description
+    // Parse expediente number
     const expedienteMatch = EXPEDIENTE_PATTERNS.EXPEDIENTE.exec(message);
     if (!expedienteMatch?.[1]?.trim()) {
+      console.error('No se encontró número de expediente en el mensaje');
       return null;
     }
     
     const numero = expedienteMatch[1].trim();
-    const descripcionExpediente = expedienteMatch[2]?.trim() || '';
     
     // Parse other fields
     const cuentaMatch = EXPEDIENTE_PATTERNS.CUENTA.exec(message);
@@ -595,27 +595,34 @@ function parseExpedienteMessage(message) {
       fechaEjecucion = `${year}-${month}-${day}`;
       
       // Parse time
-      const startTime = (fechaHoraMatch[2] || '').replace(/[^\d:]/g, '');
-      let endTime = (fechaHoraMatch[3] || '').replace(/[^\d:]/g, '');
+      const startHour = fechaHoraMatch[2] || '';
+      const startMinute = fechaHoraMatch[3] || '00';
+      const endHour = fechaHoraMatch[4] || '';
+      const endMinute = fechaHoraMatch[5] || '00';
       
-      if (startTime) {
-        // Format time (add :00 if only hours are provided)
-        const formattedStartTime = startTime.includes(':') ? startTime : `${startTime}:00`;
-        const formattedEndTime = endTime 
-          ? (endTime.includes(':') ? endTime : `${endTime}:00`)
-          : (startTime.includes(':') 
-              ? (parseInt(startTime.split(':')[0]) + 1) + ':00'
-              : (parseInt(startTime) + 1) + ':00');
+      if (startHour) {
+        const formattedStartTime = `${startHour.padStart(2, '0')}:${startMinute}`;
+        const formattedEndTime = endHour 
+          ? `${endHour.padStart(2, '0')}:${endMinute}`
+          : `${(parseInt(startHour) + 1).toString().padStart(2, '0')}:00`;
         
         franjaHoraria = `${formattedStartTime} - ${formattedEndTime}`;
       }
     }
     
+    // Clean and format the problem/description
+    let problema = '';
+    if (problemaMatch?.[1]) {
+      problema = problemaMatch[1]
+        .replace(/\s+/g, ' ')
+        .replace(/^\s*[\n\r]+|[\.\,\;\s]+$/g, '')
+        .trim();
+    }
+    
     // Build description from available information
-    let descripcion = [];
-    if (descripcionExpediente) descripcion.push(`Motivo: ${descripcionExpediente}`);
+    const descripcion = [];
+    if (problema) descripcion.push(`Problema: ${problema}`);
     if (cuentaMatch?.[1]?.trim()) descripcion.push(`Cuenta: ${cuentaMatch[1].trim()}`);
-    if (problemaMatch?.[1]?.trim()) descripcion.push(`Problema: ${problemaMatch[1].trim()}`);
     
     const taskData = {
       numero: numero,
@@ -631,13 +638,13 @@ function parseExpedienteMessage(message) {
       creadoPor: process.env.DEFAULT_USER_ID || null,
       fechaCreacion: new Date().toISOString(),
       fechaModificacion: new Date().toISOString(),
-      origen: 'whatsapp'
+      origen: 'whatsapp',
+      mensajeOriginal: message // Keep original message for debugging
     };
     
-    // Clean up
-    message = null;
-    
+    console.log('Datos extraídos del mensaje:', JSON.stringify(taskData, null, 2));
     return taskData;
+    
   } catch (error) {
     console.error('Error al parsear mensaje de Expediente:', error);
     if (typeof global.gc === 'function') global.gc();
