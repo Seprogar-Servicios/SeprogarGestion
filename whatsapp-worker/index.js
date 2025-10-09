@@ -527,7 +527,7 @@ async function processMessage(message) {
     } else if (cleanContent.startsWith('TAREA:')) {
       messageType = 'tarea';
       parser = parseTareaMessage;
-    } else if (cleanContent.startsWith('Expediente:')) {
+    } else if (cleanContent.toLowerCase().includes('expediente:')) {
       messageType = 'expediente';
       parser = parseExpedienteMessage;
     }
