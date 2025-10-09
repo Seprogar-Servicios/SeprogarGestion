@@ -536,13 +536,13 @@ function parseTareaMessage(message) {
 }
 
 const EXPEDIENTE_PATTERNS = {
-  // Format: Expediente: 3207230 or expediente: 3207230
-  EXPEDIENTE: /(?:Expediente|expediente):[\s\n]*([^\n]+)/i,
-  CUENTA: /(?:Cuenta|cuenta):[\s\n]*([^\n]+)/i,
-  CLIENTE: /(?:Cliente|cliente|Usuario|usuario):[\s\n]*([^\n]+)/i,
-  TELEFONO: /(?:Tel[ée]fono|tel[ée]fono|telefono):[\s\n]*([^\n]+)/i,
-  DIRECCION: /(?:Direccion|direccion|Domicilio|domicilio):[\s\n]*([^\n]+)/i,
-  PROBLEMA: /(?:Problema|problema):[\s\n]*([^]+?)(?=\n\s*(?:[a-zA-ZáéíóúÁÉÍÓÚ]+:|$))/i,
+  // Format: Expediente: 3207230 or expediente: 3207230 (can be anywhere in the message)
+  EXPEDIENTE: /(?:^|\n|\s)(?:Expediente|expediente):[\s\n]*([^\n\s]+)/i,
+  CUENTA: /(?:^|\n|\s)(?:Cuenta|cuenta):[\s\n]*([^\n]+)/i,
+  CLIENTE: /(?:^|\n|\s)(?:Cliente|cliente|Usuario|usuario):[\s\n]*([^\n]+)/i,
+  TELEFONO: /(?:^|\n|\s)(?:Tel[ée]fono|tel[ée]fono|telefono):[\s\n]*([^\n]+)/i,
+  DIRECCION: /(?:^|\n|\s)(?:Direccion|direccion|Domicilio|domicilio):[\s\n]*([^\n]+)/i,
+  PROBLEMA: /(?:^|\n|\s)(?:Problema|problema):[\s\n]*([^]+?)(?=\n\s*(?:[a-zA-ZáéíóúÁÉÍÓÚ]+:|$))/i,
   // Date formats:
   // - Cita: Martes 30/09 de 14hs a 16hs
   // - cita: viernes 10/10 de 9 a 12 hs
@@ -562,28 +562,34 @@ function parseExpedienteMessage(message) {
       .replace(/\s+/g, ' ') // Replace multiple spaces with single space
       .trim();
     
-    // Parse expediente number
+    // Parse expediente number - now it can be anywhere in the message
     const expedienteMatch = EXPEDIENTE_PATTERNS.EXPEDIENTE.exec(message);
     if (!expedienteMatch?.[1]?.trim()) {
       console.error('No se encontró número de expediente en el mensaje');
       return null;
     }
     
+    // Remove any text before the expediente number to avoid false positives
+    const messageStart = message.indexOf(expedienteMatch[0]);
+    const cleanMessage = messageStart > 0 ? message.substring(messageStart) : message;
+    
     const numero = expedienteMatch[1].trim();
     
-    // Parse other fields
-    const cuentaMatch = EXPEDIENTE_PATTERNS.CUENTA.exec(message);
-    const clienteMatch = EXPEDIENTE_PATTERNS.CLIENTE.exec(message);
-    const telefonoMatch = EXPEDIENTE_PATTERNS.TELEFONO.exec(message);
-    const direccionMatch = EXPEDIENTE_PATTERNS.DIRECCION.exec(message);
-    const problemaMatch = EXPEDIENTE_PATTERNS.PROBLEMA.exec(message);
+    // Parse other fields using the cleaned message
+    const cuentaMatch = EXPEDIENTE_PATTERNS.CUENTA.exec(cleanMessage) || EXPEDIENTE_PATTERNS.CUENTA.exec(message);
+    const clienteMatch = EXPEDIENTE_PATTERNS.CLIENTE.exec(cleanMessage) || EXPEDIENTE_PATTERNS.CLIENTE.exec(message);
+    const telefonoMatch = EXPEDIENTE_PATTERNS.TELEFONO.exec(cleanMessage) || EXPEDIENTE_PATTERNS.TELEFONO.exec(message);
+    const direccionMatch = EXPEDIENTE_PATTERNS.DIRECCION.exec(cleanMessage) || EXPEDIENTE_PATTERNS.DIRECCION.exec(message);
+    const problemaMatch = EXPEDIENTE_PATTERNS.PROBLEMA.exec(cleanMessage) || EXPEDIENTE_PATTERNS.PROBLEMA.exec(message);
     
     // Parse date and time
     let fechaEjecucion = '';
     let franjaHoraria = '';
     
-    // Try different date patterns
-    let fechaHoraMatch = EXPEDIENTE_PATTERNS.FECHA_HORA.exec(message) || 
+    // Try different date patterns in both cleaned and original message
+    let fechaHoraMatch = EXPEDIENTE_PATTERNS.FECHA_HORA.exec(cleanMessage) || 
+                        EXPEDIENTE_PATTERNS.FECHA_HORA_ALT.exec(cleanMessage) ||
+                        EXPEDIENTE_PATTERNS.FECHA_HORA.exec(message) || 
                         EXPEDIENTE_PATTERNS.FECHA_HORA_ALT.exec(message);
     
     if (fechaHoraMatch) {
