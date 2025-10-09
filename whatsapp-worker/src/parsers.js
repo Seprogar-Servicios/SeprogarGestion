@@ -110,12 +110,15 @@ function parsePedidoMessage(message) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
-      // Buscar línea de cliente (formato: "Cliente: NOMBRE")
-      const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i);
+      // Buscar línea de cliente (formato: "Cliente: NOMBRE" o con texto en negrita)
+      const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i) || 
+                         line.match(/^\*?Cliente[\s:]+\*?([^*\n]+)/i);
+      
       if (clienteMatch && clienteMatch[1]) {
         cliente = clienteMatch[1]
-          .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF]+/g, ' ')
+          .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ') // Eliminar asteriscos y espacios especiales
           .replace(/\s*,\s*/g, ', ')
+          .replace(/\s{2,}/g, ' ') // Reemplazar múltiples espacios por uno solo
           .trim();
         
         // Verificar si en la misma línea o la siguiente está el teléfono
@@ -533,15 +536,19 @@ function parseTareaMessage(message) {
 }
 
 const EXPEDIENTE_PATTERNS = {
-  // Format: Expediente: 3207230
-  EXPEDIENTE: /Expediente:[\s\n]*([^\n]+)/i,
-  CUENTA: /Cuenta:[\s\n]*([^\n]+)/i,
-  CLIENTE: /Cliente:[\s\n]*([^\n]+)/i,
-  TELEFONO: /Tel[ée]fono:[\s\n]*([^\n]+)/i,
-  DIRECCION: /(?:Direccion|Domicilio):[\s\n]*([^\n]+)/i,
-  PROBLEMA: /Problema:[\s\n]*([^]+?)(?=\n\s*\n|$)/i,
-  // Date format: Cita: Martes 30/09 de 14hs a 16hs
-  FECHA_HORA: /Cita:[\s\n]*[a-zA-ZáéíóúÁÉÍÓÚ]+[\s\n]*(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)[\s\n]*(?:de)?[\s\n]*(\d{1,2}):?(\d{2})?[\s-]*(?:a|y)[\s-]*(\d{1,2}):?(\d{2})?[\s\n]*(?:hs)?/i,
+  // Format: Expediente: 3207230 or expediente: 3207230
+  EXPEDIENTE: /(?:Expediente|expediente):[\s\n]*([^\n]+)/i,
+  CUENTA: /(?:Cuenta|cuenta):[\s\n]*([^\n]+)/i,
+  CLIENTE: /(?:Cliente|cliente|Usuario|usuario):[\s\n]*([^\n]+)/i,
+  TELEFONO: /(?:Tel[ée]fono|tel[ée]fono|telefono):[\s\n]*([^\n]+)/i,
+  DIRECCION: /(?:Direccion|direccion|Domicilio|domicilio):[\s\n]*([^\n]+)/i,
+  PROBLEMA: /(?:Problema|problema):[\s\n]*([^]+?)(?=\n\s*(?:[a-zA-ZáéíóúÁÉÍÓÚ]+:|$))/i,
+  // Date formats:
+  // - Cita: Martes 30/09 de 14hs a 16hs
+  // - cita: viernes 10/10 de 9 a 12 hs
+  FECHA_HORA: /(?:Cita|cita):[\s\n]*[a-zA-ZáéíóúÁÉÍÓÚ]+[\s\n]*(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)[\s\n]*(?:de)?[\s\n]*(\d{1,2}):?(\d{2})?[\s-]*(?:a|y)[\s-]*(\d{1,2}):?(\d{2})?[\s\n]*(?:hs)?/i,
+  // Alternative time format: de 9 a 12 hs
+  FECHA_HORA_ALT: /(?:Cita|cita):[\s\n]*[a-zA-ZáéíóúÁÉÍÓÚ]+[\s\n]*(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)[\s\n]*(?:de)?[\s\n]*(\d{1,2})\s*(?:a|y)\s*(\d{1,2})[\s\n]*(?:hs)?/i,
   // Fallback date pattern
   FECHA_SIMPLE: /(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)/i
 };
@@ -575,38 +582,56 @@ function parseExpedienteMessage(message) {
     let fechaEjecucion = '';
     let franjaHoraria = '';
     
-    const fechaHoraMatch = EXPEDIENTE_PATTERNS.FECHA_HORA.exec(message);
+    // Try different date patterns
+    let fechaHoraMatch = EXPEDIENTE_PATTERNS.FECHA_HORA.exec(message) || 
+                        EXPEDIENTE_PATTERNS.FECHA_HORA_ALT.exec(message);
+    
     if (fechaHoraMatch) {
-      // Parse date (handle different date formats: DD/MM/YYYY, DD/MM/YY, DD/MM)
-      const dateStr = fechaHoraMatch[1].replace(/[\s-]/g, '/');
-      const dateParts = dateStr.split('/');
-      
-      let day = dateParts[0].padStart(2, '0');
-      let month = dateParts[1].padStart(2, '0');
-      let year = dateParts[2] || new Date().getFullYear().toString();
-      
-      // Handle 2-digit year
-      if (year.length === 2) {
-        const currentYear = new Date().getFullYear();
-        const century = Math.floor(currentYear / 100) * 100;
-        year = (parseInt(year) > (currentYear % 100) + 1) ? century - 100 + parseInt(year) : century + parseInt(year);
-      }
-      
-      fechaEjecucion = `${year}-${month}-${day}`;
-      
-      // Parse time
-      const startHour = fechaHoraMatch[2] || '';
-      const startMinute = fechaHoraMatch[3] || '00';
-      const endHour = fechaHoraMatch[4] || '';
-      const endMinute = fechaHoraMatch[5] || '00';
-      
-      if (startHour) {
-        const formattedStartTime = `${startHour.padStart(2, '0')}:${startMinute}`;
-        const formattedEndTime = endHour 
-          ? `${endHour.padStart(2, '0')}:${endMinute}`
-          : `${(parseInt(startHour) + 1).toString().padStart(2, '0')}:00`;
+      try {
+        // Parse date (handle different date formats: DD/MM/YYYY, DD/MM/YY, DD/MM)
+        const dateStr = fechaHoraMatch[1].replace(/[\s-]/g, '/');
+        const dateParts = dateStr.split('/');
         
-        franjaHoraria = `${formattedStartTime} - ${formattedEndTime}`;
+        let day = dateParts[0].padStart(2, '0');
+        let month = dateParts[1].padStart(2, '0');
+        let year = dateParts[2] || new Date().getFullYear().toString();
+        
+        // Handle 2-digit year
+        if (year.length === 2) {
+          const currentYear = new Date().getFullYear();
+          const century = Math.floor(currentYear / 100) * 100;
+          year = (parseInt(year) > (currentYear % 100) + 1) ? century - 100 + parseInt(year) : century + parseInt(year);
+        }
+        
+        fechaEjecucion = `${year}-${month}-${day}`;
+        
+        // Parse time - check which pattern matched
+        let startHour, startMinute, endHour, endMinute;
+        
+        if (fechaHoraMatch[0].includes(' a ') && !fechaHoraMatch[0].includes(':')) {
+          // Format: "de 9 a 12 hs"
+          startHour = (fechaHoraMatch[2] || '').padStart(2, '0');
+          startMinute = '00';
+          endHour = (fechaHoraMatch[3] || '').padStart(2, '0');
+          endMinute = '00';
+        } else {
+          // Standard format with colons
+          startHour = fechaHoraMatch[2] || '';
+          startMinute = fechaHoraMatch[3] || '00';
+          endHour = fechaHoraMatch[4] || '';
+          endMinute = fechaHoraMatch[5] || '00';
+        }
+        
+        if (startHour) {
+          const formattedStartTime = `${startHour.padStart(2, '0')}:${startMinute}`;
+          const formattedEndTime = endHour 
+            ? `${endHour.padStart(2, '0')}:${endMinute}`
+            : `${(parseInt(startHour) + 1).toString().padStart(2, '0')}:00`;
+          
+          franjaHoraria = `${formattedStartTime} - ${formattedEndTime}`;
+        }
+      } catch (error) {
+        console.error('Error al parsear fecha/hora:', error);
       }
     }
     
@@ -617,6 +642,9 @@ function parseExpedienteMessage(message) {
         .replace(/\s+/g, ' ')
         .replace(/^\s*[\n\r]+|[\.\,\;\s]+$/g, '')
         .trim();
+      
+      // Remove any trailing time or date patterns that might have been included
+      problema = problema.replace(/\s*\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?.*$/, '').trim();
     }
     
     // Build description from available information
