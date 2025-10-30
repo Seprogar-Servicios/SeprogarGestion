@@ -397,14 +397,14 @@ async function logIncomingMessage(message) {
   try {
     // Verificar si el mensaje es válido
     if (!message) {
-      logger.warn('Mensaje nulo recibido en logIncomingMessage');
+      logger.debug('Mensaje nulo recibido en logIncomingMessage');
       return;
     }
 
     // Obtener información del chat
     const chat = await message.getChat();
     if (!chat) {
-      logger.warn('No se pudo obtener el chat del mensaje');
+      logger.debug('No se pudo obtener el chat del mensaje');
       return;
     }
 
@@ -414,43 +414,68 @@ async function logIncomingMessage(message) {
       return;
     }
 
-    // Obtener información del contacto
-    let contactInfo = 'Desconocido';
-    try {
-      const contact = await message.getContact();
-      contactInfo = contact?.pushname || contact?.name || contact?.number || 'Desconocido';
-    } catch (contactError) {
-      logger.warn('Error al obtener información del contacto:', contactError);
+    // Verificar si el grupo está en la lista de permitidos
+    const groupName = chat.name.trim();
+    if (!GRUPOS_PERMITIDOS.some(g => g.trim().toLowerCase() === groupName.toLowerCase())) {
+      logger.debug(`Mensaje de grupo no permitido: ${groupName}, ignorando...`);
+      return;
     }
 
-    // Mostrar información del mensaje
+    // Obtener información básica del contacto (sin bloquear el evento)
+    const contactInfo = await Promise.resolve().then(async () => {
+      try {
+        const contact = await message.getContact();
+        return contact?.pushname || contact?.name || contact?.number || 'Desconocido';
+      } catch (error) {
+        logger.debug('No se pudo obtener información del contacto:', error.message);
+        return 'Desconocido';
+      }
+    }).catch(() => 'Desconocido');
+
+    // Mostrar información del mensaje (solo para grupos permitidos)
     const timestamp = new Date().toLocaleString('es-AR', {
       timeZone: 'America/Argentina/Buenos_Aires',
       hour12: false
     });
 
+    // Usar un solo objeto para el log
+    const logData = {
+      timestamp,
+      group: chat.name,
+      groupId: chat.id._serialized,
+      sender: contactInfo,
+      from: message.from,
+      type: message.type,
+      content: message.body?.substring(0, 500) || '<SIN TEXTO>',
+      messageId: message.id.id,
+      hasMedia: message.hasMedia,
+      isForwarded: message.isForwarded,
+      fromMe: message.fromMe
+    };
+
     logger.info('\n' + '='.repeat(80));
-    logger.info(`📩 MENSAJE RECIBIDO - ${timestamp}`);
+    logger.info(`📩 MENSAJE RECIBIDO - ${logData.timestamp}`);
     logger.info('='.repeat(80));
-    logger.info(`👥 GRUPO: ${chat.name} (${chat.id._serialized})`);
-    logger.info(`👤 REMITENTE: ${contactInfo} (${message.from})`);
-    logger.info(`📌 TIPO: ${message.type}`);
+    logger.info(`👥 GRUPO: ${logData.group} (${logData.groupId})`);
+    logger.info(`👤 REMITENTE: ${logData.sender} (${logData.from})`);
+    logger.info(`📌 TIPO: ${logData.type}`);
     logger.info('💬 CONTENIDO:');
-    logger.info(message.body || '<SIN TEXTO>');
+    logger.info(logData.content);
     logger.info('='.repeat(80) + '\n');
     
-    // Registrar metadatos adicionales en modo debug
-    logger.debug('Metadatos del mensaje:', {
-      messageId: message.id.id,
-      timestamp: message.timestamp,
-      hasMedia: message.hasMedia,
-      hasQuotedMsg: !!message.hasQuotedMsg,
-      isForwarded: message.isForwarded,
-      isStatus: message.isStatus,
-      fromMe: message.fromMe,
-      ack: message.ack
-    });
-    
+    // Solo registrar metadatos adicionales si es necesario (en nivel debug)
+    if (logger.level === 'debug') {
+      logger.debug('Metadatos del mensaje:', {
+        messageId: logData.messageId,
+        timestamp: message.timestamp,
+        hasMedia: logData.hasMedia,
+        hasQuotedMsg: !!message.hasQuotedMsg,
+        isForwarded: logData.isForwarded,
+        isStatus: message.isStatus,
+        fromMe: logData.fromMe,
+        ack: message.ack
+      });
+    }
   } catch (error) {
     logger.error('Error en logIncomingMessage:', {
       error: error.message,
