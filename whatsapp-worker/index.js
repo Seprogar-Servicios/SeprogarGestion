@@ -485,55 +485,62 @@ async function logIncomingMessage(message) {
   }
 }
 
+// Cache para grupos permitidos (optimización de rendimiento)
+const allowedGroupsCache = new Set(GRUPOS_PERMITIDOS.map(g => g.trim().toLowerCase()));
+
+// Función para limpiar memoria
+function cleanupMemory() {
+  if (global.gc) {
+    global.gc();
+    logger.debug('Limpieza de memoria forzada');
+  }
+}
+
 // === Procesamiento de mensajes ===
 async function processMessage(message) {
+  // Limpiar memoria periódicamente
+  if (Math.random() < 0.1) { // Aprox. 10% de probabilidad de limpiar memoria
+    cleanupMemory();
+  }
+
   // Verificar si el mensaje es válido
-  if (!message) {
-    logger.warn('Mensaje nulo recibido en processMessage');
+  if (!message?.id) {
+    logger.debug('Mensaje inválido recibido en processMessage');
     return;
   }
 
+  const messageId = message.id.id || 'unknown';
+  
   try {
-    logger.debug('Iniciando procesamiento de mensaje...');
+    // Obtener solo la información necesaria del mensaje primero
+    const messageBody = message.body || '';
+    if (!messageBody.trim()) {
+      logger.debug(`Mensaje ${messageId} sin contenido, ignorando...`);
+      return;
+    }
     
-    // Obtener información del chat
-    const chat = await message.getChat().catch(err => {
-      logger.error('Error al obtener información del chat:', err);
-      return null;
-    });
-
-    if (!chat) {
-      logger.warn('No se pudo obtener el chat del mensaje');
+    // Obtener información del chat (solo si es necesario)
+    let chat = null;
+    try {
+      chat = await message.getChat();
+      if (!chat?.isGroup) {
+        logger.debug(`Mensaje ${messageId} no es de un grupo, ignorando...`);
+        return;
+      }
+    } catch (error) {
+      logger.error(`Error al obtener chat para mensaje ${messageId}:`, error.message);
       return;
     }
 
-    // Solo procesar mensajes de grupo
-    if (!chat.isGroup) {
-      logger.debug(`Mensaje de chat privado de ${message.from} ignorado`);
-      return;
-    }
-
-    const groupName = chat.name.trim();
-    
-    // Verificar si el grupo está en la lista de permitidos
-    if (!GRUPOS_PERMITIDOS.includes(groupName)) {
+    // Verificación rápida de grupo permitido (sin procesamiento innecesario)
+    const groupName = chat.name?.trim() || '';
+    if (!groupName || !allowedGroupsCache.has(groupName.toLowerCase())) {
       logger.debug(`Mensaje de grupo no permitido: ${groupName}`);
       return;
     }
 
-    logger.info('\n' + '='.repeat(80));
-    logger.info('🔄 PROCESANDO NUEVO MENSAJE');
-    logger.info('='.repeat(80));
-    
-    // Verificar si el mensaje tiene contenido
-    if (!message.body || message.body.trim() === '') {
-      logger.info('Mensaje vacío o sin texto, ignorando...');
-      logger.info('='.repeat(80) + '\n');
-      return;
-    }
-
-    // Limpiar y normalizar el contenido del mensaje
-    const cleanContent = message.body
+    // Limpiar y normalizar el contenido del mensaje (versión más eficiente)
+    const cleanContent = messageBody
       .replace(/\*/g, '')
       .replace(/\s+/g, ' ')
       .trim();
@@ -545,14 +552,17 @@ async function processMessage(message) {
     let messageType = 'desconocido';
     let parser = null;
 
-    // Verificar el tipo de mensaje
-    if (cleanContent.startsWith('Pedido') || cleanContent.includes('TURNO')) {
-      messageType = 'pedido';
-      parser = parsePedidoMessage;
-    } else if (cleanContent.startsWith('TAREA:')) {
+    // Verificación más eficiente del tipo de mensaje
+    const firstWord = cleanContent.trim().split(/\s+/)[0] || '';
+    const lowerContent = cleanContent.toLowerCase();
+    
+    if (firstWord === 'TAREA:') {
       messageType = 'tarea';
       parser = parseTareaMessage;
-    } else if (cleanContent.toLowerCase().includes('expediente:')) {
+    } else if (firstWord === 'Pedido' || cleanContent.includes('TURNO')) {
+      messageType = 'pedido';
+      parser = parsePedidoMessage;
+    } else if (lowerContent.includes('expediente:')) {
       messageType = 'expediente';
       parser = parseExpedienteMessage;
     }
@@ -579,19 +589,36 @@ async function processMessage(message) {
       return;
     }
 
-    // Agregar metadatos adicionales
-    taskData = {
-      ...taskData,
-      grupoOrigen: groupName,
-      mensajeOriginal: cleanContent,
-      fechaRecepcion: new Date().toISOString(),
-      origen: 'whatsapp'
-    };
+    // Agregar solo los metadatos necesarios
+    taskData.grupoOrigen = groupName;
+    taskData.fechaRecepcion = new Date().toISOString();
+    taskData.origen = 'whatsapp';
+    
+    // No almacenar el mensaje original completo para ahorrar memoria
+    // En su lugar, guardar solo los primeros 500 caracteres si es necesario para depuración
+    if (process.env.NODE_ENV === 'development') {
+      taskData.mensajeOriginal = cleanContent.length > 500 
+        ? cleanContent.substring(0, 500) + '...' 
+        : cleanContent;
+    }
 
-    logger.info('✅ Datos extraídos correctamente:', JSON.stringify(taskData, null, 2));
+    // Log más eficiente en producción
+    if (process.env.NODE_ENV === 'development') {
+      logger.info('✅ Datos extraídos correctamente:', JSON.stringify({
+        numero: taskData.numero,
+        tipo: taskData.tipo || messageType,
+        cliente: taskData.cliente || 'Sin cliente',
+        direccion: taskData.direccion ? `${taskData.direccion.substring(0, 50)}...` : 'Sin dirección'
+      }, null, 2));
+    } else {
+      logger.info(`✅ Tarea ${taskData.numero} procesada correctamente`);
+    }
 
-    // Verificar si la tarea ya existe
-    const isDuplicate = await checkDuplicateTask(taskData.numero);
+    // Verificar si la tarea ya existe (con manejo de memoria)
+    const isDuplicate = await checkDuplicateTask(taskData.numero).catch(err => {
+      logger.error('Error al verificar duplicados:', err.message);
+      return false; // Continuar con el procesamiento aunque falle la verificación
+    });
     if (isDuplicate) {
       logger.warn(`⚠️  Tarea #${taskData.numero} ya existe, ignorando...`);
       logger.info('='.repeat(80) + '\n');
@@ -603,10 +630,14 @@ async function processMessage(message) {
     const success = await sendToAPI(taskData);
     
     if (success) {
-      logger.info(`✅ Tarea #${taskData.numero} creada exitosamente`);
+      logger.info(`✅ Tarea #${taskData.numero} procesada exitosamente`);
     } else {
-      logger.error('❌ Error al crear la tarea en la API');
+      logger.error(`❌ Error al procesar la tarea #${taskData.numero}`);
     }
+    
+    // Limpiar referencias para el recolector de basura
+    taskData = null;
+    message = null;
 
     logger.info('='.repeat(80) + '\n');
 
@@ -724,7 +755,31 @@ async function sendToAPI(taskData) {
   }
 }
 
-// === Inicializar cliente ===
+// Configurar manejo de memoria
+setInterval(() => {
+  const used = process.memoryUsage();
+  logger.debug('Uso de memoria:', {
+    rss: `${Math.round(used.rss / 1024 / 1024)} MB`,
+    heapTotal: `${Math.round(used.heapTotal / 1024 / 1024)} MB`,
+    heapUsed: `${Math.round(used.heapUsed / 1024 / 1024)} MB`,
+    external: `${Math.round(used.external / 1024 / 1024)} MB`
+  });
+  
+  // Forzar recolección de basura periódicamente
+  cleanupMemory();
+}, 300000); // Cada 5 minutos
+
+// Manejo de errores no capturados
+process.on('uncaughtException', (error) => {
+  logger.error('Error no capturado:', error);
+  // No salir del proceso para evitar reinicios en producción
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Promesa rechazada no manejada:', reason);
+});
+
+// Inicializar el cliente
 initializeClient();
 
 // === Cierre limpio ===
