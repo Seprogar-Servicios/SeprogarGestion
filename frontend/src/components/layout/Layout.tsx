@@ -69,10 +69,10 @@ const Layout: React.FC = () => {
           <div className="flex items-center justify-between h-20 px-6 py-4 bg-blue-700 dark:bg-gray-900/50">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
               <div className="flex-shrink-0 bg-white/10 p-2 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors">
-                <img src="/futurgas.png" alt="Futurgas Logo" className="h-8 w-8 object-contain" />
+                <img src="/Seprogar vector.svg" alt="Seprogar Logo" className="h-8 w-8 object-contain" />
               </div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent hover:text-blue-50 transition-colors">
-                FuturgasGestión
+                Seprogar
               </h1>
             </div>
             <button
