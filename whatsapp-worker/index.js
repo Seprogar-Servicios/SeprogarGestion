@@ -394,99 +394,90 @@ function setupEventHandlers() {
 
 // === Logging de mensajes entrantes ===
 async function logIncomingMessage(message) {
+  // Verificar si el mensaje es válido de manera temprana
+  if (!message?.id) {
+    return; // No registrar mensajes inválidos
+  }
+
   try {
-    // Verificar si el mensaje es válido
-    if (!message) {
-      logger.debug('Mensaje nulo recibido en logIncomingMessage');
+    // Obtener información del chat de manera eficiente
+    const chat = await message.getChat().catch(() => null);
+    if (!chat?.isGroup) {
+      return; // Ignorar mensajes que no son de grupo
+    }
+
+    // Verificar rápidamente si el grupo está permitido
+    const groupName = chat.name?.trim() || '';
+    const isGroupAllowed = GRUPOS_PERMITIDOS.some(
+      g => g.trim().toLowerCase() === groupName.toLowerCase()
+    );
+
+    // Si el grupo no está permitido, salir sin hacer nada
+    if (!isGroupAllowed) {
       return;
     }
 
-    // Obtener información del chat
-    const chat = await message.getChat();
-    if (!chat) {
-      logger.debug('No se pudo obtener el chat del mensaje');
-      return;
-    }
-
-    // Solo procesar mensajes de grupo
-    if (!chat.isGroup) {
-      logger.debug(`Mensaje de chat privado de ${message.from} ignorado`);
-      return;
-    }
-
-    // Verificar si el grupo está en la lista de permitidos
-    const groupName = chat.name.trim();
-    if (!GRUPOS_PERMITIDOS.some(g => g.trim().toLowerCase() === groupName.toLowerCase())) {
-      logger.debug(`Mensaje de grupo no permitido: ${groupName}, ignorando...`);
-      return;
-    }
-
-    // Obtener información básica del contacto (sin bloquear el evento)
-    const contactInfo = await Promise.resolve().then(async () => {
-      try {
-        const contact = await message.getContact();
+    // Solo para grupos permitidos: Obtener información del contacto
+    const contactInfo = await Promise.resolve()
+      .then(async () => {
+        const contact = await message.getContact().catch(() => null);
         return contact?.pushname || contact?.name || contact?.number || 'Desconocido';
-      } catch (error) {
-        logger.debug('No se pudo obtener información del contacto:', error.message);
-        return 'Desconocido';
-      }
-    }).catch(() => 'Desconocido');
+      })
+      .catch(() => 'Desconocido');
 
-    // Mostrar información del mensaje (solo para grupos permitidos)
+    // Formatear timestamp
     const timestamp = new Date().toLocaleString('es-AR', {
       timeZone: 'America/Argentina/Buenos_Aires',
       hour12: false
     });
 
-    // Usar un solo objeto para el log
-    const logData = {
-      timestamp,
-      group: chat.name,
-      groupId: chat.id._serialized,
-      sender: contactInfo,
-      from: message.from,
-      type: message.type,
-      content: message.body?.substring(0, 500) || '<SIN TEXTO>',
-      messageId: message.id.id,
-      hasMedia: message.hasMedia,
-      isForwarded: message.isForwarded,
-      fromMe: message.fromMe
-    };
-
+    // Mostrar el mensaje completo para grupos permitidos
     logger.info('\n' + '='.repeat(80));
-    logger.info(`📩 MENSAJE RECIBIDO - ${logData.timestamp}`);
+    logger.info(`📩 MENSAJE DE GRUPO PERMITIDO - ${timestamp}`);
     logger.info('='.repeat(80));
-    logger.info(`👥 GRUPO: ${logData.group} (${logData.groupId})`);
-    logger.info(`👤 REMITENTE: ${logData.sender} (${logData.from})`);
-    logger.info(`📌 TIPO: ${logData.type}`);
-    logger.info('💬 CONTENIDO:');
-    logger.info(logData.content);
+    logger.info(`👥 GRUPO: ${groupName}`);
+    logger.info(`👤 REMITENTE: ${contactInfo} (${message.from})`);
+    logger.info(`📌 TIPO: ${message.type || 'texto'}`);
+    
+    // Mostrar el contenido completo del mensaje
+    if (message.body) {
+      logger.info('💬 CONTENIDO:');
+      logger.info(message.body);
+    } else if (message.hasMedia) {
+      logger.info('📎 El mensaje contiene medios adjuntos');
+    } else {
+      logger.info('ℹ️  Mensaje sin contenido de texto');
+    }
+    
     logger.info('='.repeat(80) + '\n');
     
-    // Solo registrar metadatos adicionales si es necesario (en nivel debug)
-    if (logger.level === 'debug') {
-      logger.debug('Metadatos del mensaje:', {
-        messageId: logData.messageId,
-        timestamp: message.timestamp,
-        hasMedia: logData.hasMedia,
-        hasQuotedMsg: !!message.hasQuotedMsg,
-        isForwarded: logData.isForwarded,
-        isStatus: message.isStatus,
-        fromMe: logData.fromMe,
-        ack: message.ack
+    // Limpiar referencias
+    message = null;
+    chat = null;
+    
+  } catch (error) {
+    // Solo registrar errores inesperados, no fallar silenciosamente
+    if (error.message !== 'Chat not found') {
+      logger.error('Error en logIncomingMessage:', {
+        error: error.message,
+        stack: error.stack,
+        messageId: message?.id?.id || 'desconocido'
       });
     }
-  } catch (error) {
-    logger.error('Error en logIncomingMessage:', {
-      error: error.message,
-      stack: error.stack,
-      messageId: message?.id?.id || 'desconocido'
-    });
   }
 }
 
 // Cache para grupos permitidos (optimización de rendimiento)
-const allowedGroupsCache = new Set(GRUPOS_PERMITIDOS.map(g => g.trim().toLowerCase()));
+const allowedGroupsCache = new Set(
+  GRUPOS_PERMITIDOS.map(g => g.trim().toLowerCase())
+);
+
+// Función para verificar si un mensaje es de un grupo permitido
+function isFromAllowedGroup(chat) {
+  if (!chat?.isGroup) return false;
+  const groupName = chat.name?.trim() || '';
+  return allowedGroupsCache.has(groupName.toLowerCase());
+}
 
 // Función para limpiar memoria
 function cleanupMemory() {
