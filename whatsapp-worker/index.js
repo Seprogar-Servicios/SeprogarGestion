@@ -401,7 +401,7 @@ async function logIncomingMessage(message) {
 
   try {
     // Obtener información del chat de manera eficiente
-    const chat = await message.getChat().catch(() => null);
+    let chat = await message.getChat().catch(() => null);
     if (!chat?.isGroup) {
       return; // Ignorar mensajes que no son de grupo
     }
@@ -451,9 +451,9 @@ async function logIncomingMessage(message) {
     
     logger.info('='.repeat(80) + '\n');
     
-    // Limpiar referencias
-    message = null;
-    chat = null;
+    // Limpiar referencias (solo si no se usan más)
+    // message = null;
+    // chat = null;
     
   } catch (error) {
     // Solo registrar errores inesperados, no fallar silenciosamente
