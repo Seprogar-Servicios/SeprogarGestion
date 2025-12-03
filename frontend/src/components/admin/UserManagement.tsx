@@ -61,7 +61,7 @@ const UserManagement: React.FC = () => {
     email: string;
     telefono: string;
     direccion?: string;
-    rol: 'admin' | 'usuario';
+    rol: 'admin' | 'usuario' | 'tecnico';
     password?: string;
     confirmPassword?: string;
   }
@@ -100,12 +100,13 @@ const UserManagement: React.FC = () => {
     try {
       // Llamar al endpoint para resetear la contraseña usando la instancia de api
       const response = await api.post(`/usuarios/${userId}/reset-password`, {});
-      
+      console.log('Reset Password API Response:', response.data);
       // Mostrar la nueva contraseña en un toast
+      const newPassword = response.data.data.newPassword;
       const message = `
         Contraseña restablecida correctamente
         
-        Nueva contraseña: ${response.data.newPassword}
+        Nueva contraseña: ${newPassword}
         
         Por favor, comparte esta contraseña con el usuario de manera segura.
       `;

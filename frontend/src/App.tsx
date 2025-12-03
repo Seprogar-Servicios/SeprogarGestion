@@ -16,6 +16,8 @@ import ProfilePage from './components/user/ProfilePage';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Analytics from './components/analytics/Analytics';
+import RecibosAdmin from './components/recibos/admin/RecibosAdmin';
+import MisRecibos from './components/recibos/tecnico/MisRecibos';
 import './App.css';
 
 // Componente que envuelve las rutas para manejar la URL oculta
@@ -39,9 +41,15 @@ const AppRoutes = () => {
         <Route path="tasks/:id" element={<TaskDetails />} />
         <Route path="calendar" element={<TaskCalendar />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="mis-recibos" element={<MisRecibos />} />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/specialties" element={<SpecialtyManagement />} />
         <Route path="/admin/importar-exportar" element={<DataImportExport />} />
+        <Route path="/admin/recibos" element={
+          <ProtectedRoute requiredRole="admin">
+            <RecibosAdmin />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/analytics" element={
           <ProtectedRoute requiredRole="admin">
             <Analytics />

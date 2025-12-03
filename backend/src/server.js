@@ -47,6 +47,7 @@ app.use(cors(corsOptions));
 // Manejar solicitudes OPTIONS (preflight)
 app.options('*', cors(corsOptions));
 app.use(morgan('dev'));
+app.use('/uploads', express.static('uploads'));
 
 // Configuración de rate limiting
 const limiter = rateLimit({
@@ -96,7 +97,8 @@ app.get('/api/ip', (req, res) => {
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/usuarios', require('./routes/user.routes'));
 app.use('/api/tareas', require('./routes/tarea.routes'));
-app.use('/api/observaciones', require('./routes/observacion.routes'));
+app.use('/api/observacion', require('./routes/observacion.routes'));
+app.use('/api/recibos', require('./routes/recibo.routes'));
 
 // Rutas para el worker de WhatsApp (autenticación por API_KEY)
 // Rutas de la API

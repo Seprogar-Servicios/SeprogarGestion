@@ -26,7 +26,7 @@ interface BackendUser {
   id: string;  // Note: Backend uses 'id' instead of '_id' in the response
   nombre: string;
   email: string;
-  rol: 'admin' | 'usuario';
+  rol: 'admin' | 'usuario' | 'tecnico';
   // Other fields that might be present in the response
 }
 

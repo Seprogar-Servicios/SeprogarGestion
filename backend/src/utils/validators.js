@@ -52,10 +52,22 @@ const tareaSchema = Joi.object({
   fechaRecepcion: Joi.date().optional(),
 }).unknown(false); // No permitir campos adicionales
 
+const reciboSchema = Joi.object({
+  tecnico: Joi.string().required(),
+  mes: Joi.number().integer().min(1).max(12).required(),
+  anio: Joi.number().integer().min(2000).required(),
+});
+
+const firmaSchema = Joi.object({
+  // No hay campos de texto para validar aquí, solo el archivo de firma
+});
+
 module.exports = {
   userRegisterSchema,
   userUpdateSchema,
   especialidadSchema,
   materialSchema,
   tareaSchema,
+  reciboSchema,
+  firmaSchema,
 };

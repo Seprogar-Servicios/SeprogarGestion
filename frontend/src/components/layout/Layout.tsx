@@ -12,7 +12,8 @@ import {
   Briefcase,
   UserCircle,
   Database,
-  BarChart
+  BarChart,
+  FileText
 } from 'lucide-react';
 
 const Layout: React.FC = () => {
@@ -32,12 +33,14 @@ const Layout: React.FC = () => {
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Tareas', href: '/tasks', icon: Calendar },
     { name: 'Calendario', href: '/calendar', icon: Calendar },
+    ...(user?.rol === 'usuario' ? [{ name: 'Mis Recibos', href: '/mis-recibos', icon: FileText }] : []),
     { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
   ];
 
   const adminNavigation = [
     { name: 'Usuarios', href: '/admin/users', icon: Users },
     { name: 'Especialidades', href: '/admin/specialties', icon: Briefcase },
+    { name: 'Recibos', href: '/admin/recibos', icon: FileText },
     { name: 'Análisis', href: '/admin/analytics', icon: BarChart },
     { name: 'Importar/Exportar', href: '/admin/importar-exportar', icon: Database },
   ];

@@ -4,7 +4,7 @@ export interface User {
   nombre: string;
   apellido?: string;
   email: string;
-  rol: 'admin' | 'usuario';
+  rol: 'admin' | 'usuario' | 'tecnico';
   especialidad?: string;
   aprobado: boolean;
   telefono?: string;
@@ -94,7 +94,7 @@ export interface RegisterData {
   nombre: string;
   email: string;
   password: string;
-  rol: 'admin' | 'usuario';
+  rol: 'admin' | 'usuario' | 'tecnico';
   especialidad?: string;
   telefono?: string;
 }
@@ -110,4 +110,20 @@ export interface TaskFilters {
   fechaHasta?: string;
   upcomingFilter?: 'past' | 'next24h' | 'next48h' | 'nextWeek' | 'nextMonth' | 'custom';
   usuario?: string;
+}
+
+// Recibo types
+export interface Recibo {
+  _id: string;
+  tecnico: User;
+  mes: number;
+  anio: number;
+  url: string;
+  estadoFirma: 'firmado' | 'no firmado';
+  firma?: {
+    imagen: string;
+    fecha: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
