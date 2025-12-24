@@ -546,9 +546,10 @@ const EXPEDIENTE_PATTERNS = {
   // Date formats:
   // - Cita: Martes 30/09 de 14hs a 16hs
   // - cita: viernes 10/10 de 9 a 12 hs
-  FECHA_HORA: /(?:Cita|cita):[\s\n]*[a-zA-ZáéíóúÁÉÍÓÚ]+[\s\n]*(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)[\s\n]*(?:de)?[\s\n]*(\d{1,2}):?(\d{2})?[\s-]*(?:a|y)[\s-]*(\d{1,2}):?(\d{2})?[\s\n]*(?:hs)?/i,
+  // - Cita: lunes 29/12/ de 11 a 14 hs
+  FECHA_HORA: /(?:Cita|cita):[\s\n]*[a-zA-ZáéíóúÁÉÍÓÚ]*[\s\n]*(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)[\s\/]*(?:de)?[\s\n]*(\d{1,2}):?(\d{2})?[\s-]*(?:a|y)[\s-]*(\d{1,2}):?(\d{2})?[\s\n]*(?:hs)?/i,
   // Alternative time format: de 9 a 12 hs
-  FECHA_HORA_ALT: /(?:Cita|cita):[\s\n]*[a-zA-ZáéíóúÁÉÍÓÚ]+[\s\n]*(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)[\s\n]*(?:de)?[\s\n]*(\d{1,2})\s*(?:a|y)\s*(\d{1,2})[\s\n]*(?:hs)?/i,
+  FECHA_HORA_ALT: /(?:Cita|cita):[\s\n]*[a-zA-ZáéíóúÁÉÍÓÚ]*[\s\n]*(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)[\s\/]*(?:de)?[\s\n]*(\d{1,2})\s*(?:a|y)\s*(\d{1,2})[\s\n]*(?:hs)?/i,
   // Fallback date pattern
   FECHA_SIMPLE: /(\d{1,2}[\/\s-]\d{1,2}(?:[\/\s-]\d{2,4})?)/i
 };
@@ -594,8 +595,9 @@ function parseExpedienteMessage(message) {
     
     if (fechaHoraMatch) {
       try {
-        // Parse date (handle different date formats: DD/MM/YYYY, DD/MM/YY, DD/MM)
-        const dateStr = fechaHoraMatch[1].replace(/[\s-]/g, '/');
+        // Parse date (handle different date formats: DD/MM/YYYY, DD/MM/YY, DD/MM/)
+        let dateStr = fechaHoraMatch[1].replace(/[\s-]/g, '/');
+        dateStr = dateStr.replace(/\/+$/, ''); // Remove trailing slash
         const dateParts = dateStr.split('/');
         
         let day = dateParts[0].padStart(2, '0');
@@ -609,7 +611,14 @@ function parseExpedienteMessage(message) {
           year = (parseInt(year) > (currentYear % 100) + 1) ? century - 100 + parseInt(year) : century + parseInt(year);
         }
         
-        fechaEjecucion = `${year}-${month}-${day}`;
+        // Validate date
+        const parsedDate = new Date(`${year}-${month}-${day}`);
+        if (isNaN(parsedDate.getTime())) {
+          console.warn('Fecha inválida detectada, usando fecha actual');
+          fechaEjecucion = new Date().toISOString().split('T')[0];
+        } else {
+          fechaEjecucion = `${year}-${month}-${day}`;
+        }
         
         // Parse time - check which pattern matched
         let startHour, startMinute, endHour, endMinute;
@@ -638,6 +647,37 @@ function parseExpedienteMessage(message) {
         }
       } catch (error) {
         console.error('Error al parsear fecha/hora:', error);
+        // Set default values
+        fechaEjecucion = new Date().toISOString().split('T')[0];
+        franjaHoraria = '';
+      }
+    } else {
+      // Try to find any date pattern as fallback
+      const fallbackDateMatch = EXPEDIENTE_PATTERNS.FECHA_SIMPLE.exec(message);
+      if (fallbackDateMatch) {
+        try {
+          let dateStr = fallbackDateMatch[1].replace(/[\s-]/g, '/');
+          dateStr = dateStr.replace(/\/+$/, ''); // Remove trailing slash
+          const dateParts = dateStr.split('/');
+          
+          let day = dateParts[0].padStart(2, '0');
+          let month = dateParts[1].padStart(2, '0');
+          let year = dateParts[2] || new Date().getFullYear().toString();
+          
+          // Handle 2-digit year
+          if (year.length === 2) {
+            const currentYear = new Date().getFullYear();
+            const century = Math.floor(currentYear / 100) * 100;
+            year = (parseInt(year) > (currentYear % 100) + 1) ? century - 100 + parseInt(year) : century + parseInt(year);
+          }
+          
+          fechaEjecucion = `${year}-${month}-${day}`;
+        } catch (error) {
+          fechaEjecucion = new Date().toISOString().split('T')[0];
+        }
+      } else {
+        // Default to today if no date found
+        fechaEjecucion = new Date().toISOString().split('T')[0];
       }
     }
     
