@@ -4,7 +4,26 @@ const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const { performance } = require('perf_hooks');
+const PQueue = require('p-queue');
 const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
+
+// Configuración de cola de procesamiento
+const queue = new PQueue({ 
+  concurrency: 1, // Procesar un mensaje a la vez
+  timeout: 30000, // 30 segundos máximo por tarea
+  throwOnTimeout: true
+});
+
+// Configuración de axios
+const http = axios.create({
+  timeout: 10000, // 10 segundos de timeout por defecto
+  maxContentLength: 100000, // 100KB máximo
+  maxBodyLength: 100000,   // 100KB máximo
+  validateStatus: function (status) {
+    return status >= 200 && status < 300; // Solo resolver si el código de estado es menor que 300
+  }
+});
 
 // Parsers
 const { parsePedidoMessage, parseTareaMessage, parseExpedienteMessage } = require('./src/parsers');
@@ -489,25 +508,27 @@ function cleanupMemory() {
 
 // === Procesamiento de mensajes ===
 async function processMessage(message) {
-  // Limpiar memoria periódicamente
-  if (Math.random() < 0.1) { // Aprox. 10% de probabilidad de limpiar memoria
-    cleanupMemory();
-  }
-
-  // Verificar si el mensaje es válido
-  if (!message?.id) {
-    logger.debug('Mensaje inválido recibido en processMessage');
-    return;
-  }
-
-  const messageId = message.id.id || 'unknown';
+  const startTime = performance.now();
+  const messageId = message?.id?.id || 'unknown';
   
   try {
-    // Obtener solo la información necesaria del mensaje primero
-    const messageBody = message.body || '';
+    // Limitar el tamaño del mensaje
+    let messageBody = message.body || '';
+    const MAX_MESSAGE_SIZE = 10000; // 10KB máximo
+    
+    if (messageBody.length > MAX_MESSAGE_SIZE) {
+      logger.warn(`Mensaje ${messageId} demasiado grande (${messageBody.length} caracteres), truncando...`);
+      messageBody = messageBody.substring(0, MAX_MESSAGE_SIZE);
+    }
+
     if (!messageBody.trim()) {
       logger.debug(`Mensaje ${messageId} sin contenido, ignorando...`);
       return;
+    }
+
+    // Limpiar memoria periódicamente
+    if (Math.random() < 0.1) {
+      cleanupMemory();
     }
     
     // Obtener información del chat (solo si es necesario)
@@ -649,6 +670,8 @@ async function processMessage(message) {
 
 // === Funciones auxiliares ===
 async function checkDuplicateTask(numero) {
+  const startTime = performance.now();
+  
   try {
     // Si el número ya está vacío o no es válido, asumir que es un duplicado para evitar errores
     if (!numero || typeof numero !== 'string' || numero.trim() === '') {
@@ -668,32 +691,56 @@ async function checkDuplicateTask(numero) {
     const url = `${process.env.CHECK_DUPLICATE_URL}/${expedienteNumero}`;
     const apiKey = process.env.API_KEY || '';
     
-    logger.debug(`Verificando duplicado para expediente: ${expedienteNumero}`);
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug(`Verificando duplicado para expediente: ${expedienteNumero}`);
+    }
     
-    const res = await axios.get(url, { 
-      headers: { 
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000 // 10 segundos de timeout
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos máximo
     
-    const isDuplicate = res.data?.exists || false;
-    logger.debug(`Resultado verificación duplicado para ${expedienteNumero}: ${isDuplicate ? 'DUPLICADO' : 'NUEVO'}`);
-    
-    return isDuplicate;
+    try {
+      const res = await http.get(url, { 
+        signal: controller.signal,
+        headers: { 
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      const isDuplicate = res.data?.exists || false;
+      
+      if (process.env.NODE_ENV === 'development') {
+        const elapsed = (performance.now() - startTime).toFixed(2);
+        logger.debug(`Verificación de duplicado completada en ${elapsed}ms`);
+      }
+      
+      return isDuplicate;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   } catch (error) {
-    logger.warn(`No se pudo verificar duplicado para ${numero}: ${error.message}`);
+    const errorMsg = error.response 
+      ? `Error ${error.response.status}: ${error.response.statusText}`
+      : error.message;
+      
+    logger.warn(`No se pudo verificar duplicado para ${numero}: ${errorMsg}`);
     // En caso de error, asumir que es un duplicado para evitar duplicados
     return true;
   }
 }
 
 async function sendToAPI(taskData) {
+  const startTime = performance.now();
+  const taskNumber = taskData.numero || 'desconocido';
+  
   try {
     const createTaskUrl = process.env.CREATE_TASK_URL || 'http://localhost:3000/api/worker/tareas';
     const apiKey = process.env.API_KEY || '';
 
+    // Limitar el tamaño de los datos que se envían
     const dataToSend = { ...taskData };
     const camposPermitidos = [
       'numero', 'titulo', 'descripcion', 'estado', 'tecnicos',
@@ -701,47 +748,90 @@ async function sendToAPI(taskData) {
       'origen', 'grupoOrigen', 'mensajeOriginal', 'fechaRecepcion'
     ];
 
+    // Limpiar y validar datos
     const datosLimpios = {};
-    camposPermitidos.forEach(campo => {
-      if (dataToSend[campo] !== undefined && dataToSend[campo] !== null) {
-        // Asegurarse de que los campos de texto no estén vacíos
-        if (typeof dataToSend[campo] === 'string') {
-          datosLimpios[campo] = dataToSend[campo].trim();
-        } else {
-          datosLimpios[campo] = dataToSend[campo];
-        }
-      }
-    });
+    let totalSize = 0;
+    const MAX_DATA_SIZE = 100000; // 100KB
     
-    // Asegurar que los campos obligatorios tengan valores por defecto
+    for (const campo of camposPermitidos) {
+      if (dataToSend[campo] !== undefined && dataToSend[campo] !== null) {
+        let valor = dataToSend[campo];
+        
+        // Limpiar cadenas de texto
+        if (typeof valor === 'string') {
+          valor = valor.trim();
+          // Estimar el tamaño del campo
+          totalSize += valor.length * 2; // UTF-16 ocupa 2 bytes por carácter
+        } else if (Array.isArray(valor)) {
+          valor = valor.filter(Boolean); // Eliminar valores nulos/undefined
+          totalSize += JSON.stringify(valor).length;
+        } else if (typeof valor === 'object') {
+          valor = JSON.parse(JSON.stringify(valor)); // Deep clone
+          totalSize += JSON.stringify(valor).length;
+        }
+        
+        // Verificar tamaño total
+        if (totalSize > MAX_DATA_SIZE) {
+          logger.warn(`Tamaño de datos excedido (${totalSize} bytes), truncando...`);
+          break;
+        }
+        
+        datosLimpios[campo] = valor;
+      }
+    }
+    
+    // Establecer valores por defecto
     if (!datosLimpios.estado) datosLimpios.estado = 'pendiente';
     if (!datosLimpios.titulo) datosLimpios.titulo = `Pedido ${datosLimpios.numero || 'Nuevo'}`;
 
-    const camposEliminados = Object.keys(dataToSend).filter(campo => !camposPermitidos.includes(campo));
-    if (camposEliminados.length > 0) {
-      logger.info(`Campos eliminados para cumplir con la validación de la API: ${camposEliminados.join(', ')}`);
-    }
-
-    logger.info(`Enviando datos a la API: ${createTaskUrl}`);
-
-    const response = await axios.post(createTaskUrl, datosLimpios, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+    // Configurar timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos máximo
+    
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug(`Enviando tarea #${taskNumber} a la API...`);
       }
-    });
-
-    logger.info(`Tarea creada exitosamente en la API con ID: ${response.data._id || response.data.id || 'desconocido'}`);
-    return true;
-  } catch (error) {
-    if (error.response) {
-      logger.error(`Error al crear tarea en la API: ${error.response.status}`);
-      logger.error(`Detalles: ${JSON.stringify(error.response.data)}`);
-    } else if (error.request) {
-      logger.error('Error: No se recibió respuesta de la API');
-    } else {
-      logger.error('Error al configurar la solicitud:', error.message);
+      
+      const response = await http.post(createTaskUrl, datosLimpios, {
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'X-Request-ID': `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        },
+        maxBodyLength: MAX_DATA_SIZE,
+        maxContentLength: MAX_DATA_SIZE
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (process.env.NODE_ENV === 'development') {
+        const elapsed = (performance.now() - startTime).toFixed(2);
+        logger.debug(`Tarea #${taskNumber} procesada en ${elapsed}ms`);
+      }
+      
+      return true;
+      
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
     }
+    
+  } catch (error) {
+    const errorDetails = error.response 
+      ? `Error ${error.response.status}: ${JSON.stringify(error.response.data)}`
+      : error.request
+        ? 'No se recibió respuesta del servidor'
+        : error.message;
+    
+    logger.error(`Error al enviar tarea #${taskNumber} a la API: ${errorDetails}`);
+    
+    // Intentar limpiar memoria en caso de error
+    if (typeof global.gc === 'function') {
+      global.gc();
+    }
+    
     return false;
   }
 }
