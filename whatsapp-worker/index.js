@@ -5,15 +5,20 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { performance } = require('perf_hooks');
-const PQueue = require('p-queue');
 const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
 
-// Configuración de cola de procesamiento
-const queue = new PQueue({ 
-  concurrency: 1, // Procesar un mensaje a la vez
-  timeout: 30000, // 30 segundos máximo por tarea
-  throwOnTimeout: true
-});
+// Configuración de cola de procesamiento (p-queue es ESM, se carga con import dinámico)
+let queue;
+async function initializeQueue() {
+  if (queue) return queue;
+  const { default: PQueue } = await import('p-queue');
+  queue = new PQueue({
+    concurrency: 1, // Procesar un mensaje a la vez
+    timeout: 30000, // 30 segundos máximo por tarea
+    throwOnTimeout: true
+  });
+  return queue;
+}
 
 // Configuración de axios
 const http = axios.create({
@@ -54,6 +59,8 @@ async function initializeClient() {
     logger.info('='.repeat(60));
     logger.info('🚀 INICIANDO CLIENTE WHATSAPP');
     logger.info('='.repeat(60));
+
+    await initializeQueue();
 
     const executablePath = await chromium.executablePath();
     
@@ -393,7 +400,16 @@ function setupEventHandlers() {
   // Usar solo message_create que se dispara para todos los mensajes
   client.on('message_create', (message) => {
     logIncomingMessage(message);
-    processMessage(message);
+    if (!queue) {
+      processMessage(message);
+      return;
+    }
+
+    queue
+      .add(() => processMessage(message))
+      .catch((error) => {
+        logger.error('Error en la cola de procesamiento:', error?.message || error);
+      });
   });
 
   client.on('auth_failure', (err) => {
