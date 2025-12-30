@@ -6,7 +6,6 @@ const fs = require('fs');
 const path = require('path');
 const { performance } = require('perf_hooks');
 const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
-const winston = require('winston');
 
 // Memory monitoring
 const MEMORY_THRESHOLD = 0.7; // 70% of available memory
