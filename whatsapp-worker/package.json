@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start:memory": "node --max-old-space-size=384 --expose-gc index.js",
+    "dev": "nodemon index.js",
+    "dev:memory": "nodemon --exec 'node --max-old-space-size=384 --expose-gc' index.js"
   },
   "dependencies": {
     "@sparticuz/chromium": "^138.0.2",

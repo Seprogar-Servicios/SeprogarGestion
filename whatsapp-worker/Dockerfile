@@ -46,6 +46,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
+# Configurar variables de entorno para optimizar memoria (512MB RAM)
+ENV NODE_OPTIONS=--max-old-space-size=384
+
 # Directorio de la aplicación
 WORKDIR /usr/src/app
 

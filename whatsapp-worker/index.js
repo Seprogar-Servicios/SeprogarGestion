@@ -6,6 +6,132 @@ const fs = require('fs');
 const path = require('path');
 const { performance } = require('perf_hooks');
 const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
+const winston = require('winston');
+
+// Memory monitoring
+const MEMORY_THRESHOLD = 0.7; // 70% of available memory
+const MEMORY_CHECK_INTERVAL = 30000; // 30 seconds
+
+function getMemoryUsage() {
+  const usage = process.memoryUsage();
+  const totalMemory = require('os').totalmem();
+  const freeMemory = require('os').freemem();
+  const usedMemory = totalMemory - freeMemory;
+  const memoryUsagePercent = usedMemory / totalMemory;
+  
+  return {
+    heapUsed: Math.round(usage.heapUsed / 1024 / 1024 * 100) / 100,
+    heapTotal: Math.round(usage.heapTotal / 1024 / 1024 * 100) / 100,
+    external: Math.round(usage.external / 1024 / 1024 * 100) / 100,
+    rss: Math.round(usage.rss / 1024 / 1024 * 100) / 100,
+    systemUsed: Math.round(usedMemory / 1024 / 1024 * 100) / 100,
+    systemTotal: Math.round(totalMemory / 1024 / 1024 * 100) / 100,
+    systemUsagePercent: Math.round(memoryUsagePercent * 100)
+  };
+}
+
+function monitorMemory() {
+  const memory = getMemoryUsage();
+  
+  logger.info('📊 Memory Usage:', {
+    heap: `${memory.heapUsed}MB / ${memory.heapTotal}MB`,
+    system: `${memory.systemUsed}MB / ${memory.systemTotal}MB (${memory.systemUsagePercent}%)`,
+    external: `${memory.external}MB`,
+    rss: `${memory.rss}MB`
+  });
+  
+  // Alert if memory usage is high
+  if (memory.systemUsagePercent > MEMORY_THRESHOLD * 100) {
+    logger.warn('⚠️  High memory usage detected!', {
+      usage: `${memory.systemUsagePercent}%`,
+      threshold: `${MEMORY_THRESHOLD * 100}%`
+    });
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+      logger.info('🧹 Forced garbage collection');
+    }
+    
+    // Check if we need to restart
+    if (memory.systemUsagePercent > 0.85) {
+      logger.error('🚨 Critical memory usage! Consider restarting the service');
+    }
+  }
+}
+
+// Start memory monitoring
+setInterval(monitorMemory, MEMORY_CHECK_INTERVAL);
+
+// Error handling with controlled restart
+process.on('uncaughtException', (error) => {
+  logger.error('🚨 Uncaught Exception:', error);
+  logger.error('Stack trace:', error.stack);
+  
+  // Log memory usage before crash
+  const memory = getMemoryUsage();
+  logger.error('Memory at crash:', memory);
+  
+  // Attempt graceful shutdown
+  try {
+    if (client) {
+      client.destroy().then(() => {
+        logger.info('Client destroyed gracefully');
+        process.exit(1);
+      }).catch(() => {
+        process.exit(1);
+      });
+    } else {
+      process.exit(1);
+    }
+  } catch (e) {
+    logger.error('Error during shutdown:', e);
+    process.exit(1);
+  }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
+  
+  // Log memory usage
+  const memory = getMemoryUsage();
+  logger.error('Memory at rejection:', memory);
+  
+  // Force garbage collection
+  if (global.gc) {
+    global.gc();
+    logger.info('🧹 Forced garbage collection after rejection');
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('📴 SIGTERM received, shutting down gracefully');
+  if (client) {
+    client.destroy().then(() => {
+      logger.info('Client destroyed on SIGTERM');
+      process.exit(0);
+    }).catch(() => {
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+});
+
+process.on('SIGINT', () => {
+  logger.info('📴 SIGINT received, shutting down gracefully');
+  if (client) {
+    client.destroy().then(() => {
+      logger.info('Client destroyed on SIGINT');
+      process.exit(0);
+    }).catch(() => {
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+});
 
 // Configuración de cola de procesamiento (p-queue es ESM, se carga con import dinámico)
 let queue;

@@ -4,6 +4,9 @@
 echo "Iniciando WhatsApp Worker en entorno: $NODE_ENV"
 echo "Directorio actual: $(pwd)"
 
+# Configurar opciones de Node.js para optimizar memoria (512MB RAM)
+export NODE_OPTIONS="--max-old-space-size=384"
+
 # Descomprimir sesión desde variable de entorno si existe
 if [ -n "$WWEBJS_AUTH_ZIP_BASE64" ]; then
   echo "🔄 Encontrada variable de entorno con sesión. Descomprimiendo..."
@@ -17,10 +20,10 @@ fi
 
 # Verificar si existe la carpeta .wwebjs_auth con contenido
 if [ -d "./.wwebjs_auth" ] && [ "$(ls -A ./.wwebjs_auth)" ]; then
-  echo "✅ Carpeta de sesión encontrada, iniciando aplicación..."
+  echo "✅ Carpeta de sesión encontrada, iniciando aplicación con optimizaciones de memoria..."
   # Asegurar permisos correctos
   chmod -R 777 ./.wwebjs_auth
-  node index.js
+  node --expose-gc index.js
 else
   echo "❌ No se encontró una sesión válida."
   echo "⚠️ Debes generar primero una sesión localmente con 'node bot.js'"
@@ -30,7 +33,7 @@ else
   mkdir -p ./.wwebjs_auth
   chmod -R 777 ./.wwebjs_auth
   
-  echo "🔄 Intentando iniciar la aplicación de todos modos..."
+  echo "🔄 Intentando iniciar la aplicación de todos modos con optimizaciones de memoria..."
   echo "🚨 Es posible que se genere un código QR que necesites escanear."
-  node index.js
+  node --expose-gc index.js
 fi

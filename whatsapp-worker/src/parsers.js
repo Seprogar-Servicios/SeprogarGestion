@@ -53,12 +53,12 @@ const DATE_PATTERNS = [
 ];
 
 /**
- * Limita el tamaño de un mensaje para evitar consumo excesivo de memoria
- * @param {string} message - Mensaje a limitar
- * @param {number} maxLength - Longitud máxima (por defecto 2000 caracteres)
+ * Limita el tamaño del mensaje para evitar problemas de memoria
+ * @param {string} message - Mensaje original
+ * @param {number} maxLength - Longitud máxima (por defecto 1000 caracteres)
  * @returns {string} - Mensaje truncado si es necesario
  */
-function limitMessageSize(message, maxLength = 2000) {
+function limitMessageSize(message, maxLength = 1000) {
   return typeof message === 'string' ? message.substring(0, maxLength) : '';
 }
 
