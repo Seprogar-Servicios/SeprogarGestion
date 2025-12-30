@@ -9,40 +9,47 @@ const chromium = require('@sparticuz/chromium'); // Chromium compatible contened
 
 // Memory monitoring
 const MEMORY_THRESHOLD = 0.7; // 70% of available memory
-const MEMORY_CHECK_INTERVAL = 30000; // 30 seconds
+const MEMORY_CHECK_INTERVAL = 300000; // 5 minutes instead of 30 seconds
 
 function getMemoryUsage() {
   const usage = process.memoryUsage();
-  const totalMemory = require('os').totalmem();
-  const freeMemory = require('os').freemem();
-  const usedMemory = totalMemory - freeMemory;
-  const memoryUsagePercent = usedMemory / totalMemory;
+  
+  // For container environments, focus on process memory, not system memory
+  const heapUsedMB = Math.round(usage.heapUsed / 1024 / 1024 * 100) / 100;
+  const heapTotalMB = Math.round(usage.heapTotal / 1024 / 1024 * 100) / 100;
+  const rssMB = Math.round(usage.rss / 1024 / 1024 * 100) / 100;
+  const externalMB = Math.round(usage.external / 1024 / 1024 * 100) / 100;
+  
+  // Estimate container memory usage (512MB limit)
+  const containerLimitMB = 512;
+  const estimatedUsagePercent = Math.round((rssMB / containerLimitMB) * 100);
   
   return {
-    heapUsed: Math.round(usage.heapUsed / 1024 / 1024 * 100) / 100,
-    heapTotal: Math.round(usage.heapTotal / 1024 / 1024 * 100) / 100,
-    external: Math.round(usage.external / 1024 / 1024 * 100) / 100,
-    rss: Math.round(usage.rss / 1024 / 1024 * 100) / 100,
-    systemUsed: Math.round(usedMemory / 1024 / 1024 * 100) / 100,
-    systemTotal: Math.round(totalMemory / 1024 / 1024 * 100) / 100,
-    systemUsagePercent: Math.round(memoryUsagePercent * 100)
+    heapUsed: heapUsedMB,
+    heapTotal: heapTotalMB,
+    external: externalMB,
+    rss: rssMB,
+    containerLimit: containerLimitMB,
+    estimatedUsagePercent: estimatedUsagePercent
   };
 }
 
 function monitorMemory() {
   const memory = getMemoryUsage();
   
-  logger.info('📊 Memory Usage:', {
-    heap: `${memory.heapUsed}MB / ${memory.heapTotal}MB`,
-    system: `${memory.systemUsed}MB / ${memory.systemTotal}MB (${memory.systemUsagePercent}%)`,
-    external: `${memory.external}MB`,
-    rss: `${memory.rss}MB`
-  });
+  // Only log if memory usage is concerning (>60%)
+  if (memory.estimatedUsagePercent > 60) {
+    logger.warn('📊 Memory Usage:', {
+      heap: `${memory.heapUsed}MB / ${memory.heapTotal}MB`,
+      rss: `${memory.rss}MB / ${memory.containerLimit}MB (${memory.estimatedUsagePercent}%)`,
+      external: `${memory.external}MB`
+    });
+  }
   
   // Alert if memory usage is high
-  if (memory.systemUsagePercent > MEMORY_THRESHOLD * 100) {
+  if (memory.estimatedUsagePercent > MEMORY_THRESHOLD * 100) {
     logger.warn('⚠️  High memory usage detected!', {
-      usage: `${memory.systemUsagePercent}%`,
+      usage: `${memory.estimatedUsagePercent}%`,
       threshold: `${MEMORY_THRESHOLD * 100}%`
     });
     
@@ -53,7 +60,7 @@ function monitorMemory() {
     }
     
     // Check if we need to restart
-    if (memory.systemUsagePercent > 0.85) {
+    if (memory.estimatedUsagePercent > 0.85) {
       logger.error('🚨 Critical memory usage! Consider restarting the service');
     }
   }
@@ -69,7 +76,11 @@ process.on('uncaughtException', (error) => {
   
   // Log memory usage before crash
   const memory = getMemoryUsage();
-  logger.error('Memory at crash:', memory);
+  logger.error('Memory at crash:', {
+    heap: `${memory.heapUsed}MB / ${memory.heapTotal}MB`,
+    rss: `${memory.rss}MB / ${memory.containerLimit}MB (${memory.estimatedUsagePercent}%)`,
+    external: `${memory.external}MB`
+  });
   
   // Attempt graceful shutdown
   try {
@@ -94,7 +105,11 @@ process.on('unhandledRejection', (reason, promise) => {
   
   // Log memory usage
   const memory = getMemoryUsage();
-  logger.error('Memory at rejection:', memory);
+  logger.error('Memory at rejection:', {
+    heap: `${memory.heapUsed}MB / ${memory.heapTotal}MB`,
+    rss: `${memory.rss}MB / ${memory.containerLimit}MB (${memory.estimatedUsagePercent}%)`,
+    external: `${memory.external}MB`
+  });
   
   // Force garbage collection
   if (global.gc) {
