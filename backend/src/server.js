@@ -49,6 +49,24 @@ app.options('*', cors(corsOptions));
 app.use(morgan('dev'));
 app.use('/uploads', express.static('uploads'));
 
+// Evitar servir archivos de configuración del frontend
+app.use((req, res, next) => {
+  // Bloquear acceso a archivos de configuración
+  const blockedPaths = [
+    '/tailwind.config.js',
+    '/eslint.config.js',
+    '/vite.config.js',
+    '/.env',
+    '/package.json'
+  ];
+  
+  if (blockedPaths.some(path => req.path.endsWith(path))) {
+    return res.status(404).send('Not Found');
+  }
+  
+  next();
+});
+
 // Configuración de rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
