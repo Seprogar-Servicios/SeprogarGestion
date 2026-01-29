@@ -232,13 +232,12 @@ async function initializeClient() {
         clientId: 'futurgas-worker',
       }),
       puppeteer: puppeteerOptions,
-      session: null, // Forzar nueva sesión
-      qrTimeout: 0, // Deshabilitar timeout del QR
-      authTimeout: 0, // Deshabilitar timeout de autenticación
+      qrTimeout: 60000, // 60 segundos para QR
+      authTimeout: 60000, // 60 segundos para autenticación
       takeoverOnConflict: true,
-      takeoverTimeoutMs: 60000, // Aumentar tiempo de espera
-      restartOnAuthFail: true,
-      disableWelcome: true, // Deshabilitar mensaje de bienvenida
+      takeoverTimeoutMs: 30000, // Reducir tiempo de espera
+      restartOnAuthFail: false, // No reiniciar automáticamente
+      disableWelcome: true,
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
     });
 
@@ -314,6 +313,138 @@ async function handleInitializationError(error) {
 }
 
 function setupEventHandlers() {
+  logger.info('🧩 setupEventHandlers: handlers registrados');
+  let readyFired = false;
+  let postAuthFlowStarted = false;
+
+  // Flujo post-auth: verificar grupos permitidos y dejar el worker listo
+  const runPostAuthFlow = async (source) => {
+    if (postAuthFlowStarted) return;
+    postAuthFlowStarted = true;
+
+    logger.info(`🧭 Iniciando flujo post-auth (source=${source})`);
+
+    // Esperar un momento para asegurar que el cliente esté completamente listo
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Función para verificar si el cliente está listo
+    const isClientReady = () => {
+      try {
+        return client &&
+               client.info &&
+               client.pupPage &&
+               typeof client.pupPage.isClosed === 'function' &&
+               !client.pupPage.isClosed();
+      } catch (error) {
+        logger.warn('Error en isClientReady:', error.message);
+        return false;
+      } finally {
+        if (global.gc) global.gc();
+      }
+    };
+
+    // Función para limpiar memoria
+    const cleanupMemory = () => {
+      try {
+        if (global.gc) {
+          global.gc();
+          logger.debug('Recolección de basura forzada');
+        }
+        Object.keys(require.cache).forEach(key => {
+          if (!key.includes('node_modules') && !key.includes('whatsapp-web.js')) {
+            delete require.cache[key];
+          }
+        });
+      } catch (error) {
+        logger.warn('Error durante limpieza de memoria:', error.message);
+      }
+    };
+
+    // Función asíncrona para cargar chats con reintentos
+    const loadChatsWithRetry = async () => {
+      const maxRetries = 5;
+      const delay = 2000; // 2 segundos entre reintentos
+      let lastError = null;
+
+      logger.info('🔍 Cargando chats para verificar grupos permitidos...');
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        let chats = [];
+        let groupChats = [];
+
+        try {
+          logger.info(`🔍 Intentando cargar chats (intento ${attempt}/${maxRetries})...`);
+
+          if (!isClientReady()) {
+            throw new Error('El cliente de WhatsApp no está completamente inicializado');
+          }
+
+          chats = await client.getChats();
+          logger.info(`✅ Chats cargados: ${chats.length} chats encontrados`);
+
+          groupChats = chats.filter(c => c.isGroup);
+          logger.info(`👥 Grupos encontrados: ${groupChats.length}`);
+
+          const allowedGroups = groupChats.filter(c =>
+            GRUPOS_PERMITIDOS.some(allowed =>
+              c.name?.trim().toLowerCase() === allowed.trim().toLowerCase()
+            )
+          );
+
+          if (allowedGroups.length > 0) {
+            logger.info(`✅ Grupos permitidos configurados: ${allowedGroups.map(g => g.name).join(', ')}`);
+            allowedGroups.length = 0;
+          } else {
+            logger.warn('⚠️  No se encontraron los grupos permitidos. Verifica los nombres en GRUPOS_PERMITIDOS');
+            logger.info('Grupos configurados:', GRUPOS_PERMITIDOS.join(', '));
+
+            if (groupChats.length > 0) {
+              logger.info('📋 Grupos disponibles (mostrando 5 de ' + groupChats.length + '):');
+              for (let i = 0; i < Math.min(5, groupChats.length); i++) {
+                logger.info(`   ${i + 1}. ${groupChats[i].name}`);
+              }
+            }
+          }
+
+          cleanupMemory();
+          return;
+        } catch (error) {
+          lastError = error;
+          const errorMessage = error.message || 'Error desconocido';
+          const stackTrace = error.stack ? `\n${error.stack}` : '';
+
+          logger.warn(`⚠️  Intento ${attempt} fallido: ${errorMessage}${stackTrace}`);
+
+          if (attempt < maxRetries) {
+            const retryDelay = Math.min(delay * attempt, 10000);
+            logger.info(`⏳ Reintentando en ${retryDelay / 1000} segundos...`);
+            cleanupMemory();
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+          }
+        } finally {
+          if (chats && chats.length > 0) chats.length = 0;
+          if (groupChats && groupChats.length > 0) groupChats.length = 0;
+          if (global.gc) global.gc();
+        }
+      }
+
+      logger.error('❌ No se pudieron cargar los chats después de varios intentos');
+
+      if (lastError) {
+        logger.error('Detalles del error:', {
+          message: lastError.message || 'Sin mensaje de error',
+          stack: lastError.stack || 'Sin stack trace',
+          code: lastError.code || 'Código no disponible'
+        });
+      }
+
+      cleanupMemory();
+    };
+
+    await loadChatsWithRetry();
+    logger.info('\n👂 ESCUCHANDO MENSAJES...\n');
+  };
+
   // Evento QR
   client.on('qr', (qr) => {
     logger.info('\n' + '='.repeat(60));
@@ -328,18 +459,46 @@ function setupEventHandlers() {
     logger.info('\n' + '='.repeat(60));
     logger.info('✅ AUTENTICACIÓN EXITOSA');
     logger.info('='.repeat(60) + '\n');
+
+    // En algunos entornos el evento `ready` puede demorar o no disparar.
+    // Iniciar la verificación de grupos poco después de la autenticación.
+    setTimeout(() => {
+      if (postAuthFlowStarted) return;
+      logger.info('⏳ Post-auth: iniciando verificación de grupos (trigger=authenticated)');
+      runPostAuthFlow('authenticated').catch((err) => {
+        logger.error('Error en flujo post-auth (authenticated):', err?.message || err);
+      });
+    }, 3000);
+
+    // Fallback: si `ready` no se dispara, igual ejecutar el flujo post-auth.
+    // En condiciones normales, `ready` debería disparar en segundos.
+    setTimeout(() => {
+      if (readyFired) return;
+      logger.warn('⏳ Pasaron 15s desde authenticated y no llegó el evento ready. Ejecutando flujo post-auth por fallback...');
+      runPostAuthFlow('authenticated-fallback').catch((err) => {
+        logger.error('Error en flujo post-auth (fallback):', err?.message || err);
+      });
+    }, 15000);
   });
 
   // Evento de cliente listo
   client.on('ready', async () => {
     logger.info('🚀 Cliente listo y conectado a WhatsApp');
-    logger.info('\n👂 ESCUCHANDO MENSAJES...\n');
-    
-    // Forzar limpieza de memoria
-    if (global.gc) {
-      global.gc();
-      logger.debug('🧹 Limpieza de memoria inicial completada');
-    }
+    readyFired = true;
+
+    runPostAuthFlow('ready').catch((err) => {
+      logger.error('Error en flujo post-auth (ready):', err?.message || err);
+    });
+  });
+
+  // Evento de remoto guardado de sesión
+  client.on('remote_session_saved', () => {
+    logger.info('💾 Sesión remota guardada');
+  });
+
+  // Evento de cambio de estado
+  client.on('change_state', (state) => {
+    logger.info(`🔄 Estado del cliente cambiado: ${state}`);
   });
 
   // Usar solo message_create que se dispara para todos los mensajes
