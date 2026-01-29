@@ -238,7 +238,11 @@ async function initializeClient() {
       takeoverTimeoutMs: 30000, // Reducir tiempo de espera
       restartOnAuthFail: false, // No reiniciar automáticamente
       disableWelcome: true,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+      webVersionCache: {
+        type: 'local',
+        path: path.join(__dirname, 'wwebjs_cache')
+      }
     });
 
     logger.info('Configurando manejadores de eventos...');
@@ -432,6 +436,13 @@ function setupEventHandlers() {
             // Intento de fallback: obtener títulos de chats desde window.Store sin pasar por getChatModel.
             // Esto permite al menos mostrar grupos disponibles y validar nombres contra GRUPOS_PERMITIDOS.
             try {
+              // Esperar a que Store esté listo
+              await client.pupPage.waitForFunction(() => {
+                return window.Store && window.Store.Chat && window.Store.Chat.models && window.Store.Chat.models.length > 0;
+              }, { timeout: 10000 }).catch(() => {
+                logger.warn('Store no está listo después de 10s, intentando fallback de todas formas...');
+              });
+
               const groupNames = await client.pupPage.evaluate(() => {
                 try {
                   const store = window.Store;
