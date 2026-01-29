@@ -571,13 +571,21 @@ function setupEventHandlers() {
 async function logIncomingMessage(message) {
   // Verificar si el mensaje es válido de manera temprana
   if (!message?.id) {
+    logger.debug('🔍 Mensaje inválido: sin ID');
     return; // No registrar mensajes inválidos
   }
 
   try {
     // Obtener información del chat de manera eficiente
     let chat = await message.getChat().catch(() => null);
+    logger.debug('🔍 Chat encontrado:', { 
+      isGroup: chat?.isGroup, 
+      name: chat?.name, 
+      from: message.from 
+    });
+    
     if (!chat?.isGroup) {
+      logger.debug('🔍 Mensaje ignorado: no es de grupo');
       return; // Ignorar mensajes que no son de grupo
     }
 
@@ -587,8 +595,15 @@ async function logIncomingMessage(message) {
       g => g.trim().toLowerCase() === groupName.toLowerCase()
     );
 
+    logger.debug('🔍 Verificación de grupo:', {
+      groupName,
+      gruposPermitidos: GRUPOS_PERMITIDOS,
+      isGroupAllowed
+    });
+
     // Si el grupo no está permitido, salir sin hacer nada
     if (!isGroupAllowed) {
+      logger.warn(`🚫 Grupo no permitido: "${groupName}"`);
       return;
     }
 
@@ -668,6 +683,41 @@ async function processMessage(message) {
   const messageId = message?.id?.id || 'unknown';
   
   try {
+    logger.debug(`🔍 Iniciando procesamiento del mensaje ${messageId}`);
+    
+    // Validación temprana del mensaje
+    if (!message || !message.body) {
+      logger.debug(`🔍 Mensaje ${messageId} inválido: sin cuerpo`);
+      return;
+    }
+
+    // Obtener información del chat
+    let chat;
+    try {
+      chat = await message.getChat();
+    } catch (error) {
+      logger.debug(`🔍 No se pudo obtener el chat para mensaje ${messageId}: ${error.message}`);
+      return;
+    }
+
+    // Verificar si es un grupo permitido
+    if (!chat.isGroup) {
+      logger.debug(`🔍 Mensaje ${messageId} ignorado: no es de grupo`);
+      return;
+    }
+
+    const groupName = chat.name?.trim() || '';
+    const isGroupAllowed = GRUPOS_PERMITIDOS.some(
+      g => g.trim().toLowerCase() === groupName.toLowerCase()
+    );
+
+    if (!isGroupAllowed) {
+      logger.debug(`🔍 Mensaje ${messageId} ignorado: grupo "${groupName}" no permitido`);
+      return;
+    }
+
+    logger.debug(`🔍 Mensaje ${messageId} de grupo permitido: "${groupName}"`);
+    
     // Limitar el tamaño del mensaje
     let messageBody = message.body || '';
     const MAX_MESSAGE_SIZE = 10000; // 10KB máximo
@@ -687,27 +737,6 @@ async function processMessage(message) {
       cleanupMemory();
     }
     
-    // Obtener información del chat (solo si es necesario)
-    let chat = null;
-    try {
-      chat = await message.getChat();
-      if (!chat?.isGroup) {
-        logger.debug(`Mensaje ${messageId} no es de un grupo, ignorando...`);
-        return;
-      }
-    } catch (error) {
-      logger.error(`Error al obtener chat para mensaje ${messageId}:`, error.message);
-      return;
-    }
-
-    // Verificación rápida de grupo permitido (sin procesamiento innecesario)
-    const groupName = chat.name?.trim() || '';
-    if (!groupName || !allowedGroupsCache.has(groupName.toLowerCase())) {
-      logger.debug(`Mensaje de grupo no permitido: ${groupName}`);
-      return;
-    }
-
-    // Limpiar y normalizar el contenido del mensaje (versión más eficiente)
     const cleanContent = messageBody
       .replace(/\*/g, '')
       .replace(/\s+/g, ' ')
@@ -734,6 +763,8 @@ async function processMessage(message) {
       messageType = 'expediente';
       parser = parseExpedienteMessage;
     }
+
+    logger.debug(`🔍 Tipo de mensaje detectado: ${messageType}`);
 
     // Si no se reconoció el formato, registrar y salir
     if (!parser) {
