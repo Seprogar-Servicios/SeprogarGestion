@@ -1,12 +1,8 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const axios = require('axios');
-const pQueue = require('p-queue');
-const pTimeout = require('p-timeout');
-
-// Debug: mostrar versión de whatsapp-web.js
-const packageJson = require('./package.json');
-console.log('📦 whatsapp-web.js version:', packageJson.dependencies['whatsapp-web.js']);
+const whatsappWebJsPkg = require('whatsapp-web.js/package.json');
+console.log('📦 whatsapp-web.js installed version:', whatsappWebJsPkg.version);
 const path = require('path');
 const { performance } = require('perf_hooks');
 const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
