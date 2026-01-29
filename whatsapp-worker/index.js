@@ -316,6 +316,7 @@ function setupEventHandlers() {
   logger.info('🧩 setupEventHandlers: handlers registrados');
   let readyFired = false;
   let postAuthFlowStarted = false;
+  let firstMessageLogged = false;
 
   // Flujo post-auth: verificar grupos permitidos y dejar el worker listo
   const runPostAuthFlow = async (source) => {
@@ -519,19 +520,40 @@ function setupEventHandlers() {
     logger.info(`🔄 Estado del cliente cambiado: ${state}`);
   });
 
-  // Usar solo message_create que se dispara para todos los mensajes
-  client.on('message_create', (message) => {
-    logIncomingMessage(message);
-    if (!queue) {
-      processMessage(message);
-      return;
-    }
+  const handleIncoming = (message, sourceEvent) => {
+    try {
+      if (!firstMessageLogged) {
+        const messageId = message?.id?.id || message?.id?._serialized || 'unknown';
+        logger.info(`📨 Primer mensaje recibido (event=${sourceEvent}) id=${messageId} from=${message?.from || 'unknown'} type=${message?.type || 'unknown'}`);
+        firstMessageLogged = true;
+      }
 
-    queue
-      .add(() => processMessage(message))
-      .catch((error) => {
-        logger.error('Error en la cola de procesamiento:', error?.message || error);
-      });
+      logIncomingMessage(message);
+
+      if (!queue) {
+        processMessage(message);
+        return;
+      }
+
+      queue
+        .add(() => processMessage(message))
+        .catch((error) => {
+          logger.error('Error en la cola de procesamiento:', error?.message || error);
+        });
+    } catch (err) {
+      logger.error('Error inesperado en handler de mensaje:', err?.message || err);
+    }
+  };
+
+  // Evento recomendado para mensajes entrantes
+  client.on('message', (message) => {
+    handleIncoming(message, 'message');
+  });
+
+  // Mantener message_create pero evitar duplicados: procesar solo los mensajes propios
+  client.on('message_create', (message) => {
+    if (!message?.fromMe) return;
+    handleIncoming(message, 'message_create');
   });
 
   client.on('auth_failure', (err) => {
