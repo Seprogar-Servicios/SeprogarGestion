@@ -1,13 +1,15 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
 const axios = require('axios');
-const fs = require('fs');
+const pQueue = require('p-queue');
+const pTimeout = require('p-timeout');
+
+// Debug: mostrar versión de whatsapp-web.js
+const packageJson = require('./package.json');
+console.log('📦 whatsapp-web.js version:', packageJson.dependencies['whatsapp-web.js']);
 const path = require('path');
 const { performance } = require('perf_hooks');
 const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
-
-// Memory monitoring
 const MEMORY_THRESHOLD = 0.7; // 70% of available memory
 const MEMORY_CHECK_INTERVAL = 300000; // 5 minutes instead of 30 seconds
 
