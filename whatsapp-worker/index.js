@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const axios = require('axios');
+const fs = require('fs');
 const whatsappWebJsPkg = require('whatsapp-web.js/package.json');
 console.log('📦 whatsapp-web.js installed version:', whatsappWebJsPkg.version);
 const path = require('path');
@@ -8,6 +9,8 @@ const { performance } = require('perf_hooks');
 const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
 const MEMORY_THRESHOLD = 0.7; // 70% of available memory
 const MEMORY_CHECK_INTERVAL = 300000; // 5 minutes instead of 30 seconds
+
+let client;
 
 function getMemoryUsage() {
   const usage = process.memoryUsage();
@@ -188,7 +191,6 @@ if (!fs.existsSync(AUTH_FOLDER)) {
 }
 
 // === Cliente ===
-let client;
 let initializationAttempts = 0;
 const MAX_INIT_ATTEMPTS = 3;
 
