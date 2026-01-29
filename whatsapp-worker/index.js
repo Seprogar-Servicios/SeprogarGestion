@@ -428,6 +428,42 @@ function setupEventHandlers() {
             logger.error('📌 El worker seguirá escuchando mensajes y validará grupos al recibirlos.');
             logger.error('✅ Recomendación: actualizar whatsapp-web.js a una versión más nueva/compatible y redeploy.');
             logger.error(`Detalles: ${errorMessage}`);
+
+            // Intento de fallback: obtener títulos de chats desde window.Store sin pasar por getChatModel.
+            // Esto permite al menos mostrar grupos disponibles y validar nombres contra GRUPOS_PERMITIDOS.
+            try {
+              const groupNames = await client.pupPage.evaluate(() => {
+                try {
+                  const store = window.Store;
+                  const models = store?.Chat?.models || [];
+                  const groups = models
+                    .filter((c) => c?.isGroup || c?.groupMetadata)
+                    .map((c) => (c?.formattedTitle || c?.name || c?.id?._serialized || '').toString())
+                    .map((s) => s.trim())
+                    .filter((s) => s);
+                  // Deduplicar
+                  return Array.from(new Set(groups)).slice(0, 200);
+                } catch (e) {
+                  return { __error: (e && (e.message || String(e))) || 'unknown' };
+                }
+              });
+
+              if (groupNames && typeof groupNames === 'object' && groupNames.__error) {
+                logger.warn(`Fallback Store.Chat.models falló: ${groupNames.__error}`);
+              } else if (Array.isArray(groupNames) && groupNames.length > 0) {
+                const allowedFound = groupNames.filter((name) =>
+                  GRUPOS_PERMITIDOS.some((allowed) => allowed.trim().toLowerCase() === name.trim().toLowerCase())
+                );
+
+                logger.info(`👥 (Fallback) Grupos detectados en sesión: ${groupNames.length}`);
+                logger.info(`✅ (Fallback) Grupos permitidos encontrados: ${allowedFound.length > 0 ? allowedFound.join(', ') : 'ninguno'}`);
+              } else {
+                logger.warn('Fallback Store.Chat.models: no se detectaron grupos (o Store no está listo).');
+              }
+            } catch (fallbackErr) {
+              logger.warn('Fallback Store.Chat.models lanzó error:', fallbackErr?.message || fallbackErr);
+            }
+
             cleanupMemory();
             return;
           }

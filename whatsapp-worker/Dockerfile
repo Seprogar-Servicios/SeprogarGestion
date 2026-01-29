@@ -1,4 +1,4 @@
-FROM node:16-bullseye
+FROM node:18-bullseye
 
 # Instalar dependencias necesarias para Puppeteer
 RUN apt-get update && apt-get install -y --no-install-recommends \
