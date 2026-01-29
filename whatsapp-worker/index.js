@@ -491,7 +491,7 @@ function setupEventHandlers() {
     // Fallback: si `ready` no se dispara, igual ejecutar el flujo post-auth.
     // En condiciones normales, `ready` debería disparar en segundos.
     setTimeout(() => {
-      if (readyFired) return;
+      if (readyFired || postAuthFlowStarted) return;
       logger.warn('⏳ Pasaron 15s desde authenticated y no llegó el evento ready. Ejecutando flujo post-auth por fallback...');
       runPostAuthFlow('authenticated-fallback').catch((err) => {
         logger.error('Error en flujo post-auth (fallback):', err?.message || err);
