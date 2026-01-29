@@ -2,7 +2,7 @@ services:
   - type: web
     name: whatsapp-worker
     env: node
-    buildCommand: npm ci
+    buildCommand: npm install
     startCommand: node index.js
     envVars:
       - key: NODE_ENV
