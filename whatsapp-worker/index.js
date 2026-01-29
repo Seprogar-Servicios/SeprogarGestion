@@ -413,6 +413,24 @@ function setupEventHandlers() {
           const errorMessage = error.message || 'Error desconocido';
           const stackTrace = error.stack ? `\n${error.stack}` : '';
 
+          // Error conocido: whatsapp-web.js puede romperse al enumerar chats en algunos despliegues
+          // (incompatibilidad con la versión de WhatsApp Web / Store interno no listo).
+          // En ese caso, no vale la pena reintentar mucho: seguimos escuchando y validamos grupos
+          // cuando llega cada mensaje (message.getChat()).
+          const isKnownGetChatsBug =
+            errorMessage.includes('window.WWebJS.getChatModel') ||
+            errorMessage.includes("Cannot read properties of undefined (reading 'update')") ||
+            errorMessage.includes("Cannot read properties of undefined (reading \"update\")");
+
+          if (isKnownGetChatsBug) {
+            logger.error('🚨 Error conocido al ejecutar client.getChats(); se omitirá la verificación inicial de grupos.');
+            logger.error('📌 El worker seguirá escuchando mensajes y validará grupos al recibirlos.');
+            logger.error('✅ Recomendación: actualizar whatsapp-web.js a una versión más nueva/compatible y redeploy.');
+            logger.error(`Detalles: ${errorMessage}`);
+            cleanupMemory();
+            return;
+          }
+
           logger.warn(`⚠️  Intento ${attempt} fallido: ${errorMessage}${stackTrace}`);
 
           if (attempt < maxRetries) {
