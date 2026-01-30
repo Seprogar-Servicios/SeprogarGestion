@@ -535,24 +535,24 @@ function setupEventHandlers() {
   });
 
   // Usar solo message_create que se dispara para todos los mensajes
-  client.on('message_create', (message) => {
-    // ⛔ Ignorar mensajes enviados por el bot
-    if (message.fromMe) return;
+  client.on('message', (message) => {
+      // ⛔ Ignorar mensajes enviados por el bot (por las dudas)
+      if (message.fromMe) return;
 
-    logIncomingMessage(message);
+      logIncomingMessage(message);
 
-    if (!queue) {
-      processMessage(message);
-      return;
-    }
+      if (!queue) {
+        processMessage(message);
+        return;
+      }
 
-    queue
-      .add(() => processMessage(message))
-      .catch((error) => {
-        logger.error('Error en la cola de procesamiento:', error?.message || error);
-      });
-  });
-
+      queue
+        .add(() => processMessage(message))
+        .catch((error) => {
+          logger.error('Error en la cola de procesamiento:', error?.message || error);
+        });
+    });
+    
   client.on('auth_failure', (err) => {
     logger.error('🔥 Error crítico de autenticación:', err.message);
     logger.error('Elimina la carpeta .wwebjs_auth y vuelve a iniciar.');
