@@ -24,14 +24,12 @@ const http = axios.create({
 
 const client = new Client({
   puppeteer: {
-    headless: 'new',
+    headless: false,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--no-zygote',
-      '--single-process'
+      '--disable-gpu'
     ]
   }
 });
