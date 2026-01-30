@@ -535,24 +535,37 @@ function setupEventHandlers() {
   });
 
   // Usar solo message_create que se dispara para todos los mensajes
-  client.on('message', (message) => {
-  // ⛔ Ignorar mensajes enviados por el bot (por las dudas)
-  if (message.fromMe) return;
+ // Cambiamos 'message' por 'message_create' para mayor fiabilidad
+  client.on('message_create', async (message) => {
+    // 1. Ignorar mensajes propios para evitar bucles infinitos
+    if (message.fromMe) return;
 
-  logIncomingMessage(message);
+    // 2. Obtener el chat de forma asíncrona ANTES de procesar
+    try {
+      const chat = await message.getChat();
+      
+      // 3. Verificación de seguridad: ¿Es un grupo permitido?
+      const groupName = chat.name?.trim() || '';
+      const isAllowed = GRUPOS_PERMITIDOS.some(
+        g => g.trim().toLowerCase() === groupName.toLowerCase()
+      );
 
-  if (!queue) {
-    processMessage(message);
-    return;
-  }
+      if (!isAllowed) return;
 
-  queue
-    .add(() => processMessage(message))
-    .catch((error) => {
-      logger.error('Error en la cola de procesamiento:', error?.message || error);
-    });
-});
+      // Log visual para confirmar que el bot "vio" el mensaje
+      logger.info(`📩 Mensaje detectado en grupo permitido: [${groupName}]`);
 
+      // 4. Procesar usando la cola (Queue)
+      if (queue) {
+        queue.add(() => processMessage(message)).catch(err => logger.error('Error en cola:', err));
+      } else {
+        processMessage(message);
+      }
+    } catch (error) {
+      logger.error('Error al interceptar mensaje:', error);
+    }
+  });
+  
   client.on('auth_failure', (err) => {
     logger.error('🔥 Error crítico de autenticación:', err.message);
     logger.error('Elimina la carpeta .wwebjs_auth y vuelve a iniciar.');
