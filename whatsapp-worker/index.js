@@ -23,9 +23,13 @@ const http = axios.create({
 // ================= CLIENT =================
 
 const client = new Client({
-  authStrategy: new LocalAuth({ clientId: 'worker-whatsapp' }),
+  authStrategy: new LocalAuth({
+    clientId: 'worker-whatsapp',
+    dataPath: './.wwebjs_auth'
+  }),
   puppeteer: {
     headless: 'new',
+    userDataDir: '/tmp/chrome-profile-whatsapp',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -40,7 +44,6 @@ const client = new Client({
     ]
   }
 });
-
 // ================= EVENTS =================
 
 client.on('qr', qr => {
