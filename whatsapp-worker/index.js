@@ -25,10 +25,18 @@ const http = axios.create({
 const client = new Client({
   authStrategy: new LocalAuth({ clientId: 'worker-whatsapp' }),
   puppeteer: {
-    headless: true,
+    headless: 'new',
     args: [
       '--no-sandbox',
-      '--disable-setuid-sandbox'
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--disable-background-timer-throttling',
+      '--disable-renderer-backgrounding'
     ]
   }
 });
