@@ -182,6 +182,11 @@ const GRUPOS_PERMITIDOS = process.env.GRUPOS_PERMITIDOS
 logger.info('Iniciando servicio de WhatsApp...');
 logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
 
+// Cache para grupos permitidos (optimización de rendimiento)
+const allowedGroupsCache = new Set(
+  GRUPOS_PERMITIDOS.map(g => g.trim().toLowerCase())
+);
+
 // === Autenticación local ===
 const AUTH_FOLDER = path.join(__dirname, '.wwebjs_auth');
 if (!fs.existsSync(AUTH_FOLDER)) {
@@ -655,11 +660,6 @@ async function logIncomingMessage(message) {
     }
   }
 }
-
-// Cache para grupos permitidos (optimización de rendimiento)
-const allowedGroupsCache = new Set(
-  GRUPOS_PERMITIDOS.map(g => g.trim().toLowerCase())
-);
 
 // Función para verificar si un mensaje es de un grupo permitido
 function isFromAllowedGroup(chat) {
