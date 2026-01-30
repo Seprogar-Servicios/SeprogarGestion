@@ -206,7 +206,7 @@ async function initializeClient() {
     
     // Configuración mejorada de Puppeteer
   const puppeteerOptions = {
-    headless: true,
+    headless: false,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -535,33 +535,22 @@ function setupEventHandlers() {
   });
 
   // Usar solo message_create que se dispara para todos los mensajes
-//   client.on('message', (message) => {
-//   // ⛔ Ignorar mensajes enviados por el bot (por las dudas)
-//   if (message.fromMe) return;
+  client.on('message', (message) => {
+  // ⛔ Ignorar mensajes enviados por el bot (por las dudas)
+  if (message.fromMe) return;
 
-//   logIncomingMessage(message);
+  logIncomingMessage(message);
 
-//   if (!queue) {
-//     processMessage(message);
-//     return;
-//   }
+  if (!queue) {
+    processMessage(message);
+    return;
+  }
 
-//   queue
-//     .add(() => processMessage(message))
-//     .catch((error) => {
-//       logger.error('Error en la cola de procesamiento:', error?.message || error);
-//     });
-// });
-
-client.on('message', async (msg) => {
-  console.log('🔥 MENSAJE RECIBIDO 🔥');
-  console.log({
-    from: msg.from,
-    body: msg.body,
-    type: msg.type,
-    isGroup: msg.from?.endsWith('@g.us'),
-    fromMe: msg.fromMe
-  });
+  queue
+    .add(() => processMessage(message))
+    .catch((error) => {
+      logger.error('Error en la cola de procesamiento:', error?.message || error);
+    });
 });
 
   client.on('auth_failure', (err) => {
