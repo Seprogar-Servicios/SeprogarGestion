@@ -548,7 +548,12 @@ function setupEventHandlers() {
     console.log(`[DEBUG] fromMe: ${message.fromMe}`);
     
     // 1. Ignorar mensajes propios para evitar bucles infinitos
-    if (message.fromMe) return;
+    // TEMPORALMENTE COMENTADO PARA DEBUG
+    // if (message.fromMe) {
+    //   console.log(`[DEBUG] Mensaje ignorado - es del bot (fromMe: true)`);
+    //   return;
+    // }
+    console.log(`[DEBUG] fromMe: ${message.fromMe} - TEMPORALMENTE IGNORANDO ESTE FILTRO`);
 
     // 2. Obtener el chat de forma asíncrona ANTES de procesar
     try {
