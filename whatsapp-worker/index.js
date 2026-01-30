@@ -2,8 +2,6 @@ require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
-const PQueue = require('p-queue').default;
-
 const { parsePedidoMessage, parseTareaMessage, parseExpedienteMessage } = require('./src/parsers');
 
 // ================= CONFIG =================
@@ -13,8 +11,6 @@ const GRUPOS_PERMITIDOS = new Set(
     .split(',')
     .map(g => g.trim().toLowerCase())
 );
-
-const queue = new PQueue({ concurrency: 1 });
 
 const http = axios.create({
   timeout: 10000,
@@ -60,11 +56,13 @@ client.on('disconnected', reason => {
 
 // ================= MESSAGE HANDLER =================
 
-client.on('message_create', message => {
-  queue.add(() => handleMessage(message))
-    .catch(err => console.error('Error en cola:', err.message));
+client.on('message_create', async (message) => {
+  try {
+    await handleMessage(message);
+  } catch (err) {
+    console.error('Error procesando mensaje:', err.message);
+  }
 });
-
 // ================= CORE LOGIC =================
 
 async function handleMessage(message) {
