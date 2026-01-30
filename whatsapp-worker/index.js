@@ -29,7 +29,6 @@ const client = new Client({
   }),
   puppeteer: {
     headless: 'new',
-    userDataDir: '/tmp/chrome-profile-whatsapp',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
