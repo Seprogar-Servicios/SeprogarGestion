@@ -1,10 +1,11 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 const fs = require('fs');
+const path = require('path');
 const whatsappWebJsPkg = require('whatsapp-web.js/package.json');
 console.log('📦 whatsapp-web.js installed version:', whatsappWebJsPkg.version);
-const path = require('path');
 const { performance } = require('perf_hooks');
 const chromium = require('@sparticuz/chromium'); // Chromium compatible contenedores
 const MEMORY_THRESHOLD = 0.7; // 70% of available memory
@@ -428,6 +429,7 @@ function setupEventHandlers() {
   });
 
   const handleIncoming = (message, sourceEvent) => {
+    console.log(`--- NUEVO EVENTO: ${sourceEvent} desde ${message.from} ---`);
     try {
       if (!firstMessageLogged) {
         const messageId = message?.id?.id || message?.id?._serialized || 'unknown';
@@ -452,14 +454,11 @@ function setupEventHandlers() {
     }
   };
 
-  // Evento recomendado para mensajes entrantes
-  client.on('message', (message) => {
-    handleIncoming(message, 'message');
-  });
-
-  // Mantener message_create pero evitar duplicados: procesar solo los mensajes propios
-  client.on('message_create', (message) => {
-    if (!message?.fromMe) return;
+  // Usar solo message_create que es más confiable en contenedores
+  client.on('message_create', async (message) => {
+    // Ignorar mensajes del sistema o vacíos
+    if (!message.body && !message.hasMedia) return;
+    
     handleIncoming(message, 'message_create');
   });
 
@@ -487,13 +486,16 @@ async function logIncomingMessage(message) {
   }
 
   try {
-    // Obtener información del chat de manera eficiente
-    let chat = await message.getChat().catch(() => null);
-    logger.debug('🔍 Chat encontrado:', { 
-      isGroup: chat?.isGroup, 
-      name: chat?.name, 
-      from: message.from 
-    });
+    // Timeout manual para evitar que el proceso se cuelgue esperando al chat
+    const chat = await Promise.race([
+        message.getChat(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout chat')), 5000))
+    ]).catch(() => null);
+    
+    if (!chat) {
+        logger.debug(`⚠️ No se pudo obtener info del chat para ${message.from}`);
+        return; 
+    }
     
     if (!chat?.isGroup) {
       logger.debug('🔍 Mensaje ignorado: no es de grupo');
