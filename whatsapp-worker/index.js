@@ -542,6 +542,9 @@ function setupEventHandlers() {
   // Usar solo message_create que se dispara para todos los mensajes
  // Cambiamos 'message' por 'message_create' para mayor fiabilidad
   client.on('message_create', async (message) => {
+    // DEBUG: Ver si llegan mensajes
+    console.log(`[DEBUG] Mensaje recibido de: ${message.from} - Body: ${message.body?.substring(0, 50)}...`);
+    
     // 1. Ignorar mensajes propios para evitar bucles infinitos
     if (message.fromMe) return;
 
@@ -551,11 +554,16 @@ function setupEventHandlers() {
       
       // 3. Verificación de seguridad: ¿Es un grupo permitido?
       const groupName = chat.name?.trim() || '';
-      const isAllowed = GRUPOS_PERMITIDOS.some(
-        g => g.trim().toLowerCase() === groupName.toLowerCase()
-      );
+      console.log(`[DEBUG] Grupo detectado: "${groupName}"`);
+      
+      const isAllowed = allowedGroupsCache.has(groupName.toLowerCase());
+      console.log(`[DEBUG] ¿Grupo permitido? ${isAllowed}`);
+      console.log(`[DEBUG] Cache contiene:`, Array.from(allowedGroupsCache));
 
-      if (!isAllowed) return;
+      if (!isAllowed) {
+        console.log(`[DEBUG] Mensaje ignorado - grupo no permitido`);
+        return;
+      }
 
       // Log visual para confirmar que el bot "vio" el mensaje
       logger.info(`📩 Mensaje detectado en grupo permitido: [${groupName}]`);
