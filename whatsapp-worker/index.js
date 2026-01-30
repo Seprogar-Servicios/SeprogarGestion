@@ -544,17 +544,27 @@ function setupEventHandlers() {
   client.on('message_create', async (message) => {
     // DEBUG: Ver si llegan mensajes
     console.log(`[DEBUG] Mensaje recibido de: ${message.from} - Body: ${message.body?.substring(0, 50)}...`);
+    console.log(`[DEBUG] ¿Mensaje reenviado? ${message.forwardingScore > 0}`);
+    console.log(`[DEBUG] fromMe: ${message.fromMe}`);
     
     // 1. Ignorar mensajes propios para evitar bucles infinitos
     if (message.fromMe) return;
 
     // 2. Obtener el chat de forma asíncrona ANTES de procesar
     try {
+      console.log(`[DEBUG] Intentando obtener chat para mensaje de: ${message.from}`);
       const chat = await message.getChat();
+      console.log(`[DEBUG] Chat obtenido - ID: ${chat.id._serialized} - Nombre: "${chat.name}" - Es grupo: ${chat.isGroup}`);
       
       // 3. Verificación de seguridad: ¿Es un grupo permitido?
       const groupName = chat.name?.trim() || '';
       console.log(`[DEBUG] Grupo detectado: "${groupName}"`);
+      
+      // Si no es grupo, ignorar
+      if (!chat.isGroup) {
+        console.log(`[DEBUG] Mensaje ignorado - no es de grupo (es de ${message.from})`);
+        return;
+      }
       
       const isAllowed = allowedGroupsCache.has(groupName.toLowerCase());
       console.log(`[DEBUG] ¿Grupo permitido? ${isAllowed}`);
