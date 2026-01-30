@@ -534,7 +534,6 @@ function setupEventHandlers() {
     logger.info('\n👂 ESCUCHANDO MENSAJES...\n');
   });
 
-  console.log("DEBUG: Mensaje recibido de:", message.from)
   // Usar solo message_create que se dispara para todos los mensajes
  // Cambiamos 'message' por 'message_create' para mayor fiabilidad
   client.on('message_create', async (message) => {
