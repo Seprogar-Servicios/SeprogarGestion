@@ -225,6 +225,8 @@ async function initializeClient() {
       defaultViewport: chromium.defaultViewport,
       ignoreHTTPSErrors: true,
       ignoreDefaultArgs: ['--disable-extensions'],
+      protocolTimeout: 60000, // 60 segundos para llamadas al protocolo
+      slowMo: 100 // 100ms de retraso entre acciones
     };
 
     logger.info('Configurando cliente de WhatsApp...');
@@ -238,10 +240,16 @@ async function initializeClient() {
       qrTimeout: 0,
       authTimeout: 0,
       takeoverOnConflict: true,
-      takeoverTimeoutMs: 60000,
+      takeoverTimeoutMs: 120000, // 2 minutos
       restartOnAuthFail: true,
       disableWelcome: true,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
+      // Timeouts adicionales para operaciones lentas
+      requestTimeout: 60000, // 60 segundos para requests
+      puppeteerOptions: {
+        ...puppeteerOptions,
+        timeout: 120000 // 2 minutos para operaciones generales
+      }
     });
 
     logger.info('Configurando manejadores de eventos...');
