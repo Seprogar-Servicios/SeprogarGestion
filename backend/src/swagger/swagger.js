@@ -9,7 +9,8 @@ const options = {
       description: 'API interna para gestión de tareas, materiales y usuarios (PWA, MERN)',
     },
     servers: [
-      { url: 'http://localhost:4000/api', description: 'Local dev' }
+      { url: 'http://localhost:4000/api', description: 'Local dev' },
+      { url: 'https://futurgas-backend.onrender.com/api', description: 'Producción' }
     ],
     components: {
       securitySchemes: {
