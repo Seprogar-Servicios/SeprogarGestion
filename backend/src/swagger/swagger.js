@@ -19,6 +19,12 @@ const options = {
           scheme: 'bearer',
           bearerFormat: 'JWT',
         },
+        ApiKeyAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'Authorization',
+          description: 'API Key para autenticación del worker'
+        },
       },
     },
     security: [{ bearerAuth: [] }],

@@ -1,6 +1,104 @@
 const Tarea = require('../models/Tarea');
 const { tareaSchema } = require('../utils/validators');
 
+/**
+ * @swagger
+ * /worker/tareas:
+ *   post:
+ *     summary: Crear una tarea desde el worker de WhatsApp
+ *     tags: [Worker]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - titulo
+ *               - descripcion
+ *               - fechaEjecucion
+ *             properties:
+ *               titulo:
+ *                 type: string
+ *                 description: Título de la tarea
+ *               descripcion:
+ *                 type: string
+ *                 description: Descripción detallada
+ *               fechaEjecucion:
+ *                 type: string
+ *                 format: date
+ *                 description: Fecha de ejecución (YYYY-MM-DD)
+ *               cliente:
+ *                 type: string
+ *                 description: Nombre del cliente
+ *               direccion:
+ *                 type: string
+ *                 description: Dirección del servicio
+ *     responses:
+ *       201:
+ *         description: Tarea creada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Tarea'
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Error de validación
+ *   get:
+ *     summary: Obtener todas las tareas (para el worker)
+ *     tags: [Worker]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de tareas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Tarea'
+ */
+
+/**
+ * @swagger
+ * /worker/tareas/check-duplicate/{numero}:
+ *   get:
+ *     summary: Verificar si una tarea existe por número
+ *     tags: [Worker]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: numero
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Número de la tarea a verificar
+ *     responses:
+ *       200:
+ *         description: Resultado de la verificación
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 exists:
+ *                   type: boolean
+ *                 tarea:
+ *                   $ref: '#/components/schemas/Tarea'
+ *       404:
+ *         description: Tarea no encontrada
+ */
+
 // Crear tarea desde el worker (sin requerir usuario autenticado)
 exports.createTarea = async (req, res) => {
   try {

@@ -6,6 +6,89 @@ const mongoose = require('mongoose');
 const Subscription = require('../models/Subscription');
 const { sendNotification } = require('../utils/push');
 
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Tarea:
+ *       type: object
+ *       required:
+ *         - titulo
+ *         - descripcion
+ *         - fechaEjecucion
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: ID autogenerado de la tarea
+ *         titulo:
+ *           type: string
+ *           description: Título de la tarea
+ *         descripcion:
+ *           type: string
+ *           description: Descripción detallada de la tarea
+ *         fechaEjecucion:
+ *           type: string
+ *           format: date
+ *           description: Fecha de ejecución de la tarea
+ *         estado:
+ *           type: string
+ *           enum: [pendiente, en_progreso, completada, cancelada]
+ *           description: Estado de la tarea
+ *         creadoPor:
+ *           type: string
+ *           description: ID del usuario que creó la tarea
+ */
+
+/**
+ * @swagger
+ * /tareas:
+ *   get:
+ *     summary: Obtener todas las tareas
+ *     tags: [Tareas]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de tareas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Tarea'
+ *   post:
+ *     summary: Crear una nueva tarea
+ *     tags: [Tareas]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - titulo
+ *               - descripcion
+ *               - fechaEjecucion
+ *             properties:
+ *               titulo:
+ *                 type: string
+ *               descripcion:
+ *                 type: string
+ *               fechaEjecucion:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       201:
+ *         description: Tarea creada exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tarea'
+ *       400:
+ *         description: Error de validación
+ */
 // Crear tarea
 exports.createTarea = async (req, res) => {
   const { error } = tareaSchema.validate(req.body);
@@ -53,6 +136,67 @@ exports.createTarea = async (req, res) => {
     res.status(500).json({ message: 'Error al crear tarea', error: err.message });
   }
 };
+
+/**
+ * @swagger
+ * /tareas/{id}:
+ *   get:
+ *     summary: Obtener una tarea por ID
+ *     tags: [Tareas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID de la tarea
+ *     responses:
+ *       200:
+ *         description: Tarea encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tarea'
+ *       404:
+ *         description: Tarea no encontrada
+ *   put:
+ *     summary: Actualizar una tarea
+ *     tags: [Tareas]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID de la tarea
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               titulo:
+ *                 type: string
+ *               descripcion:
+ *                 type: string
+ *               estado:
+ *                 type: string
+ *                 enum: [pendiente, en_progreso, completada, cancelada]
+ *     responses:
+ *       200:
+ *         description: Tarea actualizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tarea'
+ *       404:
+ *         description: Tarea no encontrada
+ */
 
 // Listar tareas con filtros (usuario, estado, fecha, cliente)
 exports.getTareas = async (req, res) => {
