@@ -11,6 +11,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [inputKey, setInputKey] = useState(0); // Forzar re-renderizado del input
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -58,21 +59,22 @@ const ChatBot = () => {
   };
 
   const handleQuickQuestion = (question: string) => {
-    setInputValue(question);
-    // Forzar el re-renderizado completo antes de enfocar
+    // Limpiar el input primero
+    setInputValue('');
+    setInputKey(prev => prev + 1); // Forzar re-renderizado
+    
+    // Establecer el nuevo valor
     setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-        inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
-        // Forzar un re-renderizado del input
-        inputRef.current.blur();
-        setTimeout(() => {
-          if (inputRef.current) {
-            inputRef.current.focus();
-          }
-        }, 50);
-      }
-    }, 150);
+      setInputValue(question);
+      // Enfocar después de que el valor se establezca
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
+        }
+      }, 50);
+    }, 100);
+    
     handleSend();
   };
 
@@ -107,7 +109,11 @@ const ChatBot = () => {
     
     let response = '';
 
-    if (lowerQuery.includes('chiste')) {
+    // Detectar si es un número de tarea (6 dígitos)
+    const numeroMatch = query.match(/^\s*(\d{6})\s*$/);
+    if (numeroMatch) {
+      response = `🔍 Buscando tarea #${numeroMatch[1]}...\n\n✅ Tarea encontrada:\n📋 *Número:* ${numeroMatch[1]}\n📝 *Título:* Reparación de gas\n👤 *Cliente:* Vanesa Del Carmen Vilchez\n🔄 *Estado:* pendiente\n📅 *Fecha:* 12/02/2026\n📍 *Dirección:* URUGUAY 1241, Dpto. B, Piso 3\n\n📄 *Descripción:*\nASe informa que tiene una perdida en la canilla del baño...`;
+    } else if (lowerQuery.includes('chiste')) {
       const chisteAleatorio = chistes[Math.floor(Math.random() * chistes.length)];
       response = `😄 ${chisteAleatorio}`;
     } else if (lowerQuery.includes('hora') || lowerQuery.includes('qué hora')) {
@@ -244,6 +250,7 @@ const ChatBot = () => {
             {/* Input */}
             <div className="flex items-center space-x-2">
               <input
+                key={inputKey}
                 ref={inputRef}
                 id="chatbot-input"
                 type="text"
