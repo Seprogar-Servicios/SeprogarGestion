@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Message {
   type: 'user' | 'bot';
@@ -58,6 +58,14 @@ const ChatBot = () => {
 
   const handleQuickQuestion = (question: string) => {
     setInputValue(question);
+    // Forzar el re-renderizado y enfocar el input
+    setTimeout(() => {
+      const inputElement = document.getElementById('chatbot-input') as HTMLInputElement;
+      if (inputElement) {
+        inputElement.focus();
+        inputElement.setSelectionRange(inputElement.value.length, inputElement.value.length);
+      }
+    }, 100);
     handleSend();
   };
 
@@ -139,7 +147,7 @@ const ChatBot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 bg-green-500 text-white p-4 rounded-full shadow-lg hover:bg-green-600 transition-all duration-300 z-50"
+          className="fixed bottom-4 right-8 bg-[#00a4eb] text-white p-4 rounded-full shadow-lg hover:bg-[#0093d4] transition-all duration-300 z-50"
           style={{ width: '60px', height: '60px' }}
         >
           🤖
@@ -148,16 +156,16 @@ const ChatBot = () => {
 
       {/* Ventana de chat */}
       {isOpen && (
-        <div className="fixed bottom-0 right-0 w-96 h-[600px] bg-white shadow-2xl rounded-t-2xl z-50 flex flex-col">
+        <div className="fixed bottom-0 right-2 w-96 h-[600px] bg-white shadow-2xl rounded-t-2xl z-50 flex flex-col">
           {/* Header */}
-          <div className="bg-green-500 text-white p-4 rounded-t-2xl flex items-center justify-between">
+          <div className="bg-[#00a4eb] text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span style={{ fontSize: '20px' }}>🤖</span>
               <span className="font-semibold">Asistente Futurgas</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-green-600 p-1 rounded text-xl"
+              className="text-white hover:bg-[#0093d4] p-1 rounded text-xl"
             >
               ×
             </button>
@@ -229,17 +237,18 @@ const ChatBot = () => {
             {/* Input */}
             <div className="flex items-center space-x-2">
               <input
+                id="chatbot-input"
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Escribe tu consulta..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a4eb] focus:border-transparent text-sm"
               />
               <button
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isTyping}
-                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors"
+                className="bg-[#00a4eb] hover:bg-[#0093d4] disabled:bg-gray-300 text-white p-2 rounded-lg transition-colors"
               >
                 Enviar
               </button>
