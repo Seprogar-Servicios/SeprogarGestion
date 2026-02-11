@@ -34,7 +34,7 @@ const ChatBot = () => {
   useEffect(() => {
     setMessages([{
       type: 'bot',
-      content: '🤖 ¡Hola! Soy el asistente de Futurgas. ¿En qué puedo ayudarte hoy?',
+      content: '🤖 ¡Hola! Soy Futi, el asistente de Futurgas. ¿En qué puedo ayudarte hoy?',
       timestamp: new Date()
     }]);
   }, []);
@@ -156,12 +156,12 @@ const ChatBot = () => {
 
       {/* Ventana de chat */}
       {isOpen && (
-        <div className="fixed bottom-0 right-2 w-96 h-[600px] bg-white shadow-2xl rounded-t-2xl z-50 flex flex-col">
+        <div className="fixed bottom-0 right-4 w-96 h-[600px] bg-white shadow-2xl rounded-t-2xl z-50 flex flex-col">
           {/* Header */}
           <div className="bg-[#00a4eb] text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span style={{ fontSize: '20px' }}>🤖</span>
-              <span className="font-semibold">Asistente Futurgas</span>
+              <span className="font-semibold">Futi</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
