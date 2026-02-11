@@ -12,6 +12,7 @@ const ChatBot = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const quickQuestions = [
     "¿Qué tareas tengo hoy?",
@@ -58,12 +59,11 @@ const ChatBot = () => {
 
   const handleQuickQuestion = (question: string) => {
     setInputValue(question);
-    // Forzar el re-renderizado y enfocar el input
+    // Usar el ref para mejor control del input
     setTimeout(() => {
-      const inputElement = document.getElementById('chatbot-input') as HTMLInputElement;
-      if (inputElement) {
-        inputElement.focus();
-        inputElement.setSelectionRange(inputElement.value.length, inputElement.value.length);
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
       }
     }, 100);
     handleSend();
@@ -156,7 +156,7 @@ const ChatBot = () => {
 
       {/* Ventana de chat */}
       {isOpen && (
-        <div className="fixed bottom-0 right-4 w-96 h-[600px] bg-white shadow-2xl rounded-t-2xl z-50 flex flex-col">
+        <div className="fixed bottom-0 right-6 w-96 h-[600px] bg-white shadow-2xl rounded-t-2xl z-50 flex flex-col">
           {/* Header */}
           <div className="bg-[#00a4eb] text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -237,6 +237,7 @@ const ChatBot = () => {
             {/* Input */}
             <div className="flex items-center space-x-2">
               <input
+                ref={inputRef}
                 id="chatbot-input"
                 type="text"
                 value={inputValue}
