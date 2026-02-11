@@ -59,13 +59,20 @@ const ChatBot = () => {
 
   const handleQuickQuestion = (question: string) => {
     setInputValue(question);
-    // Usar el ref para mejor control del input
+    // Forzar el re-renderizado completo antes de enfocar
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
         inputRef.current.setSelectionRange(inputRef.current.value.length, inputRef.current.value.length);
+        // Forzar un re-renderizado del input
+        inputRef.current.blur();
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, 50);
       }
-    }, 100);
+    }, 150);
     handleSend();
   };
 
@@ -244,7 +251,7 @@ const ChatBot = () => {
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Escribe tu consulta..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a4eb] focus:border-transparent text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00a4eb] focus:border-[#00a4eb] focus:border-2 text-sm transition-all duration-200"
               />
               <button
                 onClick={handleSend}
