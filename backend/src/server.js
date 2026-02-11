@@ -121,6 +121,11 @@ app.use('/api/recibos', require('./routes/recibo.routes'));
 // Rutas para el worker de WhatsApp (autenticación por API_KEY)
 // Rutas de la API
 app.use('/api/worker/tareas', require('./routes/apiWorker.routes'));
+
+// Rutas específicas para el bot (autenticación por API_KEY)
+app.use('/api/bot', require('./routes/bot.routes'));
+
+// Rutas existentes
 app.use('/api/especialidades', require('./routes/especialidad.routes'));
 app.use('/api/materiales', require('./routes/material.routes'));
 app.use('/api/data', require('./routes/data.routes'));
