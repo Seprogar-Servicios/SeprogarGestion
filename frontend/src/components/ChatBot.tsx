@@ -109,10 +109,28 @@ const ChatBot = () => {
     
     let response = '';
 
+    // Detectar saludos básicos
+    if (lowerQuery.includes('hola') || lowerQuery.includes('buen día') || lowerQuery.includes('buenas tardes') || lowerQuery.includes('buenas noches')) {
+      const saludos = [
+        '¡Hola! Soy Futi, ¿en qué puedo ayudarte hoy? 😊',
+        '¡Buen día! ¿Qué necesitas consultar? 🌞',
+        '¡Hola! Estoy aquí para ayudarte con las tareas 🤖',
+        '¡Buenas! ¿Cómo puedo asistirte hoy? 👋'
+      ];
+      response = saludos[Math.floor(Math.random() * saludos.length)];
+    } else if (lowerQuery.includes('cómo estás') || lowerQuery.includes('como estas')) {
+      const estados = [
+        '¡Estoy perfecto! Listo para ayudarte con las tareas 🤖✨',
+        '¡Muy bien! Gracias por preguntar 😊 ¿Qué necesitas?',
+        '¡Excelente! Siempre listo para asistirte 🤖',
+        '¡Todo bien! ¿En qué puedo ayudarte hoy? 😊'
+      ];
+      response = estados[Math.floor(Math.random() * estados.length)];
+    }
     // Detectar si es un número de tarea (6 dígitos)
     const numeroMatch = query.match(/^\s*(\d{6})\s*$/);
     if (numeroMatch) {
-      response = `🔍 Buscando tarea #${numeroMatch[1]}...\n\n✅ Tarea encontrada:\n📋 *Número:* ${numeroMatch[1]}\n📝 *Título:* Reparación de gas\n👤 *Cliente:* Vanesa Del Carmen Vilchez\n🔄 *Estado:* pendiente\n📅 *Fecha:* 12/02/2026\n📍 *Dirección:* URUGUAY 1241, Dpto. B, Piso 3\n\n📄 *Descripción:*\nASe informa que tiene una perdida en la canilla del baño...`;
+      response = `🔍 Buscando tarea #${numeroMatch[1]}...\n\n✅ Tarea encontrada:\n📋 Número: ${numeroMatch[1]}\n📝 Título: Reparación de gas\n👤 Cliente: Vanesa Del Carmen Vilchez\n🔄 Estado: pendiente\n📅 Fecha: 12/02/2026\n📍 Dirección: URUGUAY 1241, Dpto. B, Piso 3\n\n📄 Descripción:\nASe informa que tiene una perdida en la canilla del baño...`;
     } else if (lowerQuery.includes('chiste')) {
       const chisteAleatorio = chistes[Math.floor(Math.random() * chistes.length)];
       response = `😄 ${chisteAleatorio}`;
@@ -135,7 +153,7 @@ const ChatBot = () => {
         response = '🤖 Puedo ayudarte con:\n\n• Ver tareas de hoy/mañana\n• Buscar tareas por número\n• Contar tareas pendientes\n• Decirte la hora y fecha\n• Contarte chistes 😄\n\n¿Qué necesitas?';
       }
     } else {
-      response = '🤔 No entendí esa consulta. Prueba con una de las preguntas rápidas de arriba.';
+      response = '🤔 No entendí esa consulta. Prueba con una de las preguntas rápidas de arriba.\n\n¿O quizás querías decirme:\n• "Hola Futi"\n• "¿Cómo estás?"\n• O simplemente preguntarme algo sobre las tareas? 😊';
     }
 
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
