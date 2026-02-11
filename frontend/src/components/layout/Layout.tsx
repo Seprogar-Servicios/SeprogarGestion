@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
+import ChatBot from '../../components/ChatBot';
 import { 
   Menu, 
   X, 
@@ -231,6 +232,10 @@ const Layout: React.FC = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+      
+      {/* ChatBot Component */}
+      <ChatBot />
+      
     </div>
   );
 };
