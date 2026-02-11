@@ -180,7 +180,7 @@ const ChatBot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-8 bg-[#00a4eb] text-white p-4 rounded-full shadow-lg hover:bg-[#0093d4] transition-all duration-300 z-50"
+          className="fixed bottom-4 right-4 md:right-8 bg-[#00a4eb] text-white p-4 rounded-full shadow-lg hover:bg-[#0093d4] transition-all duration-300 z-50"
           style={{ width: '60px', height: '60px' }}
         >
           🤖
@@ -189,7 +189,7 @@ const ChatBot = () => {
 
       {/* Ventana de chat */}
       {isOpen && (
-        <div className="fixed bottom-0 right-6 w-96 h-[600px] bg-white shadow-2xl rounded-t-2xl z-50 flex flex-col">
+        <div className="fixed bottom-0 right-4 md:right-6 w-full md:w-96 h-[600px] bg-white shadow-2xl rounded-t-2xl z-50 flex flex-col">
           {/* Header */}
           <div className="bg-[#00a4eb] text-white p-4 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center space-x-2">
