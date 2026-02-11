@@ -211,7 +211,7 @@ async function initializeClient() {
     
     // Configuración mejorada de Puppeteer
   const puppeteerOptions = {
-    headless: false,
+    headless: process.env.NODE_ENV === 'production' ? 'new' : false, // headless en producción
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -219,6 +219,10 @@ async function initializeClient() {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--disable-gpu',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI,BlinkGenPropertyTrees',
         ...chromium.args
       ],
       executablePath,
@@ -226,7 +230,7 @@ async function initializeClient() {
       ignoreHTTPSErrors: true,
       ignoreDefaultArgs: ['--disable-extensions'],
       protocolTimeout: 60000, // 60 segundos para llamadas al protocolo
-      slowMo: 100 // 100ms de retraso entre acciones
+      slowMo: process.env.NODE_ENV === 'production' ? 0 : 100 // Sin retraso en producción
     };
 
     logger.info('Configurando cliente de WhatsApp...');
@@ -256,7 +260,20 @@ async function initializeClient() {
     setupEventHandlers();
     
     logger.info('Inicializando cliente...');
-    await client.initialize();
+    
+    // Agregar timeout global para inicialización
+    const initPromise = client.initialize();
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Inicialización timeout después de 5 minutos')), 300000);
+    });
+    
+    try {
+      await Promise.race([initPromise, timeoutPromise]);
+      logger.info('✅ Cliente inicializado exitosamente');
+    } catch (initError) {
+      logger.error('❌ Error en inicialización:', initError.message);
+      throw initError;
+    }
     
   } catch (err) {
     logger.error('Error durante la inicialización:', err);
