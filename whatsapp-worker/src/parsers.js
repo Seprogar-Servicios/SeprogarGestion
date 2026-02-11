@@ -2,7 +2,7 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /Cliente:\s*(.+?)(?=\s+(Whatsapp|Dirección|Descripcion|TURNO|$))/is,
+  CLIENTE: /Cliente[\s:]*(.+?)(?=\s+(Whatsapp|Dirección|Descripcion|TURNO|$))/is,
   TELEFONO: /(?:Telefono|Teléfono|Whatsapp)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   WHATSAPP_TITULAR: /(?:Whatsapp|Tel[ée]fono)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$)|\n\s*\n)/i,
@@ -112,7 +112,8 @@ function parsePedidoMessage(message) {
       
       // Buscar línea de cliente (formato: "Cliente: NOMBRE" o con texto en negrita)
       const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i) || 
-                         line.match(/^\*?Cliente[\s:]+\*?([^*\n]+)/i);
+                         line.match(/^\*?Cliente[\s:]+\*?([^*\n]+)/i) ||
+                         line.match(/^Cliente:\s*(.+)/i); // Agregado soporte para "Cliente:"
       
       if (clienteMatch && clienteMatch[1]) {
         cliente = clienteMatch[1]
