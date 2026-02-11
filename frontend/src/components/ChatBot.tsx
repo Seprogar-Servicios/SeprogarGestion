@@ -180,7 +180,7 @@ const ChatBot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 md:right-8 bg-[#00a4eb] text-white p-4 rounded-full shadow-lg hover:bg-[#0093d4] transition-all duration-300 z-50"
+          className="fixed bottom-4 right-6 md:right-8 bg-[#00a4eb] text-white p-4 rounded-full shadow-lg hover:bg-[#0093d4] transition-all duration-300 z-50"
           style={{ width: '60px', height: '60px' }}
         >
           🤖
