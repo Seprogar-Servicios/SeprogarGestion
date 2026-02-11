@@ -109,8 +109,10 @@ const ChatBot = () => {
     
     let response = '';
 
-    // Detectar saludos básicos
-    if (lowerQuery.includes('hola') || lowerQuery.includes('buen día') || lowerQuery.includes('buenas tardes') || lowerQuery.includes('buenas noches')) {
+    // Detectar saludos básicos (más flexible)
+    if (lowerQuery.includes('hola') || lowerQuery.includes('buen día') || lowerQuery.includes('buenas tardes') || lowerQuery.includes('buenas noches') || 
+        lowerQuery.includes('hola futi') || lowerQuery.includes('buenos días') || lowerQuery.includes('hey') || lowerQuery.includes('que tal') ||
+        lowerQuery.includes('futi') || lowerQuery.includes('asistente')) {
       const saludos = [
         '¡Hola! Soy Futi, ¿en qué puedo ayudarte hoy? 😊',
         '¡Buen día! ¿Qué necesitas consultar? 🌞',
@@ -153,7 +155,7 @@ const ChatBot = () => {
         response = '🤖 Puedo ayudarte con:\n\n• Ver tareas de hoy/mañana\n• Buscar tareas por número\n• Contar tareas pendientes\n• Decirte la hora y fecha\n• Contarte chistes 😄\n\n¿Qué necesitas?';
       }
     } else {
-      response = '🤔 No entendí esa consulta. Prueba con una de las preguntas rápidas de arriba.\n\n¿O quizás querías decirme:\n• "Hola Futi"\n• "¿Cómo estás?"\n• O simplemente preguntarme algo sobre las tareas? 😊';
+      response = '🤔 No entendí esa consulta. Prueba con una de las preguntas rápidas de arriba.';
     }
 
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
