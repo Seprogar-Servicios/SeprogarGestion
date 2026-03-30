@@ -2,12 +2,12 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /Pedido\s+(\d+)/i,
-  CLIENTE: /Cliente[\s:]*(.+?)(?=\s+(Whatsapp|Dirección|Descripcion|TURNO|$))/is,
+  CLIENTE: /Cliente[\s:]*(.+?)(?=\s+(Whatsapp|Dirección|Descripcion|TURNO|Barrio|$))/is,
   TELEFONO: /(?:Telefono|Teléfono|Whatsapp)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   WHATSAPP_TITULAR: /(?:Whatsapp|Tel[ée]fono)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$)|\n\s*\n)/i,
   DIRECCION: /(?:Dirección\s*(?:póliza|pedido|pedido:)|Domicilio)\s*:?\s*([^\n]+?)(?=\s*(?:Barrio|TURNO|$)|\n\s*\n)/i,
-  BARRIO: /Barrio\s*:?\s*([^\n]+?)(?=\s*TURNO|$)/i,
+  BARRIO: /Barrio\s*:?\s*([^\n]+?)(?=\s*(?:Recuerde|TURNO|\.|$))/i,
   TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})/i
 };
 
@@ -74,6 +74,12 @@ function parsePedidoMessage(message) {
   try {
     message = limitMessageSize(message);
     
+    // Si el mensaje no tiene formato [INFO], procesarlo directamente
+    if (!message.includes('[INFO]')) {
+      console.log('Procesando mensaje directo sin formato [INFO]');
+      return parseDirectMessage(message);
+    }
+    
     if (message.includes('[INFO]')) {
       cleanContentMatch = PEDIDO_PATTERNS.CLEAN_CONTENT.exec(message);
       if (cleanContentMatch?.[1]) {
@@ -105,6 +111,7 @@ function parsePedidoMessage(message) {
     let numeroTitular = '';
     let descripcion = '';
     let direccion = '';
+    let barrio = '';
     
     // Buscar cliente y teléfono en el mensaje
     for (let i = 0; i < lines.length; i++) {
@@ -113,7 +120,7 @@ function parsePedidoMessage(message) {
       // Buscar línea de cliente (formato: "Cliente: NOMBRE" o con texto en negrita)
       const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i) || 
                          line.match(/^\*?Cliente[\s:]+\*?([^*\n]+)/i) ||
-                         line.match(/^Cliente:\s*(.+)/i); // Agregado soporte para "Cliente:"
+                         line.match(/^Cliente:\s*(.+)/i);
       
       if (clienteMatch && clienteMatch[1]) {
         cliente = clienteMatch[1]
@@ -176,10 +183,6 @@ function parsePedidoMessage(message) {
     
     let descripcionStart = -1;
     
-    // Buscar dirección (preferir 'Dirección pedido' sobre 'Dirección póliza')
-    let direccionMatch = cleanMessage.match(/Dirección\s*pedido\s*:?\s*([^\n]+)/i);
-    if (!direccionMatch) {
-      direccionMatch = cleanMessage.match(/Dirección\s*póliza\s*:?\s*([^\n]+)/i);
     }
     
     if (direccionMatch && direccionMatch[1]) {
