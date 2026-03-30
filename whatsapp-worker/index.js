@@ -771,6 +771,7 @@ async function processMessage(message) {
 
     // Limpiar y normalizar el contenido del mensaje (versión más eficiente)
     const cleanContent = messageBody
+      .replace(/^"|"$/g, '') // Eliminar comillas al inicio y final
       .replace(/\*/g, '')
       .replace(/\s+/g, ' ')
       .trim();
