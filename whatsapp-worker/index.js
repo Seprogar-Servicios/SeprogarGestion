@@ -774,18 +774,24 @@ async function processMessage(message) {
       .replace(/\*/g, '')
       .replace(/\s+/g, ' ')
       .trim();
-
+    
+    // Debug para ver qué contenido llega
+    logger.debug(`[DEBUG] cleanContent: "${cleanContent}"`);
+    
     logger.debug('Contenido limpio del mensaje:', cleanContent);
-
-    // Determinar el tipo de mensaje y procesarlo
-    let taskData = null;
-    let messageType = 'desconocido';
-    let parser = null;
 
     // Verificación más eficiente del tipo de mensaje
     const firstWord = cleanContent.trim().split(/\s+/)[0] || '';
     const lowerContent = cleanContent.toLowerCase();
     
+    logger.debug(`[DEBUG] firstWord: "${firstWord}"`);
+    logger.debug(`[DEBUG] cleanContent.includes('TURNO'): ${cleanContent.includes('TURNO')}`);
+    
+    let taskData = null;
+    let messageType = 'desconocido';
+    let parser = null;
+
+    // Verificación más eficiente del tipo de mensaje
     if (firstWord === 'TAREA:') {
       messageType = 'tarea';
       parser = parseTareaMessage;
