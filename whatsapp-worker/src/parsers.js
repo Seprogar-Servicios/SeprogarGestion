@@ -6,7 +6,7 @@ const PEDIDO_PATTERNS = {
   TELEFONO: /(?:Telefono|Teléfono|Whatsapp)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   WHATSAPP_TITULAR: /(?:Whatsapp|Tel[ée]fono)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$)|\n\s*\n)/i,
-  DIRECCION: /(?:Dirección\s*(?:póliza|pedido|pedido:)|Domicilio)\s*:?\s*([^\n]+?)(?=\s*(?:Barrio|TURNO|$)|\n\s*\n)/i,
+  DIRECCION: /(?:Dirección\s*(?:póliza|pedido|pedido:)|Domicilio)\s*:?\s*([^\n]+?)(?=\s*(?:TURNO|Barrio|Recuerde|$)|\n\s*\n)/i,
   BARRIO: /Barrio\s*:?\s*([^\n]+?)(?=\s*(?:Recuerde|TURNO|\.|$))/i,
   TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})/i
 };
