@@ -183,8 +183,6 @@ function parsePedidoMessage(message) {
     
     let descripcionStart = -1;
     
-    }
-    
     if (direccionMatch && direccionMatch[1]) {
       direccion = direccionMatch[1]
         .replace(/^\s*:\s*/, '')
@@ -325,7 +323,6 @@ function parsePedidoMessage(message) {
       console.error('Error al extraer dirección:', error);
     }
     
-    let barrio = '';
     const barrioMatch = PEDIDO_PATTERNS.BARRIO.exec(message);
     if (barrioMatch?.[1]) {
       barrio = barrioMatch[1].trim();
