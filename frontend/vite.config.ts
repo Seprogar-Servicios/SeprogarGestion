@@ -7,4 +7,19 @@ export default defineConfig({
   build: {
     sourcemap: true, // opcional
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '^/uploads': {  // Usar ^ para que coincida exactamente con /uploads
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/uploads/, '/uploads'), // Mantener la misma ruta
+      }
+    }
+  },
 });

@@ -4,7 +4,7 @@ import { useAppSelector } from '../../store';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'usuario';
+  requiredRole?: 'admin' | 'usuario' | 'adminConsorcio';
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {

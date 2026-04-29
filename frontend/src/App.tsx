@@ -11,13 +11,24 @@ import TaskCalendar from './components/tasks/TaskCalendar';
 import TaskDetails from './components/tasks/TaskDetails';
 import UserManagement from './components/admin/UserManagement';
 import SpecialtyManagement from './components/admin/SpecialtyManagement';
+import TareaConsorcioManagement from './components/admin/TareaConsorcioManagement';
 import DataImportExport from './components/admin/DataImportExport';
 import ProfilePage from './components/user/ProfilePage';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Analytics from './components/analytics/Analytics';
+import ConsorcioAnalytics from './components/analytics/ConsorcioAnalytics';
 import RecibosAdmin from './components/recibos/admin/RecibosAdmin';
 import MisRecibos from './components/recibos/tecnico/MisRecibos';
+import TecnicoTareasConsorcio from './components/tecnico/TareasConsorcio';
+import TecnicoDashboard from './components/tecnico/Dashboard';
+// Importar componentes de AdminConsorcio
+import AdminConsorcioDashboard from './components/adminConsorcio/Dashboard';
+import AdminConsorcioTareasManagement from './components/adminConsorcio/TareasManagement';
+import AdminConsorcioCalendar from './components/adminConsorcio/Calendar';
+import AdminConsorcioProfile from './components/adminConsorcio/Profile';
+import AdminConsorcioAnalytics from './components/adminConsorcio/Analytics';
+import Legales from './components/Legales';
 import './App.css';
 
 // Componente que envuelve las rutas para manejar la URL oculta
@@ -41,9 +52,21 @@ const AppRoutes = () => {
         <Route path="tasks/:id" element={<TaskDetails />} />
         <Route path="calendar" element={<TaskCalendar />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="legales" element={<Legales />} />
         <Route path="mis-recibos" element={<MisRecibos />} />
+        <Route path="tecnico/tareas-consorcio" element={
+          <ProtectedRoute requiredRole="usuario">
+            <TecnicoTareasConsorcio />
+          </ProtectedRoute>
+        } />
+        <Route path="tecnico/dashboard" element={
+          <ProtectedRoute requiredRole="usuario">
+            <TecnicoDashboard />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/specialties" element={<SpecialtyManagement />} />
+        <Route path="/admin/tareas-consorcio" element={<TareaConsorcioManagement />} />
         <Route path="/admin/importar-exportar" element={<DataImportExport />} />
         <Route path="/admin/recibos" element={
           <ProtectedRoute requiredRole="admin">
@@ -55,6 +78,39 @@ const AppRoutes = () => {
             <Analytics />
           </ProtectedRoute>
         } />
+        <Route path="/admin/analytics-consorcio" element={
+          <ProtectedRoute requiredRole="admin">
+            <ConsorcioAnalytics />
+          </ProtectedRoute>
+        } />
+        
+        {/* Rutas específicas para AdminConsorcio */}
+        <Route path="/adminConsorcio/dashboard" element={
+          <ProtectedRoute requiredRole="adminConsorcio">
+            <AdminConsorcioDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/adminConsorcio/tareas" element={
+          <ProtectedRoute requiredRole="adminConsorcio">
+            <AdminConsorcioTareasManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/adminConsorcio/calendario" element={
+          <ProtectedRoute requiredRole="adminConsorcio">
+            <AdminConsorcioCalendar />
+          </ProtectedRoute>
+        } />
+        <Route path="/adminConsorcio/analytics" element={
+          <ProtectedRoute requiredRole="adminConsorcio">
+            <AdminConsorcioAnalytics />
+          </ProtectedRoute>
+        } />
+        <Route path="/adminConsorcio/profile" element={
+          <ProtectedRoute requiredRole="adminConsorcio">
+            <AdminConsorcioProfile />
+          </ProtectedRoute>
+        } />
+        
         {/* <Route path="/admin/materials" element={<MaterialManagement />} /> */}
         
         {/* Admin only routes - temporarily commented out */}

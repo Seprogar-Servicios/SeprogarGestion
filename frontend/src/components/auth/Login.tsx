@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { loginUser, clearError } from '../../store/slices/authSlice';
 import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
@@ -50,7 +50,7 @@ const Login: React.FC = () => {
             Iniciar Sesión
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Accede a tu cuenta de FuturgasGestión
+            Accede a tu cuenta de SeprogarGestion
           </p>
         </div>
 
@@ -137,18 +137,7 @@ const Login: React.FC = () => {
             </button>
           </div>
 
-          <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              ¿No tienes cuenta?{' '}
-              <Link
-                to="/register"
-                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Regístrate aquí
-              </Link>
-            </p>
-          </div>
-        </form>
+                  </form>
       </div>
     </div>
   );

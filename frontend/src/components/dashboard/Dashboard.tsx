@@ -31,6 +31,9 @@ const Dashboard: React.FC = () => {
   const { users } = useAppSelector((state) => state.users);
   const { especialidades } = useAppSelector((state) => state.especialidades);
   
+  // Estado para tareas de consorcio
+  const [tareasConsorcio, setTareasConsorcio] = useState<any[]>([]);
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -57,11 +60,40 @@ const Dashboard: React.FC = () => {
   
   const [currentFilters, setCurrentFilters] = useState<TaskFilters>({});
 
+  // Función para obtener tareas de consorcio
+  const fetchTareasConsorcio = async () => {
+    if (user?.rol !== 'admin') {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('accessToken');
+      
+      const response = await fetch('/api/tareas-consorcio', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTareasConsorcio(data.tareas || []);
+      } else {
+        setTareasConsorcio([]);
+      }
+    } catch (error) {
+      console.error('Error al cargar tareas de consorcio:', error);
+      setTareasConsorcio([]);
+    }
+  };
+
   useEffect(() => {
     dispatch(fetchTasks(currentFilters));
     if (user?.rol === 'admin') {
       dispatch(fetchUsers());
       dispatch(fetchEspecialidades());
+      fetchTareasConsorcio();
     }
   }, [dispatch, user?.rol, currentFilters]);
 
@@ -93,6 +125,10 @@ const Dashboard: React.FC = () => {
   const progressRate = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
   const pendingRate = totalTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0;
   const canceledRate = totalTasks > 0 ? Math.round((canceledTasks / totalTasks) * 100) : 0;
+
+  // Calculate consorcio tasks statistics
+  const totalConsorcioTasks = tareasConsorcio.length || 0;
+  const consorcioPendientesConfirmacion = tareasConsorcio.filter(t => t.estado === 'pendiente_confirmacion').length;
 
   const stats = [
     {
@@ -177,6 +213,28 @@ const Dashboard: React.FC = () => {
         changeType: 'neutral',
         hideChange: false,
         description: 'Administra las especialidades',
+        showDescription: true
+      },
+      {
+        name: 'Tareas de Consorcio',
+        value: totalConsorcioTasks,
+        icon: BarChart2,
+        color: 'bg-orange-500',
+        change: 'Gestionar tareas de consorcio',
+        changeType: 'neutral',
+        hideChange: false,
+        description: 'Todas las tareas de consorcio del sistema',
+        showDescription: true
+      },
+      {
+        name: 'Pendientes de Confirmación',
+        value: consorcioPendientesConfirmacion,
+        icon: Clock,
+        color: 'bg-yellow-500',
+        change: 'Confirmar tareas',
+        changeType: 'neutral',
+        hideChange: false,
+        description: 'Tareas esperando confirmación de admin de consorcio',
         showDescription: true
       }
     );

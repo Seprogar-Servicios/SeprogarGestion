@@ -4,7 +4,7 @@ export interface User {
   nombre: string;
   apellido?: string;
   email: string;
-  rol: 'admin' | 'usuario' | 'tecnico';
+  rol: 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
   especialidad?: string;
   aprobado: boolean;
   telefono?: string;
@@ -94,7 +94,7 @@ export interface RegisterData {
   nombre: string;
   email: string;
   password: string;
-  rol: 'admin' | 'usuario' | 'tecnico';
+  rol: 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
   especialidad?: string;
   telefono?: string;
 }
@@ -110,6 +110,47 @@ export interface TaskFilters {
   fechaHasta?: string;
   upcomingFilter?: 'past' | 'next24h' | 'next48h' | 'nextWeek' | 'nextMonth' | 'custom';
   usuario?: string;
+}
+
+// TareaConsorcio types
+export interface TareaConsorcio {
+  _id: string;
+  numero: string;
+  titulo: string;
+  descripcion: string;
+  precio: number;
+  estado: 'presupuesto' | 'confirmado' | 'pendiente' | 'en_progreso' | 'completada' | 'cancelada' | 'PENDIENTE_PAGO' | 'FACTURADO' | 'PAGADO';
+  cliente: string;
+  direccion: string;
+  administradorConsorcio: {
+    _id: string;
+    nombre: string;
+  };
+  tecnicos: Array<{
+    _id: string;
+    nombre: string;
+  }>;
+  fotos: Array<{
+    filename: string;
+    originalName: string;
+    path: string;
+  }>;
+  comprobantePago?: {
+    filename: string;
+    originalName?: string;
+    path?: string;
+    mimetype?: string;
+    size?: number;
+    uploadDate?: string;
+    estadoValidacion: 'pendiente' | 'aprobado' | 'rechazado';
+  };
+  creadoPor: {
+    _id: string;
+    nombre: string;
+  };
+  fechaCreacion: string;
+  fechaEjecucion: string;
+  franja_horaria: string;
 }
 
 // Recibo types

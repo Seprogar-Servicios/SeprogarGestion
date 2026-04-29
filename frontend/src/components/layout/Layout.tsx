@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
@@ -14,7 +14,9 @@ import {
   UserCircle,
   Database,
   BarChart,
-  FileText
+  FileText,
+  Building,
+  Shield
 } from 'lucide-react';
 
 const Layout: React.FC = () => {
@@ -23,6 +25,16 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAppSelector((state) => state.auth);
+
+  // Redirigir a AdminConsorcio a su dashboard específico
+  // Redirigir a técnicos a su dashboard específico
+  useEffect(() => {
+    if (user?.rol === 'adminConsorcio' && location.pathname === '/dashboard') {
+      navigate('/adminConsorcio/dashboard', { replace: true });
+    } else if (user?.rol === 'usuario' && location.pathname === '/dashboard') {
+      navigate('/tecnico/dashboard', { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
 
   const handleLogout = () => {
     dispatch(logoutUser());
@@ -35,15 +47,38 @@ const Layout: React.FC = () => {
     { name: 'Tareas', href: '/tasks', icon: Calendar },
     { name: 'Calendario', href: '/calendar', icon: Calendar },
     ...(user?.rol === 'usuario' ? [{ name: 'Mis Recibos', href: '/mis-recibos', icon: FileText }] : []),
+    { name: 'Legales', href: '/legales', icon: Shield },
+    { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
+  ];
+
+  const adminConsorcioNavigation = [
+    { name: 'Dashboard', href: '/adminConsorcio/dashboard', icon: Home },
+    { name: 'Tareas de Consorcio', href: '/adminConsorcio/tareas', icon: Building },
+    { name: 'Calendario', href: '/adminConsorcio/calendario', icon: Calendar },
+    { name: 'Análisis', href: '/adminConsorcio/analytics', icon: BarChart },
+    { name: 'Legales', href: '/legales', icon: Shield },
+    { name: 'Mi Perfil', href: '/adminConsorcio/profile', icon: UserCircle },
+  ];
+
+  const tecnicoNavigation = [
+    { name: 'Dashboard', href: '/tecnico/dashboard', icon: Home },
+    { name: 'Tareas Normales', href: '/tasks', icon: Calendar },
+    { name: 'Tareas de Consorcio', href: '/tecnico/tareas-consorcio', icon: Building },
+    { name: 'Calendario', href: '/calendar', icon: Calendar },
+    { name: 'Mis Recibos', href: '/mis-recibos', icon: FileText },
+    { name: 'Legales', href: '/legales', icon: Shield },
     { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
   ];
 
   const adminNavigation = [
     { name: 'Usuarios', href: '/admin/users', icon: Users },
     { name: 'Especialidades', href: '/admin/specialties', icon: Briefcase },
+    { name: 'Tareas de Consorcio', href: '/admin/tareas-consorcio', icon: Building },
     { name: 'Recibos', href: '/admin/recibos', icon: FileText },
     { name: 'Análisis', href: '/admin/analytics', icon: BarChart },
+    { name: 'Análisis de Consorcio', href: '/admin/analytics-consorcio', icon: BarChart },
     { name: 'Importar/Exportar', href: '/admin/importar-exportar', icon: Database },
+    { name: 'Legales', href: '/legales', icon: Shield },
   ];
 
   // Verificar la ruta actual para resaltar el elemento activo
@@ -52,8 +87,9 @@ const Layout: React.FC = () => {
     if (path === '/dashboard') {
       return location.pathname === path || location.pathname === '/';
     }
-    // Para otras rutas, verificar si la ruta actual comienza con el path
-    return location.pathname.startsWith(path);
+    // Para otras rutas, verificar coincidencia exacta o si es la ruta principal
+    // Evitar que sub-rutas activen menús principales (ej: /admin/analytics-consorcio no active /admin/analytics)
+    return location.pathname === path;
   };
 
   return (
@@ -89,38 +125,75 @@ const Layout: React.FC = () => {
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-            <div className="space-y-1.5">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => {
-                      navigate(item.href);
-                      if (window.innerWidth < 1024) setSidebarOpen(false);
-                    }}
-                    className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                      active
-                        ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                        : 'text-blue-100 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <Icon 
-                      className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                        active ? 'text-blue-200' : 'text-blue-200/70'
-                      }`} 
-                    />
-                    <span className="text-left">{item.name}</span>
-                    {active && (
-                      <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Navegación para Técnicos */}
+            {user?.rol === 'usuario' && (
+              <div className="space-y-1.5">
+                {tecnicoNavigation.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => {
+                        navigate(item.href);
+                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                      }}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+                        active
+                          ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
+                          : 'text-blue-100 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <Icon 
+                        className={`mr-3 h-5 w-5 flex-shrink-0 ${
+                          active ? 'text-blue-200' : 'text-blue-200/70'
+                        }`} 
+                      />
+                      <span className="text-left">{item.name}</span>
+                      {active && (
+                        <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-            {/* Admin Section */}
+            {/* Navegación general para otros roles (excepto AdminConsorcio) */}
+            {user?.rol !== 'adminConsorcio' && user?.rol !== 'usuario' && (
+              <div className="space-y-1.5">
+                {navigation.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => {
+                        navigate(item.href);
+                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                      }}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+                        active
+                          ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
+                          : 'text-blue-100 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <Icon 
+                        className={`mr-3 h-5 w-5 flex-shrink-0 ${
+                          active ? 'text-blue-200' : 'text-blue-200/70'
+                        }`} 
+                      />
+                      <span className="text-left">{item.name}</span>
+                      {active && (
+                        <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Admin Section - Solo mostrar si NO es AdminConsorcio */}
             {user?.rol === 'admin' && (
               <div className="pt-6 mt-6 border-t border-blue-500/10">
                 <h3 className="px-4 mb-3 text-xs font-semibold text-blue-200/70 uppercase tracking-wider">
@@ -128,6 +201,45 @@ const Layout: React.FC = () => {
                 </h3>
                 <div className="space-y-1.5">
                   {adminNavigation.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => {
+                          navigate(item.href);
+                          if (window.innerWidth < 1024) setSidebarOpen(false);
+                        }}
+                        className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+                          active
+                            ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
+                            : 'text-blue-100 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        <Icon 
+                          className={`mr-3 h-5 w-5 flex-shrink-0 ${
+                            active ? 'text-blue-200' : 'text-blue-200/70'
+                          }`} 
+                        />
+                        <span className="text-left">{item.name}</span>
+                        {active && (
+                          <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* AdminConsorcio Section - Sin borde superior si es el único menú */}
+            {user?.rol === 'adminConsorcio' && (
+              <div className={user?.rol === 'adminConsorcio' ? '' : 'pt-6 mt-6 border-t border-blue-500/10'}>
+                <h3 className="px-4 mb-3 text-xs font-semibold text-blue-200/70 uppercase tracking-wider">
+                  Admin de Consorcio
+                </h3>
+                <div className="space-y-1.5">
+                  {adminConsorcioNavigation.map((item) => {
                     const Icon = item.icon;
                     const active = isActive(item.href);
                     return (
@@ -178,7 +290,9 @@ const Layout: React.FC = () => {
                     {user?.nombre || 'Usuario'}
                   </p>
                   <p className="text-xs text-blue-200/70 truncate">
-                    {user?.rol === 'admin' ? 'Administrador' : 'Usuario'}
+                    {user?.rol === 'admin' ? 'Administrador' : 
+                     user?.rol === 'adminConsorcio' ? 'Admin de Consorcio' : 
+                     'Usuario'}
                   </p>
                 </div>
               </div>

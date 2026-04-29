@@ -13,6 +13,7 @@ router.use(authenticateToken);
 // User profile routes
 router.get('/me', userCtrl.getCurrentUser);
 router.post('/change-password', userCtrl.changePassword);
+router.put('/profile', userCtrl.updateProfile);
 
 // Admin-only routes (require admin role)
 router.use(authorizeRoles('admin'));

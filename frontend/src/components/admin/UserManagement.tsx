@@ -47,7 +47,7 @@ const UserManagement: React.FC = () => {
   const { especialidades } = useAppSelector((state) => state.especialidades);
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'usuario'>('all');
+  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'usuario' | 'adminConsorcio'>('all');
   const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -61,7 +61,7 @@ const UserManagement: React.FC = () => {
     email: string;
     telefono: string;
     direccion?: string;
-    rol: 'admin' | 'usuario' | 'tecnico';
+    rol: 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
     password?: string;
     confirmPassword?: string;
   }
@@ -84,7 +84,7 @@ const UserManagement: React.FC = () => {
     direccion: '',
     password: '',
     confirmPassword: '',
-    rol: 'usuario' as 'admin' | 'usuario',
+    rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
     especialidad: ''
   });
 
@@ -100,7 +100,6 @@ const UserManagement: React.FC = () => {
     try {
       // Llamar al endpoint para resetear la contraseña usando la instancia de api
       const response = await api.post(`/usuarios/${userId}/reset-password`, {});
-      console.log('Reset Password API Response:', response.data);
       // Mostrar la nueva contraseña en un toast
       const newPassword = response.data.data.newPassword;
       const message = `
@@ -185,7 +184,7 @@ const UserManagement: React.FC = () => {
       direccion: '',
       password: '',
       confirmPassword: '',
-      rol: 'usuario',
+      rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
       especialidad: ''
     });
   };
@@ -207,7 +206,7 @@ const UserManagement: React.FC = () => {
         direccion: createFormData.direccion || undefined,
         password: createFormData.password,
         rol: createFormData.rol,
-        especialidad: createFormData.especialidad || undefined
+        especialidad: createFormData.especialidad || undefined,
       };
       
       await dispatch(createUser(userToCreate)).unwrap();
@@ -228,7 +227,7 @@ const UserManagement: React.FC = () => {
       email: user.email,
       telefono: user.telefono || '',
       direccion: user.direccion || '',
-      rol: user.rol,
+      rol: user.rol as 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio',
       password: '',
       confirmPassword: ''
     });
@@ -414,10 +413,11 @@ const UserManagement: React.FC = () => {
             </label>
             <select
               value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value as 'all' | 'admin' | 'usuario')}
+              onChange={(e) => setFilterRole(e.target.value as 'all' | 'admin' | 'usuario' | 'adminConsorcio')}
               className="w-full md:w-48 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
             >
               <option value="all">Todos los roles</option>
+              <option value="adminConsorcio">Admin. Consorcio</option>
               <option value="admin">Administradores</option>
               <option value="usuario">Usuarios</option>
             </select>
@@ -550,23 +550,29 @@ const UserManagement: React.FC = () => {
                   <div className={`px-4 py-3 border-b ${
                     user.rol === 'admin' 
                       ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30' 
+                      : user.rol === 'adminConsorcio'
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30'
                       : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30'
                   }`}>
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-medium">
-                        {user.rol === 'admin' ? 'Administrador' : 'Técnico'}
+                        {user.rol === 'admin' ? 'Administrador' : user.rol === 'adminConsorcio' ? 'Admin. Consorcio' : 'Técnico'}
                       </h3>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         user.rol === 'admin'
                           ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                          : user.rol === 'adminConsorcio'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                           : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                       }`}>
                         {user.rol === 'admin' ? (
                           <Shield className="h-3 w-3 mr-1" />
+                        ) : user.rol === 'adminConsorcio' ? (
+                          <Shield className="h-3 w-3 mr-1" />
                         ) : (
                           <UserIcon className="h-3 w-3 mr-1" />
                         )}
-                        {user.rol === 'admin' ? 'Admin' : 'Técnico'}
+                        {user.rol === 'admin' ? 'Admin' : user.rol === 'adminConsorcio' ? 'Admin. Cons.' : 'Técnico'}
                       </span>
                     </div>
                   </div>
@@ -576,9 +582,13 @@ const UserManagement: React.FC = () => {
                         <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
                           user.rol === 'admin'
                             ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                            : user.rol === 'adminConsorcio'
+                            ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                             : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                         }`}>
                           {user.rol === 'admin' ? (
+                            <Shield className="h-6 w-6" />
+                          ) : user.rol === 'adminConsorcio' ? (
                             <Shield className="h-6 w-6" />
                           ) : (
                             <UserIcon className="h-6 w-6" />
@@ -886,10 +896,12 @@ const UserManagement: React.FC = () => {
                     <select
                       value={formData.rol}
                       onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
-                      className="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2.5 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors appearance-none"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                      required
                     >
-                      <option value="usuario">Técnico/Usuario</option>
+                      <option value="usuario">Técnico</option>
                       <option value="admin">Administrador</option>
+                      <option value="adminConsorcio">Administrador de Consorcio</option>
                     </select>
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Shield className="h-5 w-5 text-gray-400 dark:text-gray-500" />
@@ -1060,6 +1072,7 @@ const UserManagement: React.FC = () => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
+                      autoComplete="new-password"
                       value={createFormData.password}
                       onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
                       className="block w-full pl-10 pr-10 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
@@ -1096,6 +1109,7 @@ const UserManagement: React.FC = () => {
                     <input
                       type={showPassword ? 'text' : 'password'}
                       required
+                      autoComplete="new-password"
                       value={createFormData.confirmPassword}
                       onChange={(e) => setCreateFormData({ ...createFormData, confirmPassword: e.target.value })}
                       className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
@@ -1113,11 +1127,12 @@ const UserManagement: React.FC = () => {
                       <div className="relative">
                         <select
                           value={createFormData.rol}
-                          onChange={(e) => setCreateFormData({ ...createFormData, rol: e.target.value as 'admin' | 'usuario' })}
+                          onChange={(e) => setCreateFormData({ ...createFormData, rol: e.target.value as 'admin' | 'usuario' | 'adminConsorcio' })}
                           className="appearance-none block w-full pl-3 pr-10 py-3 text-base border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         >
                           <option value="usuario">Tecnico</option>
                           <option value="admin">Administrador</option>
+                          <option value="adminConsorcio">Admin. de Consorcio</option>
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
                           <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -1157,6 +1172,7 @@ const UserManagement: React.FC = () => {
                     </div>
                   )}
                 </div>
+
 
                 <div className="mt-6 flex justify-end space-x-3">
                   <button

@@ -1,14 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store';
-import { User, Mail, Phone, Shield, RefreshCw, BadgeCheck, Calendar, CheckCircle } from 'lucide-react';
+import { User, Mail, Phone, Shield, BadgeCheck, Calendar } from 'lucide-react';
 import { fetchCurrentUser } from '../../store/slices/authSlice';
 import ChangePassword from './ChangePassword';
 
 const ProfilePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user, loading } = useAppSelector((state) => state.auth);
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshSuccess, setRefreshSuccess] = useState(false);
 
   useEffect(() => {
     // Fetch the latest user data when the component mounts
@@ -32,57 +30,26 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-fadeIn">
+    <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 py-8 animate-fadeIn">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-6 mb-8 animate-fadeIn">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
-              <User className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Mi Perfil
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                Gestiona tu información personal y seguridad
-              </p>
-            </div>
+        <div className="flex items-center">
+          <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
+            <User className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <button 
-            onClick={() => {
-              setRefreshing(true);
-              setRefreshSuccess(false);
-              dispatch(fetchCurrentUser())
-                .unwrap()
-                .then(() => {
-                  setRefreshSuccess(true);
-                  setTimeout(() => setRefreshSuccess(false), 3000);
-                })
-                .finally(() => {
-                  setRefreshing(false);
-                });
-            }} 
-            disabled={refreshing}
-            className={`flex items-center px-4 py-2 ${refreshSuccess 
-              ? 'bg-green-500 hover:bg-green-600' 
-              : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'} 
-              text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none cursor-pointer`}
-          >
-            {refreshing ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            ) : refreshSuccess ? (
-              <CheckCircle className="h-4 w-4 mr-2" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            {refreshing ? 'Actualizando...' : refreshSuccess ? 'Actualizado' : 'Actualizar Datos'}
-          </button>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Mi Perfil
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+              Gestiona tu información personal y seguridad
+            </p>
+          </div>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className={user?.rol === 'usuario' ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}>
         {/* Información del usuario */}
-        <div className="md:col-span-1">
+        <div className={user?.rol === 'tecnico' ? '' : 'md:col-span-1'}>
           <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
             <div className="px-6 py-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
               <div className="flex items-center">
@@ -198,12 +165,13 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
         
-        {/* Cambio de contraseña */}
-        <div className="md:col-span-2">
-          <div className="animate-fadeIn transition-all duration-300 transform hover:translate-y-[-2px]">
-            <ChangePassword />
+        {user?.rol !== 'usuario' && (
+          <div className="md:col-span-2">
+            <div className="animate-fadeIn transition-all duration-300 transform hover:translate-y-[-2px]">
+              <ChangePassword />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

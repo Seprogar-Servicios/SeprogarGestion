@@ -165,6 +165,50 @@ exports.getCurrentUser = async (req, res) => {
   }
 };
 
+// Actualizar perfil propio (usuario autenticado)
+exports.updateProfile = async (req, res) => {
+  try {
+    const { error } = userUpdateSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ 
+        success: false, 
+        message: error.details[0].message 
+      });
+    }
+
+    const userId = req.user.id; // Obtenido del middleware de autenticación
+    const { password, ...updateData } = req.body; // Separar contraseña de otros datos
+
+    // Si se proporciona una nueva contraseña, hashearla
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    // Actualizar el usuario
+    const usuario = await Usuario.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');
+    
+    if (!usuario) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Usuario no encontrado' 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Perfil actualizado exitosamente',
+      data: usuario
+    });
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al actualizar el perfil', 
+      error: error.message 
+    });
+  }
+};
+
 // Cambiar contraseña (usuario autenticado)
 exports.changePassword = async (req, res) => {
   try {
