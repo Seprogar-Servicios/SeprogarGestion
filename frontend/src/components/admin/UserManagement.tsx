@@ -960,6 +960,7 @@ const UserManagement: React.FC = () => {
                           className="block w-full pl-10 pr-10 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                           placeholder="Nueva contraseña (mínimo 6 caracteres)"
                           minLength={6}
+                          autoComplete="new-password"
                         />
                         <button
                           type="button"
@@ -995,6 +996,7 @@ const UserManagement: React.FC = () => {
                           className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                           placeholder="Confirmar nueva contraseña"
                           minLength={6}
+                          autoComplete="new-password"
                         />
                       </div>
                     </div>

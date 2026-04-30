@@ -14,6 +14,7 @@ const userUpdateSchema = Joi.object({
   nombre: Joi.string().optional(),
   email: Joi.string().email().optional(),
   password: Joi.string().min(6).optional(),
+  confirmPassword: Joi.string().min(6).optional(),
   rol: Joi.string().valid('admin', 'usuario', 'adminConsorcio').optional(),
   especialidad: Joi.string().optional().allow(null, ''),
   aprobado: Joi.boolean().optional(),
