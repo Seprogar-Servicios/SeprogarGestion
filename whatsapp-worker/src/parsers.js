@@ -1,7 +1,7 @@
 const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
-  PEDIDO_NUM: /Pedido\s+(\d+)/i,
+  PEDIDO_NUM: /["']?Pedido\s+(\d+)["']?/i,
   CLIENTE: /Cliente[\s:]*(.+?)(?=\s+(Whatsapp|Dirección|Descripcion|TURNO|Barrio|$))/is,
   TELEFONO: /(?:Telefono|Teléfono|Whatsapp)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
   WHATSAPP_TITULAR: /(?:Whatsapp|Tel[ée]fono)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
@@ -74,19 +74,33 @@ function parsePedidoMessage(message) {
   try {
     message = limitMessageSize(message);
     
+    console.log('[PARSER] Mensaje original:', message);
+    
     // Si el mensaje no tiene formato [INFO], procesarlo directamente
     if (!message.includes('[INFO]')) {
       console.log('Procesando mensaje directo sin formato [INFO]');
       // Procesamiento simple para formato directo
       const lines = message.replace(/\*/g, '').replace(/\n\s*\n/g, '\n').trim().split('\n').map(line => line.trim()).filter(line => line);
       
-      // Buscar número de pedido
-      const pedidoNumMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(message);
+      console.log('[PARSER] Líneas procesadas:', lines);
+      
+      // Buscar número de pedido - manejar ambas variantes: "Pedido" y "Pedido
+      let pedidoNumMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(message);
+      console.log('[PARSER] Búsqueda inicial de número de pedido:', pedidoNumMatch);
+      
+      // Si no encuentra con "Pedido", intentar con comillas
+      if (!pedidoNumMatch) {
+        const messageSinComillas = message.replace(/^["']/, '').replace(/["']$/, '');
+        pedidoNumMatch = PEDIDO_PATTERNS.PEDIDO_NUM.exec(messageSinComillas);
+        console.log('[PARSER] Búsqueda con mensaje sin comillas:', pedidoNumMatch);
+      }
+      
       if (!pedidoNumMatch) {
         console.log('No se encontró número de pedido en el mensaje directo');
         return null;
       }
       const numero = pedidoNumMatch[1].trim();
+      console.log('[PARSER] Número extraído:', numero);
       
       let cliente = '';
       let numeroTitular = '';
@@ -97,11 +111,14 @@ function parsePedidoMessage(message) {
       // Buscar cliente y teléfono en el mensaje
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        console.log(`[PARSER] Procesando línea ${i}: "${line}"`);
         
         // Buscar línea de cliente
         const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i) || 
                            line.match(/^\*?Cliente[\s:]+\*?([^*\n]+)/i) ||
                            line.match(/^Cliente:\s*(.+)/i);
+        
+        console.log(`[PARSER] clienteMatch para línea ${i}:`, clienteMatch);
         
         if (clienteMatch && clienteMatch[1]) {
           cliente = clienteMatch[1]
@@ -110,18 +127,25 @@ function parsePedidoMessage(message) {
             .replace(/\s{2,}/g, ' ')
             .trim();
           
+          console.log(`[PARSER] Cliente extraído: "${cliente}"`);
+          
           // Buscar teléfono en la misma línea
           const telefonoEnLinea = line.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
+          console.log(`[PARSER] Búsqueda teléfono en misma línea:`, telefonoEnLinea);
           if (telefonoEnLinea && telefonoEnLinea[1]) {
             numeroTitular = telefonoEnLinea[1].trim();
+            console.log(`[PARSER] Teléfono extraído de misma línea: "${numeroTitular}"`);
             break;
           }
           // Si no, buscar en la línea siguiente
           else if (i + 1 < lines.length) {
             const nextLine = lines[i + 1];
+            console.log(`[PARSER] Buscando teléfono en línea siguiente: "${nextLine}"`);
             const telefonoSiguienteLinea = nextLine.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
+            console.log(`[PARSER] Búsqueda teléfono en línea siguiente:`, telefonoSiguienteLinea);
             if (telefonoSiguienteLinea && telefonoSiguienteLinea[1]) {
               numeroTitular = telefonoSiguienteLinea[1].trim();
+              console.log(`[PARSER] Teléfono extraído de línea siguiente: "${numeroTitular}"`);
               break;
             }
           }
@@ -129,20 +153,24 @@ function parsePedidoMessage(message) {
         
         // Buscar descripción
         const descMatch = line.match(PEDIDO_PATTERNS.DESCRIPCION);
+        console.log(`[PARSER] Búsqueda descripción en línea ${i}:`, descMatch);
         if (descMatch && descMatch[1]) {
           descripcion = descMatch[1]
             .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
             .replace(/\s{2,}/g, ' ')
             .trim();
+          console.log(`[PARSER] Descripción extraída: "${descripcion}"`);
         }
         
         // Buscar dirección
         const dirMatch = line.match(PEDIDO_PATTERNS.DIRECCION);
+        console.log(`[PARSER] Búsqueda dirección en línea ${i}:`, dirMatch);
         if (dirMatch && dirMatch[1]) {
           direccion = dirMatch[1]
             .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
             .replace(/\s{2,}/g, ' ')
             .trim();
+          console.log(`[PARSER] Dirección extraída: "${direccion}"`);
         }
         
         // Buscar barrio
@@ -172,7 +200,7 @@ function parsePedidoMessage(message) {
         hora: null
       };
       
-      console.log('Pedido directo parseado:', pedido);
+      console.log('[PARSER] Pedido directo parseado:', pedido);
       return pedido;
     }
     

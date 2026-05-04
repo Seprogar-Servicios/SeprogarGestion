@@ -181,6 +181,7 @@ const GRUPOS_PERMITIDOS = process.env.GRUPOS_PERMITIDOS
 
 logger.info('Iniciando servicio de WhatsApp...');
 logger.info(`Grupos permitidos: ${GRUPOS_PERMITIDOS.join(', ')}`);
+logger.info(`Cantidad de grupos configurados: ${GRUPOS_PERMITIDOS.length}`);
 
 // Cache para grupos permitidos (optimización de rendimiento)
 const allowedGroupsCache = new Set(
@@ -442,8 +443,15 @@ function setupEventHandlers() {
           const allowedGroups = [];
           const groupNames = new Set(GRUPOS_PERMITIDOS.map(g => g.trim().toLowerCase()));
           
+          logger.info(`[DEBUG] Nombres de grupos permitidos configurados:`, Array.from(groupNames));
+          
           for (const chat of groupChats) {
-            if (chat.name && groupNames.has(chat.name.trim().toLowerCase())) {
+            const chatName = chat.name?.trim() || '';
+            const isAllowed = chatName && groupNames.has(chatName.toLowerCase());
+            
+            logger.info(`[DEBUG] Evaluando chat: "${chatName}" - ¿Permitido? ${isAllowed}`);
+            
+            if (isAllowed) {
               allowedGroups.push(chat);
             }
           }
@@ -573,12 +581,10 @@ function setupEventHandlers() {
     console.log(`[DEBUG] fromMe: ${message.fromMe}`);
     
     // 1. Ignorar mensajes propios para evitar bucles infinitos
-    // TEMPORALMENTE COMENTADO PARA DEBUG
-    // if (message.fromMe) {
-    //   console.log(`[DEBUG] Mensaje ignorado - es del bot (fromMe: true)`);
-    //   return;
-    // }
-    console.log(`[DEBUG] fromMe: ${message.fromMe} - TEMPORALMENTE IGNORANDO ESTE FILTRO`);
+    if (message.fromMe) {
+      console.log(`[DEBUG] Mensaje ignorado - es del bot (fromMe: true)`);
+      return;
+    }
 
     // 2. Obtener el chat de forma asíncrona ANTES de procesar
     try {
