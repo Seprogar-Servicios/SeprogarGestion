@@ -230,7 +230,7 @@ async function initializeClient() {
       defaultViewport: chromium.defaultViewport,
       ignoreHTTPSErrors: true,
       ignoreDefaultArgs: ['--disable-extensions'],
-      protocolTimeout: 60000, // 60 segundos para llamadas al protocolo
+      protocolTimeout: 300000, // 5 minutos para llamadas al protocolo
       slowMo: process.env.NODE_ENV === 'production' ? 0 : 100 // Sin retraso en producción
     };
 
@@ -250,10 +250,11 @@ async function initializeClient() {
       disableWelcome: true,
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
       // Timeouts adicionales para operaciones lentas
-      requestTimeout: 60000, // 60 segundos para requests
+      requestTimeout: 120000, // 2 minutos para requests
       puppeteerOptions: {
         ...puppeteerOptions,
-        timeout: 120000 // 2 minutos para operaciones generales
+        timeout: 300000, // 5 minutos para operaciones generales
+        protocolTimeout: 300000 // 5 minutos para protocol timeout
       }
     });
 
@@ -265,7 +266,7 @@ async function initializeClient() {
     // Agregar timeout global para inicialización
     const initPromise = client.initialize();
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Inicialización timeout después de 5 minutos')), 300000);
+      setTimeout(() => reject(new Error('Inicialización timeout después de 10 minutos')), 600000);
     });
     
     try {
