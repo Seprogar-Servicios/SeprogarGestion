@@ -135,28 +135,122 @@ function parsePedidoMessage(message) {
       let direccion = '';
       let barrio = '';
       
-      // Si es un mensaje de una sola línea, usar regex directamente
+      // Si es un mensaje de una sola línea, usar regex directamente con múltiples fallbacks
       if (!hasLineBreaks) {
-        console.log('[PARSER] Extrayendo datos de una sola línea con regex');
+        console.log('[PARSER] Extrayendo datos de una sola línea con regex robusto');
         
-        // Extraer cliente
-        const clienteMatch = message.match(/Cliente[\s:]+([^:]*?)(?=\s+Descripción|$)/i);
+        // === EXTRAER CLIENTE (Múltiples patrones) ===
+        let clienteMatch = null;
+        const clientePatterns = [
+          /Cliente\s*[:\s]+(.+?)(?=\s+(?:Whatsapp|Telefono|Dirección|Descripción|TURNO|Barrio|Domicilio|$))/i,
+          /\*Cliente\*\s*[:\s]+(.+?)(?=\s+(?:Whatsapp|Telefono|Dirección|Descripción|TURNO|Barrio|Domicilio|$))/i,
+          /Cliente\s*[:]\s*(.+?)(?=\s+(?:Whatsapp|Telefono|Dirección|Descripción|TURNO|Barrio|Domicilio|$))/i,
+          /Cliente\s*[:]\s*([^:]*?)(?=\s+(?:Whatsapp|Telefono|Dirección|Descripción|TURNO|Barrio|Domicilio|$))/i
+        ];
+        
+        for (const pattern of clientePatterns) {
+          clienteMatch = pattern.exec(message);
+          if (clienteMatch && clienteMatch[1]) {
+            break;
+          }
+        }
+        
         console.log('[PARSER] clienteMatch en una línea:', clienteMatch);
         if (clienteMatch && clienteMatch[1]) {
-          cliente = clienteMatch[1].trim();
+          cliente = clienteMatch[1].replace(/\s+/g, ' ').trim();
           console.log(`[PARSER] Cliente extraído de una línea: "${cliente}"`);
         }
         
-        // Extraer teléfono
-        const telefonoMatch = message.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
+        // === EXTRAER TELÉFONO (Múltiples patrones) ===
+        let telefonoMatch = null;
+        const telefonoPatterns = [
+          /(?:Whatsapp|Tel[ée]fono|Whatsapp titular|Telefono alt|CELULAR ASEGURADO|📞 CELULAR ASEGURADO)\s*[:\s]+([\d\s+()-]+)/i,
+          /Whatsapp\s+titular\s*[:\s]+([\d\s+()-]+)/i,
+          /Telefono\s+alt\s*[:\s]+([\d\s+()-]+)/i,
+          /CELULAR\s+ASEGURADO\s*[:\s]+([\d\s+()-]+)/i,
+          /📞\s+CELULAR\s+ASEGURADO\s*[:\s]+([\d\s+()-]+)/i
+        ];
+        
+        for (const pattern of telefonoPatterns) {
+          telefonoMatch = pattern.exec(message);
+          if (telefonoMatch && telefonoMatch[1]) {
+            break;
+          }
+        }
+        
         console.log('[PARSER] telefonoMatch en una línea:', telefonoMatch);
         if (telefonoMatch && telefonoMatch[1]) {
-          numeroTitular = telefonoMatch[1].trim();
+          numeroTitular = telefonoMatch[1].replace(/\s+/g, '').trim();
           console.log(`[PARSER] Teléfono extraído de una línea: "${numeroTitular}"`);
         }
         
-        // Extraer descripción (ya la tenemos del procesamiento anterior)
-        // Extraer dirección (ya la tenemos del procesamiento anterior)
+        // === EXTRAER DESCRIPCIÓN (Múltiples patrones) ===
+        let descripcionMatch = null;
+        const descripcionPatterns = [
+          /Descripción\s*(?:del\s+servicio)?\s*[:]\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|TURNO|Barrio|Recuerde|📞|$))/i,
+          /\*Descripción\s*(?:del\s+servicio)?\*\s*[:]\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|TURNO|Barrio|Recuerde|📞|$))/i,
+          /Descripción\s*[:]\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|TURNO|Barrio|Recuerde|$))/i,
+          /Descripción\s*[:]\s*([\s\S]*?)(?=\s+(?:Dirección|Domicilio|TURNO|Barrio|Recuerde|$))/i,
+          /Descripción\s*(?:del\s+servicio)?\s*[:]\s*([^:]*?)(?=\s*(?:Dirección|Domicilio|TURNO|Barrio|Recuerde|$))/i
+        ];
+        
+        for (const pattern of descripcionPatterns) {
+          descripcionMatch = pattern.exec(message);
+          if (descripcionMatch && descripcionMatch[1]) {
+            break;
+          }
+        }
+        
+        console.log('[PARSER] descripcionMatch en una línea:', descripcionMatch);
+        if (descripcionMatch && descripcionMatch[1]) {
+          descripcion = descripcionMatch[1].replace(/\s+/g, ' ').trim();
+          console.log(`[PARSER] Descripción extraída de una línea: "${descripcion}"`);
+        }
+        
+        // === EXTRAER DIRECCIÓN (Múltiples patrones) ===
+        let direccionMatch = null;
+        const direccionPatterns = [
+          /(?:Dirección\s*(?:póliza|pedido|pedido:)|Domicilio|Descripción\s+dirección\s+pedido)\s*[:]\s*([^\n]*?)(?=\s*(?:TURNO|Barrio|Recuerde|Descripción|$))/i,
+          /\*Dirección\s*(?:póliza|pedido|pedido:)\*\s*[:]\s*([^\n]*?)(?=\s*(?:TURNO|Barrio|Recuerde|Descripción|$))/i,
+          /Dirección\s+pedido\s*[:]\s*([^\n]*?)(?=\s*(?:TURNO|Barrio|Recuerde|Descripción|$))/i,
+          /Domicilio\s*[:]\s*([^\n]*?)(?=\s*(?:TURNO|Barrio|Recuerde|Descripción|$))/i,
+          /Dirección\s+póliza\s*[:]\s*([^\n]*?)(?=\s*(?:TURNO|Barrio|Recuerde|Descripción|$))/i,
+          /Dirección\s+pedido\s*[:]\s*([^:]*?)(?=\s*(?:TURNO|Barrio|Recuerde|Descripción|$))/i
+        ];
+        
+        for (const pattern of direccionPatterns) {
+          direccionMatch = pattern.exec(message);
+          if (direccionMatch && direccionMatch[1]) {
+            break;
+          }
+        }
+        
+        console.log('[PARSER] direccionMatch en una línea:', direccionMatch);
+        if (direccionMatch && direccionMatch[1]) {
+          direccion = direccionMatch[1].replace(/\s+/g, ' ').trim();
+          console.log(`[PARSER] Dirección extraída de una línea: "${direccion}"`);
+        }
+        
+        // === EXTRAER BARRIO (Múltiples patrones) ===
+        let barrioMatch = null;
+        const barrioPatterns = [
+          /Barrio\s*[:]\s*([^\n]*?)(?=\s*(?:Recuerde|TURNO|\.|$))/i,
+          /\*Barrio\*\s*[:]\s*([^\n]*?)(?=\s*(?:Recuerde|TURNO|\.|$))/i,
+          /Barrio\s*[:]\s*([^\n]*?)(?=\s*(?:Recuerde|TURNO|$))/i
+        ];
+        
+        for (const pattern of barrioPatterns) {
+          barrioMatch = pattern.exec(message);
+          if (barrioMatch && barrioMatch[1]) {
+            break;
+          }
+        }
+        
+        console.log('[PARSER] barrioMatch en una línea:', barrioMatch);
+        if (barrioMatch && barrioMatch[1]) {
+          barrio = barrioMatch[1].replace(/\s+/g, ' ').trim();
+          console.log(`[PARSER] Barrio extraído de una línea: "${barrio}"`);
+        }
         
       } else {
         // Procesamiento normal para múltiples líneas
