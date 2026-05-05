@@ -581,11 +581,51 @@ function setupEventHandlers() {
     console.log(`[DEBUG] ¿Mensaje reenviado? ${message.forwardingScore > 0}`);
     console.log(`[DEBUG] fromMe: ${message.fromMe}`);
     console.log(`[DEBUG] Mensaje completo:`, message.body);
+    console.log(`[DEBUG] Tipo de mensaje:`, message.type);
+    console.log(`[DEBUG] ¿Tiene media?`, message.hasMedia);
+    console.log(`[DEBUG] Atributos del mensaje:`, Object.keys(message));
+    
+    // Intentar obtener el contenido de diferentes formas
+    if (!message.body || message.body.trim() === '') {
+      console.log(`[DEBUG] Mensaje vacío, intentando obtener contenido...`);
+      
+      // 1. Intentar obtener quoted message (respuesta a otro mensaje)
+      const quotedMsg = await message.getQuotedMessage().catch(() => null);
+      if (quotedMsg && quotedMsg.body) {
+        console.log(`[DEBUG] Quoted message body:`, quotedMsg.body);
+        message.body = quotedMsg.body;
+      } else {
+        // 2. Para mensajes reenviados, intentar obtener el mensaje original
+        console.log(`[DEBUG] Intentando obtener mensaje reenviado...`);
+        try {
+          // Obtener el mensaje del chat por ID si es reenviado
+          if (message.forwardingScore > 0) {
+            console.log(`[DEBUG] Mensaje reenviado detectado, score: ${message.forwardingScore}`);
+            
+            // Intentar obtener el contenido del mensaje citado
+            const quotedMsg = await message.getQuotedMessage().catch(() => null);
+            if (quotedMsg && quotedMsg.body) {
+              console.log(`[DEBUG] Contenido del mensaje reenviado:`, quotedMsg.body);
+              message.body = quotedMsg.body;
+            } else {
+              console.log(`[DEBUG] No se pudo obtener contenido del mensaje reenviado`);
+            }
+          }
+        } catch (error) {
+          console.log(`[DEBUG] Error al obtener mensaje reenviado:`, error.message);
+        }
+      }
+    }
     
     // 1. Ignorar mensajes propios para evitar bucles infinitos
-    if (message.fromMe) {
-      console.log(`[DEBUG] Mensaje ignorado - es del bot (fromMe: true)`);
+    // PERO permitir mensajes reenviados que puedan tener contenido útil
+    if (message.fromMe && !message.forwardingScore) {
+      console.log(`[DEBUG] Mensaje ignorado - es del bot y no es reenviado (fromMe: true, forwardingScore: 0)`);
       return;
+    }
+    
+    if (message.fromMe && message.forwardingScore > 0) {
+      console.log(`[DEBUG] Mensaje propio pero reenviado, permitiendo procesamiento (fromMe: true, forwardingScore: ${message.forwardingScore})`);
     }
 
     // 2. Obtener el chat de forma asíncrona ANTES de procesar
