@@ -79,8 +79,21 @@ function parsePedidoMessage(message) {
     // Si el mensaje no tiene formato [INFO], procesarlo directamente
     if (!message.includes('[INFO]')) {
       console.log('Procesando mensaje directo sin formato [INFO]');
-      // Procesamiento simple para formato directo
-      const lines = message.replace(/\*/g, '').replace(/\n\s*\n/g, '\n').trim().split('\n').map(line => line.trim()).filter(line => line);
+      
+      // Verificar si el mensaje viene en una sola línea o con saltos de línea
+      const hasLineBreaks = message.includes('\n');
+      console.log('[PARSER] ¿Tiene saltos de línea?', hasLineBreaks);
+      
+      let lines;
+      if (!hasLineBreaks) {
+        // Si no tiene saltos de línea, procesar como una sola línea
+        console.log('[PARSER] Procesando como mensaje de una sola línea');
+        lines = [message.replace(/\*/g, '').trim()];
+      } else {
+        // Si tiene saltos de línea, procesar normalmente
+        console.log('[PARSER] Procesando con saltos de línea');
+        lines = message.replace(/\*/g, '').replace(/\n\s*\n/g, '\n').trim().split('\n').map(line => line.trim()).filter(line => line);
+      }
       
       console.log('[PARSER] Líneas procesadas:', lines);
       
@@ -108,78 +121,106 @@ function parsePedidoMessage(message) {
       let direccion = '';
       let barrio = '';
       
-      // Buscar cliente y teléfono en el mensaje
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        console.log(`[PARSER] Procesando línea ${i}: "${line}"`);
+      // Si es un mensaje de una sola línea, usar regex directamente
+      if (!hasLineBreaks) {
+        console.log('[PARSER] Extrayendo datos de una sola línea con regex');
         
-        // Buscar línea de cliente
-        const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i) || 
-                           line.match(/^\*?Cliente[\s:]+\*?([^*\n]+)/i) ||
-                           line.match(/^Cliente:\s*(.+)/i);
-        
-        console.log(`[PARSER] clienteMatch para línea ${i}:`, clienteMatch);
-        
+        // Extraer cliente
+        const clienteMatch = message.match(/Cliente[\s:]+([^:]*?)(?=\s+Descripción|$)/i);
+        console.log('[PARSER] clienteMatch en una línea:', clienteMatch);
         if (clienteMatch && clienteMatch[1]) {
-          cliente = clienteMatch[1]
-            .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
-            .replace(/\s*,\s*/g, ', ')
-            .replace(/\s{2,}/g, ' ')
-            .trim();
+          cliente = clienteMatch[1].trim();
+          console.log(`[PARSER] Cliente extraído de una línea: "${cliente}"`);
+        }
+        
+        // Extraer teléfono
+        const telefonoMatch = message.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
+        console.log('[PARSER] telefonoMatch en una línea:', telefonoMatch);
+        if (telefonoMatch && telefonoMatch[1]) {
+          numeroTitular = telefonoMatch[1].trim();
+          console.log(`[PARSER] Teléfono extraído de una línea: "${numeroTitular}"`);
+        }
+        
+        // Extraer descripción (ya la tenemos del procesamiento anterior)
+        // Extraer dirección (ya la tenemos del procesamiento anterior)
+        
+      } else {
+        // Procesamiento normal para múltiples líneas
+        console.log('[PARSER] Procesamiento normal de múltiples líneas');
+        
+        // Buscar cliente y teléfono en el mensaje
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          console.log(`[PARSER] Procesando línea ${i}: "${line}"`);
           
-          console.log(`[PARSER] Cliente extraído: "${cliente}"`);
+          // Buscar línea de cliente
+          const clienteMatch = line.match(/^Cliente[\s:]+(.+)/i) || 
+                             line.match(/^\*?Cliente[\s:]+\*?([^*\n]+)/i) ||
+                             line.match(/^Cliente:\s*(.+)/i);
           
-          // Buscar teléfono en la misma línea
-          const telefonoEnLinea = line.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
-          console.log(`[PARSER] Búsqueda teléfono en misma línea:`, telefonoEnLinea);
-          if (telefonoEnLinea && telefonoEnLinea[1]) {
-            numeroTitular = telefonoEnLinea[1].trim();
-            console.log(`[PARSER] Teléfono extraído de misma línea: "${numeroTitular}"`);
-            break;
-          }
-          // Si no, buscar en la línea siguiente
-          else if (i + 1 < lines.length) {
-            const nextLine = lines[i + 1];
-            console.log(`[PARSER] Buscando teléfono en línea siguiente: "${nextLine}"`);
-            const telefonoSiguienteLinea = nextLine.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
-            console.log(`[PARSER] Búsqueda teléfono en línea siguiente:`, telefonoSiguienteLinea);
-            if (telefonoSiguienteLinea && telefonoSiguienteLinea[1]) {
-              numeroTitular = telefonoSiguienteLinea[1].trim();
-              console.log(`[PARSER] Teléfono extraído de línea siguiente: "${numeroTitular}"`);
+          console.log(`[PARSER] clienteMatch para línea ${i}:`, clienteMatch);
+          
+          if (clienteMatch && clienteMatch[1]) {
+            cliente = clienteMatch[1]
+              .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
+              .replace(/\s*,\s*/g, ', ')
+              .replace(/\s{2,}/g, ' ')
+              .trim();
+            
+            console.log(`[PARSER] Cliente extraído: "${cliente}"`);
+            
+            // Buscar teléfono en la misma línea
+            const telefonoEnLinea = line.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
+            console.log(`[PARSER] Búsqueda teléfono en misma línea:`, telefonoEnLinea);
+            if (telefonoEnLinea && telefonoEnLinea[1]) {
+              numeroTitular = telefonoEnLinea[1].trim();
+              console.log(`[PARSER] Teléfono extraído de misma línea: "${numeroTitular}"`);
               break;
             }
+            // Si no, buscar en la línea siguiente
+            else if (i + 1 < lines.length) {
+              const nextLine = lines[i + 1];
+              console.log(`[PARSER] Buscando teléfono en línea siguiente: "${nextLine}"`);
+              const telefonoSiguienteLinea = nextLine.match(/(?:Whatsapp|Tel[ée]fono|Whatsapp titular)[\s:]+([\d\s+()-]+)/i);
+              console.log(`[PARSER] Búsqueda teléfono en línea siguiente:`, telefonoSiguienteLinea);
+              if (telefonoSiguienteLinea && telefonoSiguienteLinea[1]) {
+                numeroTitular = telefonoSiguienteLinea[1].trim();
+                console.log(`[PARSER] Teléfono extraído de línea siguiente: "${numeroTitular}"`);
+                break;
+              }
+            }
           }
-        }
         
         // Buscar descripción
-        const descMatch = line.match(PEDIDO_PATTERNS.DESCRIPCION);
-        console.log(`[PARSER] Búsqueda descripción en línea ${i}:`, descMatch);
-        if (descMatch && descMatch[1]) {
-          descripcion = descMatch[1]
-            .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
-            .replace(/\s{2,}/g, ' ')
-            .trim();
-          console.log(`[PARSER] Descripción extraída: "${descripcion}"`);
-        }
-        
-        // Buscar dirección
-        const dirMatch = line.match(PEDIDO_PATTERNS.DIRECCION);
-        console.log(`[PARSER] Búsqueda dirección en línea ${i}:`, dirMatch);
-        if (dirMatch && dirMatch[1]) {
-          direccion = dirMatch[1]
-            .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
-            .replace(/\s{2,}/g, ' ')
-            .trim();
-          console.log(`[PARSER] Dirección extraída: "${direccion}"`);
-        }
-        
-        // Buscar barrio
-        const barrioMatch = line.match(PEDIDO_PATTERNS.BARRIO);
-        if (barrioMatch && barrioMatch[1]) {
-          barrio = barrioMatch[1]
-            .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
-            .replace(/\s{2,}/g, ' ')
-            .trim();
+          const descMatch = line.match(PEDIDO_PATTERNS.DESCRIPCION);
+          console.log(`[PARSER] Búsqueda descripción en línea ${i}:`, descMatch);
+          if (descMatch && descMatch[1]) {
+            descripcion = descMatch[1]
+              .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
+              .replace(/\s{2,}/g, ' ')
+              .trim();
+            console.log(`[PARSER] Descripción extraída: "${descripcion}"`);
+          }
+          
+          // Buscar dirección
+          const dirMatch = line.match(PEDIDO_PATTERNS.DIRECCION);
+          console.log(`[PARSER] Búsqueda dirección en línea ${i}:`, dirMatch);
+          if (dirMatch && dirMatch[1]) {
+            direccion = dirMatch[1]
+              .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
+              .replace(/\s{2,}/g, ' ')
+              .trim();
+            console.log(`[PARSER] Dirección extraída: "${direccion}"`);
+          }
+          
+          // Buscar barrio
+          const barrioMatch = line.match(PEDIDO_PATTERNS.BARRIO);
+          if (barrioMatch && barrioMatch[1]) {
+            barrio = barrioMatch[1]
+              .replace(/[\s\u00A0\u202F\u2007\u2060\uFEFF\*]+/g, ' ')
+              .replace(/\s{2,}/g, ' ')
+              .trim();
+          }
         }
       }
       
