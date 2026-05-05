@@ -2,32 +2,46 @@ const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
   PEDIDO_NUM: /["']?Pedido\s+(\d+)["']?/i,
-  CLIENTE: /Cliente[\s:]*(.+?)(?=\s+(Whatsapp|Dirección|Descripcion|TURNO|Barrio|$))/is,
-  TELEFONO: /(?:Telefono|Teléfono|Whatsapp)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
-  WHATSAPP_TITULAR: /(?:Whatsapp|Tel[ée]fono)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
-  DESCRIPCION: /Descripción\s*(?:del servicio)?\s*:?\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|$)|\n\s*\n)/i,
-  DIRECCION: /(?:Dirección\s*(?:póliza|pedido|pedido:)|Domicilio)\s*:?\s*([^\n]+?)(?=\s*(?:TURNO|Barrio|Recuerde|$)|\n\s*\n)/i,
-  BARRIO: /Barrio\s*:?\s*([^\n]+?)(?=\s*(?:Recuerde|TURNO|\.|$))/i,
-  TURNO: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})/i
+  CLIENTE: /Cliente\s*[:]\s*(.+?)(?=\s+(?:Whatsapp|Telefono|Dirección|Descripción|TURNO|Barrio|Domicilio|$))/is,
+  TELEFONO: /(?:Telefono|Teléfono|Whatsapp|Telefono alt)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
+  WHATSAPP_TITULAR: /(?:Whatsapp|Tel[ée]fono|Whatsapp titular|CELULAR ASEGURADO)[\s:]*(?:titular)?[\s:]*([\d\s+()-]+)/i,
+  DESCRIPCION: /Descripción\s*(?:del servicio)?\s*[:]\s*([\s\S]*?)(?=\s*(?:Dirección|Domicilio|Barrio|TURNO|Descripción|$)|\n\s*\n)/i,
+  DIRECCION: /(?:Dirección\s*(?:póliza|pedido|pedido:)|Domicilio|Descripción dirección pedido)\s*[:]\s*([^\n]+?)(?=\s*(?:TURNO|Barrio|Recuerde|$)|\n\s*\n)/i,
+  BARRIO: /Barrio\s*[:]\s*([^\n]+?)(?=\s*(?:Recuerde|TURNO|\.|$))/i,
+  TURNO: /TURNO\s+(?:confirmado\s+)?fecha\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2})/i
 };
 
 const DATE_PATTERNS = [
   {
-    pattern: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
+    pattern: /TURNO\s+confirmado\s+fecha\s+(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i,
     handler: (match) => ({
       date: match[1].split('/').reverse().join('-'),
       time: `${match[2]} - ${match[3]}`
     })
   },
   {
-    pattern: /TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*-[^\n]*(\d{1,2}:\d{2})/i,
+    pattern: /TURNO\s+(\d{1,2})\s+a\s+(\d{1,2})/i,
+    handler: (match) => ({
+      date: new Date().toISOString().split('T')[0],
+      time: `${match[1].padStart(2, '0')}:00 - ${match[2].padStart(2, '0')}:00`
+    })
+  },
+  {
+    pattern: /TURNO\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i,
+    handler: (match) => ({
+      date: new Date().toISOString().split('T')[0],
+      time: `${match[1]} - ${match[2]}`
+    })
+  },
+  {
+    pattern: /TURNO[^\n]*fecha[^\n]*(\d{1,2}\/\d{1,2}\/\d{4})[^\n]*(\d{1,2}:\d{2})[^\n]*[-–][^\n]*(\d{1,2}:\d{2})/i,
     handler: (match) => ({
       date: match[1].split('/').reverse().join('-'),
       time: `${match[2]} - ${match[3]}`
     })
   },
   {
-    pattern: /(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/i,
+    pattern: /(\d{1,2}\/\d{1,2}\/\d{4})\s+(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/i,
     handler: (match) => ({
       date: match[1].split('/').reverse().join('-'),
       time: `${match[2]} - ${match[3]}`
@@ -41,7 +55,7 @@ const DATE_PATTERNS = [
     })
   },
   {
-    pattern: /(\d{1,2})\s*\/\s*(\d{1,2})\s+DE\s+(\d+)\s+A\s+(\d+)\s+HS/i,
+    pattern: /(\d{1,2})\s*\/\s*(\d{1,2})\s+DE\s+(\d+)\s+A\s+(\d{1,2})\s+HS/i,
     handler: (match) => {
       const year = new Date().getFullYear();
       return {
