@@ -577,9 +577,10 @@ function setupEventHandlers() {
  // Cambiamos 'message' por 'message_create' para mayor fiabilidad
   client.on('message_create', async (message) => {
     // DEBUG: Ver si llegan mensajes
-    console.log(`[DEBUG] Mensaje recibido de: ${message.from} - Body: ${message.body?.substring(0, 50)}...`);
+    console.log(`[DEBUG] Mensaje recibido de: ${message.from} - Body: ${message.body?.substring(0, 100)}...`);
     console.log(`[DEBUG] ¿Mensaje reenviado? ${message.forwardingScore > 0}`);
     console.log(`[DEBUG] fromMe: ${message.fromMe}`);
+    console.log(`[DEBUG] Mensaje completo:`, message.body);
     
     // 1. Ignorar mensajes propios para evitar bucles infinitos
     if (message.fromMe) {
@@ -596,6 +597,7 @@ function setupEventHandlers() {
       // 3. Verificación de seguridad: ¿Es un grupo permitido?
       const groupName = chat.name?.trim() || '';
       console.log(`[DEBUG] Grupo detectado: "${groupName}"`);
+      console.log(`[DEBUG] ¿Es grupo? ${chat.isGroup}`);
       
       // Si no es grupo, ignorar
       if (!chat.isGroup) {
@@ -606,6 +608,7 @@ function setupEventHandlers() {
       const isAllowed = allowedGroupsCache.has(groupName.toLowerCase());
       console.log(`[DEBUG] ¿Grupo permitido? ${isAllowed}`);
       console.log(`[DEBUG] Cache contiene:`, Array.from(allowedGroupsCache));
+      console.log(`[DEBUG] Nombre del grupo normalizado: "${groupName.toLowerCase()}"`);
 
       if (!isAllowed) {
         console.log(`[DEBUG] Mensaje ignorado - grupo no permitido`);
