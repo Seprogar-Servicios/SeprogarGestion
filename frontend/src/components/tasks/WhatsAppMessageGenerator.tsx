@@ -108,7 +108,7 @@ const WhatsAppMessageGenerator: React.FC<WhatsAppMessageGeneratorProps> = ({ tas
     
     // Abrir WhatsApp con el mensaje predefinido
     const whatsappUrl = `https://wa.me/${tecnico.telefono?.replace(/\D/g, '')}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
