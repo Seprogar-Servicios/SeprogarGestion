@@ -12,6 +12,7 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
   const [tecnico, setTecnico] = useState<string>(filters.tecnico || '');
   const [estado, setEstado] = useState<string>(filters.estado || '');
   const [fechaDesde, setFechaDesde] = useState<string>('');
+  const [fechaEjecucion, setFechaEjecucion] = useState<string>('');
 
   // Filtrar usuarios que son técnicos (rol 'usuario')
   const tecnicos = users?.filter((user: User) => user.rol === 'usuario' && user.aprobado) || [];
@@ -26,28 +27,33 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
 
   const handleApplyFilters = () => {
     const newFilters: TaskFilters = {};
-    
+
     // Apply tecnico filter if selected
     if (tecnico) {
       newFilters.tecnico = tecnico;
     }
-    
+
     // Apply estado filter if selected
     if (estado) {
       newFilters.estado = estado;
     }
-    
+
     // Handle date filter
     if (fechaDesde) {
       newFilters.fechaDesde = fechaDesde;
     }
-    
+
+    // Handle fechaEjecucion filter
+    if (fechaEjecucion) {
+      newFilters.fechaEjecucion = fechaEjecucion;
+    }
+
     if (estado) {
       newFilters.estado = estado;
     } else {
       delete newFilters.estado;
     }
-    
+
     onFiltersChange(newFilters);
   };
 
@@ -56,6 +62,7 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
     setTecnico('');
     setEstado('');
     setFechaDesde('');
+    setFechaEjecucion('');
     // Clear all filters
     onFiltersChange({});
   };
@@ -134,6 +141,20 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
               type="date"
               value={fechaDesde}
               onChange={(e) => setFechaDesde(e.target.value)}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+        )}
+
+        {(
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Fecha de Ejecución
+            </label>
+            <input
+              type="date"
+              value={fechaEjecucion}
+              onChange={(e) => setFechaEjecucion(e.target.value)}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>

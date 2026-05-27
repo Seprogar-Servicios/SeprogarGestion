@@ -9,7 +9,19 @@ const userSchema = new mongoose.Schema({
   aprobado: { type: Boolean, default: false },
   notificationToken: { type: String, default: null },
   telefono: { type: String, default: null },
-  direccion: { type: String, default: null }
+  direccion: { type: String, default: null },
+  porcentajeTecnico: {
+    type: Number,
+    default: 0.7,
+    min: 0,
+    max: 1,
+    validate: {
+      validator: function(v) {
+        return v >= 0 && v <= 1;
+      },
+      message: 'El porcentaje debe estar entre 0 y 1'
+    }
+  }
 }, { timestamps: true });
 
 // Índices para mejor rendimiento

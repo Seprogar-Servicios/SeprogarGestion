@@ -9,6 +9,7 @@ export interface User {
   aprobado: boolean;
   telefono?: string;
   direccion?: string;
+  porcentajeTecnico?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -51,9 +52,20 @@ export interface Material {
   _id: string;
   nombre: string;
   descripcion?: string;
-  cantidad: number;
+  cantidad: string;
   unidad: string;
   precio?: number;
+  categoria?: CategoriaMaterial | string;
+  codigo?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// CategoriaMaterial types
+export interface CategoriaMaterial {
+  _id: string;
+  nombre: string;
+  descripcion?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -108,6 +120,7 @@ export interface TaskFilters {
   fechaFin?: string;
   fechaDesde?: string;
   fechaHasta?: string;
+  fechaEjecucion?: string;
   upcomingFilter?: 'past' | 'next24h' | 'next48h' | 'nextWeek' | 'nextMonth' | 'custom';
   usuario?: string;
 }
@@ -165,6 +178,70 @@ export interface Recibo {
     imagen: string;
     fecha: string;
   };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// TareaLiquidacion types
+export interface TareaLiquidacion {
+  _id: string;
+  tarea: {
+    _id: string;
+    numero: string;
+    titulo: string;
+    cliente: string;
+    direccion: string;
+    estado: string;
+    fechaEjecucion: string;
+    tecnicos: Array<{
+      _id: string;
+      nombre: string;
+      email: string;
+      porcentajeTecnico: number;
+    }>;
+  };
+  manoObra: number;
+  materiales: number;
+  cobertura: number;
+  excedente: number;
+  materialReal: number;
+  boletasMateriales: number;
+  observacionesFinancieras: string;
+  totalPresupuesto?: number;
+  difExcedente?: number;
+  gananciaMaterial?: number;
+  gananciaTotal?: number;
+  repartida?: number;
+  pagoTecnico?: number;
+  futurgas?: number;
+  pago15Dias?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// MaterialTarea types
+export interface MaterialTarea {
+  _id: string;
+  material?: Material;
+  nombre: string;
+  descripcion: string;
+  cantidad: number;
+  unidad: string;
+  precio: number;
+  agregadoPor: 'admin' | 'tecnico';
+  tecnico?: User;
+  comprobante?: {
+    filename: string;
+    originalName: string;
+    path: string;
+    mimetype: string;
+    size: number;
+    uploadDate: string;
+  };
+  estadoValidacion: 'pendiente' | 'aprobado' | 'rechazado';
+  observaciones: string;
+  fechaValidacion?: string;
+  validadoPor?: User;
   createdAt: string;
   updatedAt: string;
 }

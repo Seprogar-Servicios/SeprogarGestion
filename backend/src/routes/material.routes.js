@@ -3,7 +3,7 @@ const router = express.Router();
 const materialCtrl = require('../controllers/material.controller');
 const { authenticateToken, authorizeRoles } = require('../middlewares/auth');
 
-// Todas requieren admin
+// Solo admin tiene acceso a materiales
 router.use(authenticateToken, authorizeRoles('admin'));
 
 router.post('/', materialCtrl.createMaterial);

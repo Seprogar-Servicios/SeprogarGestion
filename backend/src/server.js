@@ -129,7 +129,10 @@ app.use('/api/bot', require('./routes/bot.routes'));
 
 // Rutas existentes
 app.use('/api/especialidades', require('./routes/especialidad.routes'));
+app.use('/api/categorias-materiales', require('./routes/categoriaMaterial.routes'));
 app.use('/api/materiales', require('./routes/material.routes'));
+app.use('/api/liquidaciones', require('./routes/tareaLiquidacion.routes'));
+app.use('/api/tarea-materiales', require('./routes/tareaMaterial.routes'));
 app.use('/api/data', require('./routes/data.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/subscribe', require('./routes/subscriptionRoutes'));

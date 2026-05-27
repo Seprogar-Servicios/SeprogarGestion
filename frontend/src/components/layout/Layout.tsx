@@ -3,12 +3,12 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
 import ChatBot from '../../components/ChatBot';
-import { 
-  Menu, 
-  X, 
-  Home, 
-  Calendar, 
-  Users, 
+import {
+  Menu,
+  X,
+  Home,
+  Calendar,
+  Users,
   LogOut,
   Briefcase,
   UserCircle,
@@ -16,7 +16,10 @@ import {
   BarChart,
   FileText,
   Building,
-  Shield
+  Shield,
+  Package,
+  FolderOpen,
+  DollarSign
 } from 'lucide-react';
 
 const Layout: React.FC = () => {
@@ -78,7 +81,9 @@ const Layout: React.FC = () => {
     { name: 'Análisis', href: '/admin/analytics', icon: BarChart },
     { name: 'Análisis de Consorcio', href: '/admin/analytics-consorcio', icon: BarChart },
     { name: 'Importar/Exportar', href: '/admin/importar-exportar', icon: Database },
-    { name: 'Legales', href: '/legales', icon: Shield },
+    { name: 'Materiales', href: '/admin/materiales', icon: Package },
+    { name: 'Categorías de Materiales', href: '/admin/categorias-materiales', icon: FolderOpen },
+    { name: 'Liquidaciones', href: '/admin/liquidaciones', icon: DollarSign },
   ];
 
   // Verificar la ruta actual para resaltar el elemento activo
@@ -94,13 +99,6 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-gray-100 dark:bg-gray-900">
-      {/* Mobile menu button */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className="fixed bottom-4 right-4 z-40 lg:hidden p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-colors"
-      >
-        <Menu className="h-6 w-6" />
-      </button>
 
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-900 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex-shrink-0 overflow-y-auto border-r border-blue-500/20 dark:border-gray-700`}>

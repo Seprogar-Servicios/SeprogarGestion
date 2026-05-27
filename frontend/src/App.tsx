@@ -13,6 +13,9 @@ import UserManagement from './components/admin/UserManagement';
 import SpecialtyManagement from './components/admin/SpecialtyManagement';
 import TareaConsorcioManagement from './components/admin/TareaConsorcioManagement';
 import DataImportExport from './components/admin/DataImportExport';
+import MaterialManagement from './components/admin/MaterialManagement';
+import CategoriaMaterialManagement from './components/admin/CategoriaMaterialManagement';
+import Liquidaciones from './components/admin/Liquidaciones';
 import ProfilePage from './components/user/ProfilePage';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -83,7 +86,22 @@ const AppRoutes = () => {
             <ConsorcioAnalytics />
           </ProtectedRoute>
         } />
-        
+        <Route path="/admin/materiales" element={
+          <ProtectedRoute requiredRole="admin">
+            <MaterialManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/categorias-materiales" element={
+          <ProtectedRoute requiredRole="admin">
+            <CategoriaMaterialManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/liquidaciones" element={
+          <ProtectedRoute requiredRole="admin">
+            <Liquidaciones />
+          </ProtectedRoute>
+        } />
+
         {/* Rutas específicas para AdminConsorcio */}
         <Route path="/adminConsorcio/dashboard" element={
           <ProtectedRoute requiredRole="adminConsorcio">

@@ -8,7 +8,7 @@ exports.createMaterial = async (req, res) => {
   try {
     const material = new Material(req.body);
     await material.save();
-    res.status(201).json({ message: 'Material creado', material });
+    res.status(201).json({ data: material });
   } catch (err) {
     res.status(500).json({ message: 'Error al crear material', error: err.message });
   }
@@ -18,7 +18,7 @@ exports.createMaterial = async (req, res) => {
 exports.getMateriales = async (req, res) => {
   try {
     const materiales = await Material.find();
-    res.json(materiales);
+    res.json({ data: materiales });
   } catch (err) {
     res.status(500).json({ message: 'Error al obtener materiales', error: err.message });
   }
@@ -31,7 +31,7 @@ exports.updateMaterial = async (req, res) => {
   try {
     const material = await Material.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!material) return res.status(404).json({ message: 'Material no encontrado' });
-    res.json({ message: 'Material actualizado', material });
+    res.json({ data: material });
   } catch (err) {
     res.status(500).json({ message: 'Error al actualizar material', error: err.message });
   }

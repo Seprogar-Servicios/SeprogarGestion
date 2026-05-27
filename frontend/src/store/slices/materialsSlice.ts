@@ -94,10 +94,16 @@ const materialsSlice = createSlice({
       })
       // Create material
       .addCase(createMaterial.fulfilled, (state, action) => {
+        if (!state.materials) {
+          state.materials = [];
+        }
         state.materials.push(action.payload);
       })
       // Update material
       .addCase(updateMaterial.fulfilled, (state, action) => {
+        if (!state.materials) {
+          state.materials = [];
+        }
         const index = state.materials.findIndex(material => material._id === action.payload._id);
         if (index !== -1) {
           state.materials[index] = action.payload;
@@ -105,6 +111,9 @@ const materialsSlice = createSlice({
       })
       // Delete material
       .addCase(deleteMaterial.fulfilled, (state, action) => {
+        if (!state.materials) {
+          state.materials = [];
+        }
         state.materials = state.materials.filter(material => material._id !== action.payload);
       });
   },

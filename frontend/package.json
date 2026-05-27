@@ -17,6 +17,7 @@
     "axios": "^1.6.2",
     "chart.js": "^4.5.0",
     "date-fns": "^2.30.0",
+    "exceljs": "^4.4.0",
     "framer-motion": "^12.23.12",
     "lucide-react": "^0.294.0",
     "prop-types": "^15.8.1",
