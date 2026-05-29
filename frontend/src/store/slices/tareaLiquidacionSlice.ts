@@ -68,6 +68,18 @@ export const fetchLiquidaciones = createAsyncThunk(
   }
 );
 
+export const fetchLiquidacionesByTecnico = createAsyncThunk(
+  'tareaLiquidacion/fetchLiquidacionesByTecnico',
+  async (tecnicoId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get<ApiResponse<TareaLiquidacion[]>>(`/liquidaciones/tecnico/${tecnicoId}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Error al cargar liquidaciones del técnico');
+    }
+  }
+);
+
 export const fetchLiquidacionById = createAsyncThunk(
   'tareaLiquidacion/fetchLiquidacionById',
   async (id: string, { rejectWithValue }) => {
@@ -136,6 +148,19 @@ const tareaLiquidacionSlice = createSlice({
         state.liquidaciones = action.payload;
       })
       .addCase(fetchLiquidaciones.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Fetch liquidaciones by tecnico
+      .addCase(fetchLiquidacionesByTecnico.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchLiquidacionesByTecnico.fulfilled, (state, action) => {
+        state.loading = false;
+        state.liquidaciones = action.payload;
+      })
+      .addCase(fetchLiquidacionesByTecnico.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })

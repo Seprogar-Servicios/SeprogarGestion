@@ -4,6 +4,7 @@ import { fetchLiquidaciones, updateLiquidacion } from '../../store/slices/tareaL
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { Download, Upload, DollarSign, Filter } from 'lucide-react';
 import type { TareaLiquidacion } from '../../types';
+import api from '../../config/api';
 
 const Liquidaciones: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -116,51 +117,24 @@ const Liquidaciones: React.FC = () => {
     }
   };
 
-  const handleExportExcel = () => {
-    const headers = [
-      'Número', 'Cliente', 'Dirección', 'Técnico', 'Estado', 'Fecha',
-      'Mano de Obra', 'Materiales', 'Cobertura', 'Excedente', 'Material Real',
-      'Boletas Materiales', 'Total Presupuesto', 'Dif Excedente', 'Ganancia Material',
-      'Ganancia Total', 'Repartida', 'Pago Técnico', 'Futurgas', 'Pago 15 Días'
-    ];
-
-    const rows = filteredLiquidaciones.map(l => [
-      l.tarea?.numero || '',
-      l.tarea?.cliente || '',
-      l.tarea?.direccion || '',
-      l.tarea?.tecnicos?.[0]?.nombre || '',
-      l.tarea?.estado || '',
-      l.tarea?.fechaEjecucion || '',
-      l.manoObra || 0,
-      l.materiales || 0,
-      l.cobertura || 0,
-      l.excedente || 0,
-      l.materialReal || 0,
-      l.boletasMateriales || 0,
-      l.totalPresupuesto || 0,
-      l.difExcedente || 0,
-      l.gananciaMaterial || 0,
-      l.gananciaTotal || 0,
-      l.repartida || 0,
-      l.pagoTecnico || 0,
-      l.futurgas || 0,
-      l.pago15Dias || 0,
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'liquidaciones.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportExcel = async () => {
+    try {
+      const response = await api.get('/liquidaciones/export', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `liquidaciones_admin_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al exportar liquidaciones:', error);
+      alert('Error al exportar liquidaciones');
+    }
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,41 +193,28 @@ const Liquidaciones: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const handleExportCalculoMensual = () => {
-    const headers = [
-      'Campo', 'Total'
-    ];
-
-    const rows = [
-      ['Mano de Obra', totals.manoObra],
-      ['Materiales', totals.materiales],
-      ['Cobertura', totals.cobertura],
-      ['Excedente', totals.excedente],
-      ['Material Real', totals.materialReal],
-      ['Boletas Materiales', totals.boletasMateriales],
-      ['Total Presupuesto', totals.totalPresupuesto],
-      ['Ganancia Material', totals.gananciaMaterial],
-      ['Ganancia Total', totals.gananciaTotal],
-      ['Repartida', totals.repartida],
-      ['Pago Técnico', totals.pagoTecnico],
-      ['Futurgas', totals.futurgas],
-      ['Pago 15 Días', totals.pago15Dias],
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `calculo-mensual-${filterMes}-${filterTecnico || 'todos'}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportCalculoMensual = async () => {
+    try {
+      const response = await api.get('/liquidaciones/export/calculo-mensual', {
+        params: {
+          tecnico: filterTecnico,
+          mes: filterMes
+        },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `calculo-mensual-${filterMes}-${filterTecnico || 'todos'}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al exportar cálculo mensual:', error);
+      alert('Error al exportar cálculo mensual');
+    }
   };
 
   const formatCurrency = (value: number) => {

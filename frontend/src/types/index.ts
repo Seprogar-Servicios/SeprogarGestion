@@ -57,6 +57,7 @@ export interface Material {
   precio?: number;
   categoria?: CategoriaMaterial | string;
   codigo?: string;
+  origen?: 'stock' | 'excedente';
   createdAt: string;
   updatedAt: string;
 }
@@ -228,6 +229,7 @@ export interface MaterialTarea {
   cantidad: number;
   unidad: string;
   precio: number;
+  origen?: 'stock' | 'excedente';
   agregadoPor: 'admin' | 'tecnico';
   tecnico?: User;
   comprobante?: {

@@ -36,9 +36,18 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
   const filteredMaterialesList = materialesList.filter(material => {
     const matchNombre = !filterNombre || material.nombre.toLowerCase().includes(filterNombre.toLowerCase());
     const matchCodigo = !filterCodigo || (material.codigo && material.codigo.toLowerCase().includes(filterCodigo.toLowerCase()));
-    const matchCategoria = !filterCategoria || 
-      (typeof material.categoria === 'object' && material.categoria?.nombre?.toLowerCase().includes(filterCategoria.toLowerCase())) ||
-      (typeof material.categoria === 'string' && material.categoria === filterCategoria);
+    
+    let matchCategoria = !filterCategoria;
+    if (filterCategoria) {
+      if (typeof material.categoria === 'object' && material.categoria?.nombre) {
+        matchCategoria = material.categoria.nombre.toLowerCase() === filterCategoria.toLowerCase();
+      } else if (typeof material.categoria === 'string') {
+        // Si categoria es un string (ObjectId), buscar el nombre en la lista de categorías
+        const categoriaEncontrada = categoriasList.find(cat => cat._id === material.categoria);
+        matchCategoria = categoriaEncontrada?.nombre?.toLowerCase() === filterCategoria.toLowerCase();
+      }
+    }
+    
     return matchNombre && matchCodigo && matchCategoria;
   });
 
@@ -172,7 +181,11 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
     }
 
     try {
-      const response = await api.post(`/tarea-materiales/tarea/${taskId}/admin/multiples`, {
+      const endpoint = userRole === 'admin' 
+        ? `/tarea-materiales/tarea/${taskId}/admin/multiples`
+        : `/tarea-materiales/tarea/${taskId}/tecnico/multiples`;
+      
+      const response = await api.post(endpoint, {
         materiales: materialesToAdd
       });
 
@@ -354,7 +367,16 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
     }
   };
 
-  const handleEliminarMaterial = async (materialId: string) => {
+  const handleEliminarMaterial = async (materialId: string, materialNombre: string) => {
+    const confirmado = window.confirm(
+      `¿Estás seguro de que deseas eliminar el material "${materialNombre}"?\n\n` +
+      `Si el material fue tomado del stock, la cantidad será devuelta automáticamente.`
+    );
+    
+    if (!confirmado) {
+      return;
+    }
+
     try {
       await api.delete(`/tarea-materiales/tarea/${taskId}/${materialId}`);
       showSuccess('Material eliminado exitosamente');
@@ -412,6 +434,13 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                 Agregar del Stock
               </button>
               <button
+                onClick={() => setShowMultiplesModal(true)}
+                className="inline-flex items-center px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Múltiples
+              </button>
+              <button
                 onClick={() => setShowTecnicoModal(true)}
                 className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
               >
@@ -450,6 +479,15 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                     }`}>
                       {material.agregadoPor === 'admin' ? 'Admin' : 'Técnico'}
                     </span>
+                    {material.origen && (
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        material.origen === 'stock'
+                          ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
+                          : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
+                      }`}>
+                        {material.origen === 'stock' ? 'Stock' : 'Excedente'}
+                      </span>
+                    )}
                     {material.agregadoPor === 'tecnico' && (
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         material.estadoValidacion === 'aprobado'
@@ -522,7 +560,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                   )}
                   {(userRole === 'admin' || (userRole === 'usuario' && material.tecnico?._id === userId)) && (
                     <button
-                      onClick={() => handleEliminarMaterial(material._id)}
+                      onClick={() => handleEliminarMaterial(material._id, material.nombre)}
                       className="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
                       title="Eliminar"
                     >
@@ -630,7 +668,6 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
               </button>
               <button
                 type="submit"
-                onClick={userRole === 'admin' ? handleAddMaterialAdmin : handleAddMaterialTecnicoDesdeLista}
                 className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-base font-medium"
               >
                 Agregar Material
@@ -762,7 +799,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col relative mt-95">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Agregar Múltiples Materiales (Admin)
+                {userRole === 'admin' ? 'Agregar Múltiples Materiales (Admin)' : 'Agregar Múltiples Materiales (Técnico)'}
               </h3>
             </div>
             <div className="flex-1 overflow-y-auto p-6 scroll-smooth">

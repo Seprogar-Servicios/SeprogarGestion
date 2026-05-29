@@ -8,6 +8,7 @@ const materialSchema = new mongoose.Schema({
   precio: { type: Number, default: 0 },
   categoria: { type: mongoose.Schema.Types.ObjectId, ref: 'CategoriaMaterial' },
   codigo: { type: String }, // código alfanumérico con símbolos
+  origen: { type: String, enum: ['stock', 'excedente'], default: 'stock' } // origen por defecto del material
 }, { timestamps: true });
 
 module.exports = mongoose.model('Material', materialSchema);

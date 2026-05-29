@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store';
-import { DollarSign, Filter } from 'lucide-react';
-import { fetchLiquidaciones } from '../../store/slices/tareaLiquidacionSlice';
+import { DollarSign, Filter, Download } from 'lucide-react';
+import { fetchLiquidacionesByTecnico } from '../../store/slices/tareaLiquidacionSlice';
+import api from '../../config/api';
 
 const TecnicoLiquidaciones: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -11,13 +12,15 @@ const TecnicoLiquidaciones: React.FC = () => {
   const [filterMes, setFilterMes] = useState('');
 
   useEffect(() => {
-    dispatch(fetchLiquidaciones());
+    if (user?._id) {
+      dispatch(fetchLiquidacionesByTecnico(user._id));
+    }
     
     // Establecer el mes actual por defecto
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     setFilterMes(currentMonth);
-  }, [dispatch]);
+  }, [dispatch, user?._id]);
 
   // Filtrar liquidaciones por técnico actual y mes
   const filteredLiquidaciones = liquidaciones.filter(liquidacion => {
@@ -33,12 +36,6 @@ const TecnicoLiquidaciones: React.FC = () => {
     return matchesTecnico && matchesMes;
   });
 
-  // Debug: log para verificar datos
-  console.log('Usuario:', user?.nombre, user?._id);
-  console.log('Filtro mes:', filterMes);
-  console.log('Total liquidaciones:', liquidaciones.length);
-  console.log('Liquidaciones filtradas:', filteredLiquidaciones.length);
-
   // Calcular totales
   const totals = filteredLiquidaciones.reduce((acc, l) => ({
     pagoTecnico: acc.pagoTecnico + (l.pagoTecnico || 0),
@@ -53,6 +50,28 @@ const TecnicoLiquidaciones: React.FC = () => {
       style: 'currency',
       currency: 'ARS'
     }).format(value);
+  };
+
+  const handleExportExcel = async () => {
+    if (!user?._id) return;
+    
+    try {
+      const response = await api.get(`/liquidaciones/tecnico/${user._id}/export`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `liquidaciones_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al exportar liquidaciones:', error);
+      alert('Error al exportar liquidaciones');
+    }
   };
 
   return (
@@ -76,7 +95,7 @@ const TecnicoLiquidaciones: React.FC = () => {
 
       {/* Filtro por mes */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-green-500 p-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-end gap-4">
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Filtrar por Mes
@@ -92,6 +111,15 @@ const TecnicoLiquidaciones: React.FC = () => {
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
               />
             </div>
+          </div>
+          <div className="flex-shrink-0">
+            <button
+              onClick={handleExportExcel}
+              className="inline-flex items-center px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar Excel
+            </button>
           </div>
         </div>
       </div>

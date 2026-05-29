@@ -6,6 +6,7 @@ const {
   agregarMultiplesMaterialesAdmin,
   agregarMaterialTecnico,
   agregarMaterialTecnicoDesdeLista,
+  agregarMultiplesMaterialesTecnico,
   actualizarMaterialTarea,
   eliminarMaterialTarea,
   validarComprobante,
@@ -31,6 +32,9 @@ router.post('/tarea/:tareaId/tecnico', authorizeRoles('usuario'), upload.single(
 
 // Agregar material a tarea (Técnico - desde lista existente, sin comprobante)
 router.post('/tarea/:tareaId/tecnico/lista', authorizeRoles('usuario'), agregarMaterialTecnicoDesdeLista);
+
+// Agregar múltiples materiales a tarea (Técnico)
+router.post('/tarea/:tareaId/tecnico/multiples', authorizeRoles('usuario'), agregarMultiplesMaterialesTecnico);
 
 // Actualizar material de tarea
 router.put('/tarea/:tareaId/:materialId', actualizarMaterialTarea);

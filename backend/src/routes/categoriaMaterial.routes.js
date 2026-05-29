@@ -3,12 +3,15 @@ const router = express.Router();
 const categoriaMaterialCtrl = require('../controllers/categoriaMaterial.controller');
 const { authenticateToken, authorizeRoles } = require('../middlewares/auth');
 
-// Solo admin tiene acceso a categorías de materiales
-router.use(authenticateToken, authorizeRoles('admin'));
+// Todas las rutas requieren autenticación
+router.use(authenticateToken);
 
-router.post('/', categoriaMaterialCtrl.createCategoriaMaterial);
-router.get('/', categoriaMaterialCtrl.getCategoriasMateriales);
-router.put('/:id', categoriaMaterialCtrl.updateCategoriaMaterial);
-router.delete('/:id', categoriaMaterialCtrl.deleteCategoriaMaterial);
+// Solo admin puede crear, actualizar y eliminar categorías
+router.post('/', authorizeRoles('admin'), categoriaMaterialCtrl.createCategoriaMaterial);
+router.put('/:id', authorizeRoles('admin'), categoriaMaterialCtrl.updateCategoriaMaterial);
+router.delete('/:id', authorizeRoles('admin'), categoriaMaterialCtrl.deleteCategoriaMaterial);
+
+// Admin y técnicos pueden ver categorías
+router.get('/', authorizeRoles('admin', 'usuario'), categoriaMaterialCtrl.getCategoriasMateriales);
 
 module.exports = router;

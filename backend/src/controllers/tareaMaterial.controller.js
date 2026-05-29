@@ -107,6 +107,7 @@ const agregarMaterialAdmin = async (req, res) => {
       cantidad: cantidad || 1,
       unidad: material.unidad,
       precio: material.precio || 0,
+      origen: material.origen || 'stock',
       agregadoPor: 'admin',
       observaciones: req.body.observaciones || ''
     };
@@ -187,6 +188,7 @@ const agregarMultiplesMaterialesAdmin = async (req, res) => {
           cantidad: item.cantidad || 1,
           unidad: material.unidad,
           precio: material.precio || 0,
+          origen: material.origen || 'stock',
           agregadoPor: 'admin',
           observaciones: item.observaciones || ''
         };
@@ -261,6 +263,7 @@ const agregarMaterialTecnico = async (req, res) => {
       cantidad: cantidad || 1,
       unidad: unidad || 'un',
       precio: precio || 0,
+      origen: 'excedente',
       agregadoPor: 'tecnico',
       tecnico: userId,
       comprobante: {
@@ -294,7 +297,116 @@ const agregarMaterialTecnico = async (req, res) => {
   }
 };
 
-// Agregar material a tarea (Técnico - desde lista existente, sin comprobante)
+// Agregar múltiples materiales a tarea (Técnico - desde lista existente)
+const agregarMultiplesMaterialesTecnico = async (req, res) => {
+  try {
+    const { tareaId } = req.params;
+    const { materiales } = req.body;
+    const userId = req.user._id;
+
+    // Validar tarea
+    const tarea = await Tarea.findById(tareaId);
+    if (!tarea) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tarea no encontrada'
+      });
+    }
+
+    // Validar que el usuario sea técnico de la tarea
+    const esTecnicoAsignado = tarea.tecnicos.some(tec => tec.toString() === userId.toString());
+    if (!esTecnicoAsignado) {
+      return res.status(403).json({
+        success: false,
+        message: 'No eres técnico asignado a esta tarea'
+      });
+    }
+
+    if (!materiales || !Array.isArray(materiales) || materiales.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Debe proporcionar al menos un material'
+      });
+    }
+
+    const materialesAgregados = [];
+    const errores = [];
+
+    for (const item of materiales) {
+      try {
+        const { materialId, cantidad, observaciones } = item;
+
+        // Validar material
+        const material = await Material.findById(materialId);
+        if (!material) {
+          errores.push(`Material no encontrado: ${materialId}`);
+          continue;
+        }
+
+        // Validar stock disponible
+        const stockDisponible = parseInt(material.cantidad || '0');
+        if (cantidad > stockDisponible) {
+          errores.push(`Stock insuficiente para ${material.nombre}: ${stockDisponible} disponibles, ${cantidad} solicitados`);
+          continue;
+        }
+
+        // Verificar si ya existe en la tarea
+        const yaExiste = tarea.materialesTarea.some(m => 
+          m.material?.toString() === materialId.toString()
+        );
+        if (yaExiste) {
+          errores.push(`El material ${material.nombre} ya está en la tarea`);
+          continue;
+        }
+
+        // Descontar del stock del material
+        material.cantidad = (parseInt(material.cantidad || '0') - cantidad).toString();
+        await material.save();
+
+        // Agregar material a tarea
+        const nuevoMaterialTarea = {
+          material: materialId,
+          nombre: material.nombre,
+          descripcion: material.descripcion || '',
+          cantidad: cantidad || 1,
+          unidad: material.unidad,
+          precio: material.precio || 0,
+          origen: material.origen || 'stock',
+          agregadoPor: 'tecnico',
+          tecnico: userId,
+          estadoValidacion: 'aprobado',
+          observaciones: observaciones || ''
+        };
+
+        tarea.materialesTarea.push(nuevoMaterialTarea);
+        materialesAgregados.push(material.nombre);
+      } catch (error) {
+        console.error('Error agregando material:', error);
+        errores.push(`Error al agregar material: ${item.materialId}`);
+      }
+    }
+
+    await tarea.save();
+
+    // Actualizar liquidación
+    await actualizarLiquidacion(tareaId);
+
+    const tareaActualizada = await Tarea.findById(tareaId).populate('materialesTarea.material');
+
+    res.json({
+      success: true,
+      data: tareaActualizada.materialesTarea,
+      message: `${materialesAgregados.length} materiales agregados exitosamente`,
+      errores: errores.length > 0 ? errores : undefined
+    });
+  } catch (error) {
+    console.error('Error agregando múltiples materiales técnico:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al agregar múltiples materiales a la tarea'
+    });
+  }
+};
 const agregarMaterialTecnicoDesdeLista = async (req, res) => {
   try {
     const { tareaId } = req.params;
@@ -349,10 +461,11 @@ const agregarMaterialTecnicoDesdeLista = async (req, res) => {
       cantidad: cantidad || 1,
       unidad: material.unidad,
       precio: material.precio || 0,
+      origen: material.origen || 'stock',
       agregadoPor: 'tecnico',
       tecnico: userId,
-      estadoValidacion: 'aprobado', // Aprobado automáticamente porque es del stock
-      observaciones: req.body.observaciones || 'Material tomado del stock del depósito'
+      estadoValidacion: 'aprobado',
+      observaciones: req.body.observaciones || ''
     };
 
     tarea.materialesTarea.push(nuevoMaterialTarea);
@@ -481,6 +594,17 @@ const eliminarMaterialTarea = async (req, res) => {
           success: false,
           message: 'No puedes eliminar materiales agregados por otro técnico'
         });
+      }
+    }
+
+    // Si el material fue tomado del stock, devolver la cantidad al stock
+    if (materialTarea.origen === 'stock' && materialTarea.material) {
+      const material = await Material.findById(materialTarea.material);
+      if (material) {
+        const cantidadActual = parseInt(material.cantidad || '0');
+        const cantidadADevolver = parseInt(materialTarea.cantidad || '0');
+        material.cantidad = (cantidadActual + cantidadADevolver).toString();
+        await material.save();
       }
     }
 
@@ -643,6 +767,7 @@ module.exports = {
   agregarMultiplesMaterialesAdmin,
   agregarMaterialTecnico,
   agregarMaterialTecnicoDesdeLista,
+  agregarMultiplesMaterialesTecnico,
   actualizarMaterialTarea,
   eliminarMaterialTarea,
   validarComprobante,

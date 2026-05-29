@@ -8,7 +8,10 @@ const {
   deleteLiquidacion,
   getLiquidacionesByTecnico,
   getLiquidacionByTarea,
-  getLiquidacionByNumeroTarea
+  getLiquidacionByNumeroTarea,
+  exportLiquidacionesTecnico,
+  exportLiquidacionesAdmin,
+  exportCalculoMensual
 } = require('../controllers/tareaLiquidacion.controller');
 const { authenticateToken, authorizeRoles } = require('../middlewares/auth');
 
@@ -18,8 +21,17 @@ router.use(authenticateToken);
 // Obtener todas las liquidaciones (solo admin)
 router.get('/', authorizeRoles('admin'), getLiquidaciones);
 
+// Exportar todas las liquidaciones (Admin) a Excel
+router.get('/export', authorizeRoles('admin'), exportLiquidacionesAdmin);
+
+// Exportar cálculo mensual (Admin) a Excel
+router.get('/export/calculo-mensual', authorizeRoles('admin'), exportCalculoMensual);
+
 // Obtener liquidaciones por técnico (admin y el propio técnico)
 router.get('/tecnico/:tecnicoId', authorizeRoles('admin', 'usuario'), getLiquidacionesByTecnico);
+
+// Exportar liquidaciones del técnico a Excel
+router.get('/tecnico/:tecnicoId/export', authorizeRoles('admin', 'usuario'), exportLiquidacionesTecnico);
 
 // Obtener liquidación por número de tarea
 router.get('/tarea/numero/:numero', getLiquidacionByNumeroTarea);

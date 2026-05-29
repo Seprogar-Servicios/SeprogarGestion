@@ -9,7 +9,9 @@ const materialTareaSchema = new mongoose.Schema({
   cantidad: { type: Number, required: true, default: 1 },
   unidad: { type: String, default: 'un' },
   precio: { type: Number, required: true, default: 0 },
-  // Origen del material
+  // Origen del material (stock o excedente)
+  origen: { type: String, enum: ['stock', 'excedente'], default: 'excedente' },
+  // Quién agregó el material
   agregadoPor: { type: String, enum: ['admin', 'tecnico'], required: true },
   tecnico: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' }, // Técnico que lo agregó
   // Comprobante (para materiales agregados por técnico)
