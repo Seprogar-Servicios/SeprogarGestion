@@ -64,6 +64,7 @@ const UserManagement: React.FC = () => {
     rol: 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
     password?: string;
     confirmPassword?: string;
+    porcentajeTecnico?: number;
   }
 
   const [formData, setFormData] = useState<FormData>({
@@ -73,7 +74,8 @@ const UserManagement: React.FC = () => {
     direccion: '',
     rol: 'usuario',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    porcentajeTecnico: 0.7
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -85,7 +87,8 @@ const UserManagement: React.FC = () => {
     password: '',
     confirmPassword: '',
     rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
-    especialidad: ''
+    especialidad: '',
+    porcentajeTecnico: 0.7
   });
 
   useEffect(() => {
@@ -190,7 +193,8 @@ const UserManagement: React.FC = () => {
       direccion: '',
       rol: 'usuario',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      porcentajeTecnico: 0.7
     });
   };
 
@@ -203,7 +207,8 @@ const UserManagement: React.FC = () => {
       password: '',
       confirmPassword: '',
       rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
-      especialidad: ''
+      especialidad: '',
+      porcentajeTecnico: 0.7
     });
   };
 
@@ -225,6 +230,7 @@ const UserManagement: React.FC = () => {
         password: createFormData.password,
         rol: createFormData.rol,
         especialidad: createFormData.especialidad || undefined,
+        porcentajeTecnico: createFormData.rol === 'usuario' ? createFormData.porcentajeTecnico : undefined
       };
       
       await dispatch(createUser(userToCreate)).unwrap();
@@ -247,7 +253,8 @@ const UserManagement: React.FC = () => {
       direccion: user.direccion || '',
       rol: user.rol as 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      porcentajeTecnico: user.porcentajeTecnico || 0.7
     });
     setShowEditModal(true);
   };
@@ -911,19 +918,19 @@ const UserManagement: React.FC = () => {
                     Rol *
                   </label>
                   <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Shield className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                    </div>
                     <select
                       value={formData.rol}
                       onChange={(e) => setFormData({ ...formData, rol: e.target.value as any })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                      className="w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                       required
                     >
                       <option value="usuario">Técnico</option>
                       <option value="admin">Administrador</option>
                       <option value="adminConsorcio">Administrador de Consorcio</option>
                     </select>
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Shield className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                    </div>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -931,6 +938,32 @@ const UserManagement: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {formData.rol === 'usuario' && (
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Porcentaje Técnico
+                    </label>
+                    <div className="relative rounded-lg shadow-sm">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="1"
+                        value={formData.porcentajeTecnico || 0.7}
+                        onChange={(e) => setFormData({ ...formData, porcentajeTecnico: parseFloat(e.target.value) })}
+                        className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        placeholder="0.7"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <span className="text-gray-400 text-sm">({Math.round((formData.porcentajeTecnico || 0.7) * 100)}%)</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Porcentaje del pago que recibe el técnico (0 a 1, donde 0.7 = 70%)
+                    </p>
+                  </div>
+                )}
 
                 {/* Campos de contraseña opcionales */}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -1231,6 +1264,32 @@ const UserManagement: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {createFormData.rol === 'usuario' && (
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Porcentaje Técnico
+                      </label>
+                      <div className="relative rounded-lg shadow-sm">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="1"
+                          value={createFormData.porcentajeTecnico}
+                          onChange={(e) => setCreateFormData({ ...createFormData, porcentajeTecnico: parseFloat(e.target.value) })}
+                          className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                          placeholder="0.7"
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <span className="text-gray-400 text-sm">({Math.round(createFormData.porcentajeTecnico * 100)}%)</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Porcentaje del pago (0 a 1)
+                      </p>
+                    </div>
+                  )}
 
                   {createFormData.rol === 'usuario' && (
                     <div className="space-y-1">

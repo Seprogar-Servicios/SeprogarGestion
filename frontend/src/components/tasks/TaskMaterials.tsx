@@ -21,10 +21,29 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
   const [comprobanteUrl, setComprobanteUrl] = useState('');
   const [comprobanteType, setComprobanteType] = useState<'image' | 'pdf' | 'other'>('other');
   const [materialesList, setMaterialesList] = useState<Material[]>([]);
+  const [categoriasList, setCategoriasList] = useState<any[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState('');
   const [cantidad, setCantidad] = useState(1);
   const [observaciones, setObservaciones] = useState('');
   const [selectedMateriales, setSelectedMateriales] = useState<{ [key: string]: { checked: boolean; cantidad: number } }>({});
+  
+  // Filtros para el modal de múltiples materiales
+  const [filterNombre, setFilterNombre] = useState('');
+  const [filterCodigo, setFilterCodigo] = useState('');
+  const [filterCategoria, setFilterCategoria] = useState('');
+
+  // Filtrar materiales según los filtros aplicados
+  const filteredMaterialesList = materialesList.filter(material => {
+    const matchNombre = !filterNombre || material.nombre.toLowerCase().includes(filterNombre.toLowerCase());
+    const matchCodigo = !filterCodigo || (material.codigo && material.codigo.toLowerCase().includes(filterCodigo.toLowerCase()));
+    const matchCategoria = !filterCategoria || 
+      (typeof material.categoria === 'object' && material.categoria?.nombre?.toLowerCase().includes(filterCategoria.toLowerCase())) ||
+      (typeof material.categoria === 'string' && material.categoria === filterCategoria);
+    return matchNombre && matchCodigo && matchCategoria;
+  });
+
+  // Obtener categorías únicas para el filtro (desde la lista de categorías)
+  const categoriasUnicas = categoriasList.map(cat => cat.nombre);
 
   // Form for technician
   const [tecnicoForm, setTecnicoForm] = useState({
@@ -41,8 +60,18 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
     fetchMateriales();
     if (userRole === 'admin' || userRole === 'usuario') {
       fetchMaterialesList();
+      fetchCategorias();
     }
   }, [taskId]);
+
+  const fetchCategorias = async () => {
+    try {
+      const response = await api.get('/categorias-materiales');
+      setCategoriasList(response.data.data);
+    } catch (error) {
+      console.error('Error fetching categorias:', error);
+    }
+  };
 
   const fetchMateriales = async () => {
     try {
@@ -729,22 +758,81 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
 
       {/* Multiple Materials Modal */}
       {showMultiplesModal && (
-        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col relative mt-95">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Agregar Múltiples Materiales (Admin)
               </h3>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
               <div className="space-y-4">
-                {materialesList.length === 0 ? (
+                {/* Filtros - Sticky */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3 sticky top-0 z-10 shadow-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Filtrar por nombre
+                      </label>
+                      <input
+                        type="text"
+                        value={filterNombre}
+                        onChange={(e) => setFilterNombre(e.target.value)}
+                        placeholder="Nombre del material..."
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Filtrar por código
+                      </label>
+                      <input
+                        type="text"
+                        value={filterCodigo}
+                        onChange={(e) => setFilterCodigo(e.target.value)}
+                        placeholder="Código..."
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Filtrar por categoría
+                      </label>
+                      <select
+                        value={filterCategoria}
+                        onChange={(e) => setFilterCategoria(e.target.value)}
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                      >
+                        <option value="">Todas las categorías</option>
+                        {categoriasUnicas.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {(filterNombre || filterCodigo || filterCategoria) && (
+                    <button
+                      onClick={() => {
+                        setFilterNombre('');
+                        setFilterCodigo('');
+                        setFilterCategoria('');
+                      }}
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                </div>
+
+                {filteredMaterialesList.length === 0 ? (
                   <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                    No hay materiales disponibles en la base de datos
+                    {materialesList.length === 0 
+                      ? 'No hay materiales disponibles en la base de datos'
+                      : 'No se encontraron materiales con los filtros aplicados'}
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {materialesList.map((material) => {
+                    {filteredMaterialesList.map((material) => {
                       const stockDisponible = parseInt(material.cantidad || '0');
                       const isSelected = selectedMateriales[material._id]?.checked || false;
                       const cantidad = selectedMateriales[material._id]?.cantidad || 1;
@@ -770,8 +858,14 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                               <p className="text-sm text-gray-600 dark:text-gray-400">{material.descripcion}</p>
                             )}
                             <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                              {material.codigo && <span>Código: {material.codigo}</span>}
                               <span>Precio: ${material.precio}</span>
                               <span>Stock: {stockDisponible} {material.unidad}</span>
+                              {typeof material.categoria === 'object' && material.categoria?.nombre && (
+                                <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded text-xs">
+                                  {material.categoria.nombre}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -804,6 +898,9 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                   onClick={() => {
                     setShowMultiplesModal(false);
                     setSelectedMateriales({});
+                    setFilterNombre('');
+                    setFilterCodigo('');
+                    setFilterCategoria('');
                   }}
                   className="px-6 py-3 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-base font-medium"
                 >

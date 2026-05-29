@@ -199,11 +199,17 @@ const MaterialManagement: React.FC = () => {
           const materialData: Partial<Material> = {
             nombre: row[0] || '',
             descripcion: row[1] || '',
-            cantidad: row[2] || '',
+            cantidad: String(row[2] || ''),
             unidad: row[3] || '',
             precio: parseFloat(row[4]) || 0,
             codigo: row[5] || '',
           };
+
+          // Validar campos obligatorios
+          if (!materialData.nombre || !materialData.cantidad || !materialData.unidad) {
+            errorCount++;
+            continue;
+          }
 
           // Buscar o crear categoría
           if (row[6]) {
@@ -249,7 +255,6 @@ const MaterialManagement: React.FC = () => {
             }
           } catch (error) {
             errorCount++;
-            console.error('Error importing/updating material:', error);
           }
         }
 

@@ -25,6 +25,7 @@ import RecibosAdmin from './components/recibos/admin/RecibosAdmin';
 import MisRecibos from './components/recibos/tecnico/MisRecibos';
 import TecnicoTareasConsorcio from './components/tecnico/TareasConsorcio';
 import TecnicoDashboard from './components/tecnico/Dashboard';
+import TecnicoLiquidaciones from './components/user/TecnicoLiquidaciones';
 // Importar componentes de AdminConsorcio
 import AdminConsorcioDashboard from './components/adminConsorcio/Dashboard';
 import AdminConsorcioTareasManagement from './components/adminConsorcio/TareasManagement';
@@ -65,6 +66,11 @@ const AppRoutes = () => {
         <Route path="tecnico/dashboard" element={
           <ProtectedRoute requiredRole="usuario">
             <TecnicoDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="tecnico/liquidaciones" element={
+          <ProtectedRoute requiredRole="usuario">
+            <TecnicoLiquidaciones />
           </ProtectedRoute>
         } />
         <Route path="/admin/users" element={<UserManagement />} />

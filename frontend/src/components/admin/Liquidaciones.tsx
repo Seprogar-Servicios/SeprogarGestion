@@ -385,6 +385,9 @@ const Liquidaciones: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Técnico
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Fecha Ejecución
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Mano Obra
                 </th>
@@ -433,7 +436,7 @@ const Liquidaciones: React.FC = () => {
                 <React.Fragment key={tecnico}>
                   {/* Técnico Header */}
                   <tr className="bg-gray-100 dark:bg-gray-900">
-                    <td colSpan={14} className="px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white">
+                    <td colSpan={15} className="px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white">
                       {tecnico} ({liquidaciones.length} tareas)
                     </td>
                   </tr>
@@ -447,6 +450,9 @@ const Liquidaciones: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {liquidacion.tarea?.tecnicos?.[0]?.nombre}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {liquidacion.tarea?.fechaEjecucion}
                       </td>
                       {['manoObra', 'materiales', 'cobertura', 'excedente', 'materialReal'].map((field) => (
                         <td
@@ -498,7 +504,7 @@ const Liquidaciones: React.FC = () => {
             <tfoot className="bg-gray-100 dark:bg-gray-900 font-semibold">
               {showCalculoMensual && (
                 <tr className="bg-gradient-to-r from-green-500 to-emerald-600 dark:from-green-600 dark:to-emerald-700 border-t-4 border-green-700 dark:border-green-800 shadow-lg">
-                  <td colSpan={3} className="px-6 py-4 text-left text-sm font-extrabold text-white uppercase tracking-wider">
+                  <td colSpan={4} className="px-6 py-4 text-left text-sm font-extrabold text-white uppercase tracking-wider">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-5 w-5" />
                       CÁLCULO MENSUAL - {filterTecnico} - {filterMes}

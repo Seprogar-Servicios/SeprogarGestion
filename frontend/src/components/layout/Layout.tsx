@@ -56,34 +56,40 @@ const Layout: React.FC = () => {
 
   const adminConsorcioNavigation = [
     { name: 'Dashboard', href: '/adminConsorcio/dashboard', icon: Home },
-    { name: 'Tareas de Consorcio', href: '/adminConsorcio/tareas', icon: Building },
-    { name: 'Calendario', href: '/adminConsorcio/calendario', icon: Calendar },
     { name: 'Análisis', href: '/adminConsorcio/analytics', icon: BarChart },
+    { name: 'Calendario', href: '/adminConsorcio/calendario', icon: Calendar },
     { name: 'Legales', href: '/legales', icon: Shield },
     { name: 'Mi Perfil', href: '/adminConsorcio/profile', icon: UserCircle },
+    { name: 'Tareas de Consorcio', href: '/adminConsorcio/tareas', icon: Building },
   ];
 
   const tecnicoNavigation = [
     { name: 'Dashboard', href: '/tecnico/dashboard', icon: Home },
-    { name: 'Tareas Normales', href: '/tasks', icon: Calendar },
-    { name: 'Tareas de Consorcio', href: '/tecnico/tareas-consorcio', icon: Building },
     { name: 'Calendario', href: '/calendar', icon: Calendar },
-    { name: 'Mis Recibos', href: '/mis-recibos', icon: FileText },
     { name: 'Legales', href: '/legales', icon: Shield },
+    { name: 'Liquidaciones', href: '/tecnico/liquidaciones', icon: DollarSign },
     { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
+    { name: 'Mis Recibos', href: '/mis-recibos', icon: FileText },
+    { name: 'Tareas de Consorcio', href: '/tecnico/tareas-consorcio', icon: Building },
+    { name: 'Tareas Normales', href: '/tasks', icon: Calendar },
   ];
 
   const adminNavigation = [
-    { name: 'Usuarios', href: '/admin/users', icon: Users },
-    { name: 'Especialidades', href: '/admin/specialties', icon: Briefcase },
-    { name: 'Tareas de Consorcio', href: '/admin/tareas-consorcio', icon: Building },
-    { name: 'Recibos', href: '/admin/recibos', icon: FileText },
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Análisis', href: '/admin/analytics', icon: BarChart },
     { name: 'Análisis de Consorcio', href: '/admin/analytics-consorcio', icon: BarChart },
-    { name: 'Importar/Exportar', href: '/admin/importar-exportar', icon: Database },
-    { name: 'Materiales', href: '/admin/materiales', icon: Package },
     { name: 'Categorías de Materiales', href: '/admin/categorias-materiales', icon: FolderOpen },
+    { name: 'Especialidades', href: '/admin/specialties', icon: Briefcase },
+    { name: 'Importar/Exportar', href: '/admin/importar-exportar', icon: Database },
     { name: 'Liquidaciones', href: '/admin/liquidaciones', icon: DollarSign },
+    { name: 'Materiales', href: '/admin/materiales', icon: Package },
+    { name: 'Recibos', href: '/admin/recibos', icon: FileText },
+    { name: 'Tareas', href: '/tasks', icon: Calendar },
+    { name: 'Tareas de Consorcio', href: '/admin/tareas-consorcio', icon: Building },
+    { name: 'Usuarios', href: '/admin/users', icon: Users },
+    { name: 'Calendario', href: '/calendar', icon: Calendar },
+    { name: 'Legales', href: '/legales', icon: Shield },
+    { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
   ];
 
   // Verificar la ruta actual para resaltar el elemento activo
@@ -129,6 +135,7 @@ const Layout: React.FC = () => {
                 {tecnicoNavigation.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
+                  const isDashboard = item.name === 'Dashboard';
                   return (
                     <button
                       key={item.name}
@@ -137,18 +144,20 @@ const Layout: React.FC = () => {
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
                       className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                        active
+                        isDashboard
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700'
+                          : active
                           ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
                           : 'text-blue-100 hover:bg-white/5 hover:text-white'
                       }`}
                     >
                       <Icon 
                         className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                          active ? 'text-blue-200' : 'text-blue-200/70'
+                          isDashboard ? 'text-white' : active ? 'text-blue-200' : 'text-blue-200/70'
                         }`} 
                       />
                       <span className="text-left">{item.name}</span>
-                      {active && (
+                      {active && !isDashboard && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
                       )}
                     </button>
@@ -157,12 +166,13 @@ const Layout: React.FC = () => {
               </div>
             )}
 
-            {/* Navegación general para otros roles (excepto AdminConsorcio) */}
-            {user?.rol !== 'adminConsorcio' && user?.rol !== 'usuario' && (
+            {/* Navegación general para otros roles (excepto Admin y AdminConsorcio) */}
+            {user?.rol !== 'admin' && user?.rol !== 'adminConsorcio' && user?.rol !== 'usuario' && (
               <div className="space-y-1.5">
                 {navigation.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
+                  const isDashboard = item.name === 'Dashboard';
                   return (
                     <button
                       key={item.name}
@@ -171,18 +181,20 @@ const Layout: React.FC = () => {
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
                       className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                        active
+                        isDashboard
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700'
+                          : active
                           ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
                           : 'text-blue-100 hover:bg-white/5 hover:text-white'
                       }`}
                     >
                       <Icon 
                         className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                          active ? 'text-blue-200' : 'text-blue-200/70'
+                          isDashboard ? 'text-white' : active ? 'text-blue-200' : 'text-blue-200/70'
                         }`} 
                       />
                       <span className="text-left">{item.name}</span>
-                      {active && (
+                      {active && !isDashboard && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
                       )}
                     </button>
@@ -191,81 +203,77 @@ const Layout: React.FC = () => {
               </div>
             )}
 
-            {/* Admin Section - Solo mostrar si NO es AdminConsorcio */}
+            {/* Admin Section - Solo mostrar si es admin */}
             {user?.rol === 'admin' && (
-              <div className="pt-6 mt-6 border-t border-blue-500/10">
-                <h3 className="px-4 mb-3 text-xs font-semibold text-blue-200/70 uppercase tracking-wider">
-                  Administración
-                </h3>
-                <div className="space-y-1.5">
-                  {adminNavigation.map((item) => {
-                    const Icon = item.icon;
-                    const active = isActive(item.href);
-                    return (
-                      <button
-                        key={item.name}
-                        onClick={() => {
-                          navigate(item.href);
-                          if (window.innerWidth < 1024) setSidebarOpen(false);
-                        }}
-                        className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                          active
-                            ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                            : 'text-blue-100 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        <Icon 
-                          className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                            active ? 'text-blue-200' : 'text-blue-200/70'
-                          }`} 
-                        />
-                        <span className="text-left">{item.name}</span>
-                        {active && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="space-y-1.5">
+                {adminNavigation.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+                  const isDashboard = item.name === 'Dashboard';
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => {
+                        navigate(item.href);
+                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                      }}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+                        isDashboard
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700'
+                          : active
+                          ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
+                          : 'text-blue-100 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <Icon 
+                        className={`mr-3 h-5 w-5 flex-shrink-0 ${
+                          isDashboard ? 'text-white' : active ? 'text-blue-200' : 'text-blue-200/70'
+                        }`} 
+                      />
+                      <span className="text-left">{item.name}</span>
+                      {active && !isDashboard && (
+                        <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
             {/* AdminConsorcio Section - Sin borde superior si es el único menú */}
             {user?.rol === 'adminConsorcio' && (
-              <div className={user?.rol === 'adminConsorcio' ? '' : 'pt-6 mt-6 border-t border-blue-500/10'}>
-                <h3 className="px-4 mb-3 text-xs font-semibold text-blue-200/70 uppercase tracking-wider">
-                  Admin de Consorcio
-                </h3>
-                <div className="space-y-1.5">
-                  {adminConsorcioNavigation.map((item) => {
-                    const Icon = item.icon;
-                    const active = isActive(item.href);
-                    return (
-                      <button
-                        key={item.name}
-                        onClick={() => {
-                          navigate(item.href);
-                          if (window.innerWidth < 1024) setSidebarOpen(false);
-                        }}
-                        className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                          active
-                            ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                            : 'text-blue-100 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                        <Icon 
-                          className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                            active ? 'text-blue-200' : 'text-blue-200/70'
-                          }`} 
-                        />
-                        <span className="text-left">{item.name}</span>
-                        {active && (
-                          <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="space-y-1.5">
+                {adminConsorcioNavigation.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+                  const isDashboard = item.name === 'Dashboard';
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => {
+                        navigate(item.href);
+                        if (window.innerWidth < 1024) setSidebarOpen(false);
+                      }}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
+                        isDashboard
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700'
+                          : active
+                          ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
+                          : 'text-blue-100 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <Icon 
+                        className={`mr-3 h-5 w-5 flex-shrink-0 ${
+                          isDashboard ? 'text-white' : active ? 'text-blue-200' : 'text-blue-200/70'
+                        }`} 
+                      />
+                      <span className="text-left">{item.name}</span>
+                      {active && !isDashboard && (
+                        <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </nav>
