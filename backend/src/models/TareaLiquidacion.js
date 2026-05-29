@@ -83,8 +83,7 @@ tareaLiquidacionSchema.virtual('pagoTecnico').get(function() {
 });
 
 tareaLiquidacionSchema.virtual('futurgas').get(function() {
-  const porcentaje = this.tarea?.tecnicos?.[0]?.porcentajeTecnico || 0.7;
-  return (this.repartida * (1 - porcentaje)) + this.gananciaMaterial;
+  return (this.repartida * 0.3) + this.gananciaMaterial;
 });
 
 tareaLiquidacionSchema.virtual('pago15Dias').get(function() {
