@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchLiquidaciones, updateLiquidacion } from '../../store/slices/tareaLiquidacionSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
-import { Download, Upload, DollarSign, Filter } from 'lucide-react';
+import { Download, DollarSign, Filter } from 'lucide-react';
 import type { TareaLiquidacion } from '../../types';
 import api from '../../config/api';
 
@@ -137,62 +137,6 @@ const Liquidaciones: React.FC = () => {
     }
   };
 
-  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const text = event.target?.result as string;
-      const lines = text.split('\n');
-
-      let successCount = 0;
-      let errorCount = 0;
-
-      // Skip header row (index 0)
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-
-        // Find liquidation by task number
-        const taskNumber = values[0];
-        const liquidacion = liquidaciones.find(l => l.tarea?.numero === taskNumber);
-
-        if (liquidacion) {
-          try {
-            await dispatch(updateLiquidacion({
-              id: liquidacion._id,
-              data: {
-                manoObra: parseFloat(values[6]) || 0,
-                materiales: parseFloat(values[7]) || 0,
-                cobertura: parseFloat(values[8]) || 0,
-                excedente: parseFloat(values[9]) || 0,
-                materialReal: parseFloat(values[10]) || 0,
-                boletasMateriales: parseFloat(values[11]) || 0,
-              }
-            })).unwrap();
-            successCount++;
-          } catch (error) {
-            errorCount++;
-            console.error('Error importing liquidacion:', error);
-          }
-        }
-      }
-
-      const { toast } = await import('react-toastify');
-      toast.success(`Importación completada: ${successCount} liquidaciones actualizadas, ${errorCount} errores`, {
-        position: "top-right",
-        autoClose: 5000,
-      });
-
-      await dispatch(fetchLiquidaciones());
-    };
-
-    reader.readAsText(file);
-  };
-
   const handleExportCalculoMensual = async () => {
     try {
       const response = await api.get('/liquidaciones/export/calculo-mensual', {
@@ -255,18 +199,6 @@ const Liquidaciones: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <label className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 cursor-pointer"
-              title="Importar desde Excel"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Importar
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleImportExcel}
-                className="hidden"
-              />
-            </label>
             <button
               onClick={handleExportExcel}
               className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 cursor-pointer"
