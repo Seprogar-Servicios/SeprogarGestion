@@ -522,13 +522,10 @@ const TaskList: React.FC = () => {
 
     // Obtener las tareas del técnico que están seleccionadas
     const tecnicoTasks = groupedTasks[tecnicoId]?.tasks || [];
-    const selectedTasksForTecnico = [];
-    
-    for (const task of tecnicoTasks) {
-      if (selectedTasks.includes(task._id)) {
-        selectedTasksForTecnico.push(task);
-      }
-    }
+    // Respetar el orden de selección del administrador
+    const selectedTasksForTecnico = selectedTasks
+      .map(taskId => tecnicoTasks.find(task => task._id === taskId))
+      .filter(task => task !== undefined);
     
     if (selectedTasksForTecnico.length === 0) {
       alert('No hay tareas seleccionadas para este técnico');

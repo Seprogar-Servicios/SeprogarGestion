@@ -22,8 +22,12 @@ import {
   Clock,
   FileText,
   Eye,
+  Package,
+  DollarSign,
 } from 'lucide-react';
 import ObservationsList from '../observations/ObservationsList';
+import TaskMaterials from './TaskMaterials';
+import TaskLiquidacion from './TaskLiquidacion';
 import type { RootState } from '../../store';
 
 type RouteParams = {
@@ -43,6 +47,7 @@ const TaskDetails: React.FC = () => {
   const users = useAppSelector((state: RootState) => state.users.users);
   const user = useAppSelector((state: RootState) => state.auth.user);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('detalles');
   const [formData, setFormData] = useState({
     numero: '',
     titulo: '',
@@ -401,204 +406,262 @@ const TaskDetails: React.FC = () => {
           </div>
         </div>
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-6">
-            {/* Client Info */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-              <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 mr-4">
-                    <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                      <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Información del Cliente
-                    </h3>
-                  </div>
-                </div>
-              </div>
-              <div className="border-t border-gray-200 dark:border-gray-700">
-                <dl className="divide-y divide-gray-200 dark:divide-gray-700">
-                  <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
-                    <dt className="w-10 flex-shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                    </dt>
-                    <div className="ml-4 flex-1">
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Nombre
-                      </dt>
-                      <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
-                        {currentTask.cliente || 'No especificado'}
-                      </dd>
-                    </div>
-                  </div>
-                  
-                  <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
-                    <dt className="w-10 flex-shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      </div>
-                    </dt>
-                    <div className="ml-4 flex-1">
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Teléfono
-                      </dt>
-                      <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
-                        {currentTask.numeroTitular || 'Sin teléfono'}
-                      </dd>
-                    </div>
-                  </div>
-                  
-                  <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
-                    <dt className="w-10 flex-shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                        <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                    </dt>
-                    <div className="ml-4 flex-1">
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Dirección
-                      </dt>
-                      <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
-                        {currentTask.direccion || 'Sin dirección'}
-                      </dd>
-                    </div>
-                  </div>
-                </dl>
-              </div>
-            </div>
+        {/* Tabs Navigation */}
+        <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('detalles')}
+              className={`flex items-center px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'detalles'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Detalles
+            </button>
+            <button
+              onClick={() => setActiveTab('materiales')}
+              className={`flex items-center px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'materiales'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <Package className="h-4 w-4 mr-2" />
+              Materiales
+            </button>
+            {user?.rol === 'admin' && (
+              <button
+                onClick={() => setActiveTab('liquidacion')}
+                className={`flex items-center px-1 py-4 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'liquidacion'
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Liquidación
+              </button>
+            )}
+          </nav>
+        </div>
 
-            {/* Schedule Info */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-              <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 mr-4">
-                    <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                      <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Programación
-                    </h3>
-                  </div>
-                </div>
-              </div>
-              <div className="border-t border-gray-200 dark:border-gray-700">
-                <dl className="divide-y divide-gray-200 dark:divide-gray-700">
-                  <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
-                    <dt className="w-10 flex-shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                        <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                      </div>
-                    </dt>
-                    <div className="ml-4 flex-1">
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        Fecha de Ejecución
-                      </dt>
-                      <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
-                        {formatDate(currentTask.fechaEjecucion)}
-                      </dd>
-                    </div>
-                  </div>
-                  
-                  {currentTask.franja_horaria && (
-                    <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
-                      <dt className="w-10 flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                          <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+        {/* Tab Content */}
+        {activeTab === 'materiales' ? (
+          <TaskMaterials
+            taskId={currentTask._id}
+            userRole={user?.rol || ''}
+            userId={user?._id || ''}
+            taskTechnicians={currentTask.tecnicos || []}
+          />
+        ) : activeTab === 'liquidacion' ? (
+          <TaskLiquidacion
+            taskId={currentTask._id}
+            userRole={user?.rol || ''}
+          />
+        ) : (
+          <>
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Client Info */}
+                <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 mr-4">
+                        <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                          <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
-                      </dt>
-                      <div className="ml-4 flex-1">
-                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                          Horario
-                        </dt>
-                        <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
-                          {currentTask.franja_horaria}
-                        </dd>
-                      </div>
-                    </div>
-                  )}
-                </dl>
-              </div>
-            </div>
-
-            {/* Technicians */}
-            {currentTask.tecnicos && currentTask.tecnicos.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-                <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                    <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
-                      <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    Técnicos Asignados
-                  </h3>
-                </div>
-                <div className="p-6 space-y-3">
-                  {currentTask.tecnicos.map((tecnico: UserType, index: number) => (
-                    <div key={index} className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 flex items-center justify-center mr-3">
-                        <UserIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
-                        <p className="text-gray-900 dark:text-white font-medium">{tecnico.nombre || `Técnico ${index + 1}`}</p>
-                        {tecnico.telefono && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{tecnico.telefono}</p>
-                        )}
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Información del Cliente
+                        </h3>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Description */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-              <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                  <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
-                    <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
-                  Descripción
-                </h3>
+                  <div className="border-t border-gray-200 dark:border-gray-700">
+                    <dl className="divide-y divide-gray-200 dark:divide-gray-700">
+                      <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
+                        <dt className="w-10 flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                        </dt>
+                        <div className="ml-4 flex-1">
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Nombre
+                          </dt>
+                          <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
+                            {currentTask.cliente || 'No especificado'}
+                          </dd>
+                        </div>
+                      </div>
+
+                      <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
+                        <dt className="w-10 flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          </div>
+                        </dt>
+                        <div className="ml-4 flex-1">
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Teléfono
+                          </dt>
+                          <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
+                            {currentTask.numeroTitular || 'Sin teléfono'}
+                          </dd>
+                        </div>
+                      </div>
+
+                      <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
+                        <dt className="w-10 flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                            <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                          </div>
+                        </dt>
+                        <div className="ml-4 flex-1">
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Dirección
+                          </dt>
+                          <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
+                            {currentTask.direccion || 'Sin dirección'}
+                          </dd>
+                        </div>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+
+                {/* Schedule Info */}
+                <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 mr-4">
+                        <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                          <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          Programación
+                        </h3>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-200 dark:border-gray-700">
+                    <dl className="divide-y divide-gray-200 dark:divide-gray-700">
+                      <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
+                        <dt className="w-10 flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                            <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                        </dt>
+                        <div className="ml-4 flex-1">
+                          <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Fecha de Ejecución
+                          </dt>
+                          <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
+                            {formatDate(currentTask.fechaEjecucion)}
+                          </dd>
+                        </div>
+                      </div>
+
+                      {currentTask.franja_horaria && (
+                        <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
+                          <dt className="w-10 flex-shrink-0">
+                            <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                            </div>
+                          </dt>
+                          <div className="ml-4 flex-1">
+                            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                              Horario
+                            </dt>
+                            <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
+                              {currentTask.franja_horaria}
+                            </dd>
+                          </div>
+                        </div>
+                      )}
+                    </dl>
+                  </div>
+                </div>
+
+                {/* Technicians */}
+                {currentTask.tecnicos && currentTask.tecnicos.length > 0 && (
+                  <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
+                    <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                        <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
+                          <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        Técnicos Asignados
+                      </h3>
+                    </div>
+                    <div className="p-6 space-y-3">
+                      {currentTask.tecnicos.map((tecnico: UserType, index: number) => (
+                        <div key={index} className="flex items-center">
+                          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 flex items-center justify-center mr-3">
+                            <UserIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-gray-900 dark:text-white font-medium">{tecnico.nombre || `Técnico ${index + 1}`}</p>
+                            {tecnico.telefono && (
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{tecnico.telefono}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="p-6">
-                <div className="prose dark:prose-invert max-w-none">
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {currentTask.descripcion || 'No hay descripción disponible para esta tarea.'}
-                  </p>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* Description */}
+                <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                      <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
+                        <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      Descripción
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    <div className="prose dark:prose-invert max-w-none">
+                      <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                        {currentTask.descripcion || 'No hay descripción disponible para esta tarea.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Observations */}
+                <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                      <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
+                        <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      Observaciones
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    <ObservationsList
+                      taskId={currentTask._id}
+                      currentUserId={user?._id || ''}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Observations */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-              <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                  <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
-                    <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  Observaciones
-                </h3>
-              </div>
-              <div className="p-6">
-                <ObservationsList 
-                  taskId={currentTask._id} 
-                  currentUserId={user?._id || ''} 
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Modal de edición */}

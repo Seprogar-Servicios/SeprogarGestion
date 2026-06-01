@@ -3,7 +3,12 @@ const mongoose = require('mongoose');
 const materialSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
   descripcion: { type: String },
-  cantidadDisponible: { type: Number, default: 0 },
+  cantidad: { type: String, default: '' }, // campo libre para cantidad
+  unidad: { type: String, required: true }, // kg, m, unidades, etc.
+  precio: { type: Number, default: 0 },
+  categoria: { type: mongoose.Schema.Types.ObjectId, ref: 'CategoriaMaterial' },
+  codigo: { type: String }, // código alfanumérico con símbolos
+  origen: { type: String, enum: ['stock', 'excedente'], default: 'stock' } // origen por defecto del material
 }, { timestamps: true });
 
 module.exports = mongoose.model('Material', materialSchema);

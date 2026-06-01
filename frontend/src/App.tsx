@@ -13,6 +13,9 @@ import UserManagement from './components/admin/UserManagement';
 import SpecialtyManagement from './components/admin/SpecialtyManagement';
 import TareaConsorcioManagement from './components/admin/TareaConsorcioManagement';
 import DataImportExport from './components/admin/DataImportExport';
+import MaterialManagement from './components/admin/MaterialManagement';
+import CategoriaMaterialManagement from './components/admin/CategoriaMaterialManagement';
+import Liquidaciones from './components/admin/Liquidaciones';
 import ProfilePage from './components/user/ProfilePage';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -22,6 +25,7 @@ import RecibosAdmin from './components/recibos/admin/RecibosAdmin';
 import MisRecibos from './components/recibos/tecnico/MisRecibos';
 import TecnicoTareasConsorcio from './components/tecnico/TareasConsorcio';
 import TecnicoDashboard from './components/tecnico/Dashboard';
+import TecnicoLiquidaciones from './components/user/TecnicoLiquidaciones';
 // Importar componentes de AdminConsorcio
 import AdminConsorcioDashboard from './components/adminConsorcio/Dashboard';
 import AdminConsorcioTareasManagement from './components/adminConsorcio/TareasManagement';
@@ -64,6 +68,11 @@ const AppRoutes = () => {
             <TecnicoDashboard />
           </ProtectedRoute>
         } />
+        <Route path="tecnico/liquidaciones" element={
+          <ProtectedRoute requiredRole="usuario">
+            <TecnicoLiquidaciones />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/specialties" element={<SpecialtyManagement />} />
         <Route path="/admin/tareas-consorcio" element={<TareaConsorcioManagement />} />
@@ -83,7 +92,22 @@ const AppRoutes = () => {
             <ConsorcioAnalytics />
           </ProtectedRoute>
         } />
-        
+        <Route path="/admin/materiales" element={
+          <ProtectedRoute requiredRole="admin">
+            <MaterialManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/categorias-materiales" element={
+          <ProtectedRoute requiredRole="admin">
+            <CategoriaMaterialManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/liquidaciones" element={
+          <ProtectedRoute requiredRole="admin">
+            <Liquidaciones />
+          </ProtectedRoute>
+        } />
+
         {/* Rutas específicas para AdminConsorcio */}
         <Route path="/adminConsorcio/dashboard" element={
           <ProtectedRoute requiredRole="adminConsorcio">

@@ -4,7 +4,7 @@ import { useAppSelector } from '../../store';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'usuario' | 'adminConsorcio';
+  requiredRole?: 'admin' | 'usuario' | 'adminConsorcio' | 'tecnico' | ('admin' | 'usuario' | 'adminConsorcio' | 'tecnico')[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
@@ -15,8 +15,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && user?.rol !== requiredRole) {
-    return <Navigate to="/unauthorized" replace />;
+  if (requiredRole && user?.rol) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowedRoles.includes(user.rol)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   return <>{children}</>;

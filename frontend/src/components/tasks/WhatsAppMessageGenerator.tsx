@@ -79,11 +79,13 @@ const WhatsAppMessageGenerator: React.FC<WhatsAppMessageGeneratorProps> = ({ tas
       alert('El técnico no tiene un número de teléfono registrado');
       return;
     }
-    
-    const selectedTasksForTecnico = groupedTasks[tecnicoId]?.tasks.filter(task => 
-      selectedTasks.includes(task._id)
-    ) || [];
-    
+
+    const tecnicoTasks = groupedTasks[tecnicoId]?.tasks || [];
+    // Respetar el orden de selección del administrador
+    const selectedTasksForTecnico = selectedTasks
+      .map(taskId => tecnicoTasks.find(task => task._id === taskId))
+      .filter(task => task !== undefined);
+
     if (selectedTasksForTecnico.length === 0) {
       alert('No hay tareas seleccionadas para este técnico');
       return;

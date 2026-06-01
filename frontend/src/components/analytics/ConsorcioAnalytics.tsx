@@ -19,7 +19,7 @@ import type { TareaConsorcio } from '../../types';
 const ConsorcioAnalytics: React.FC = () => {
   const dispatch = useAppDispatch();
   const { users } = useAppSelector((state) => state.users);
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, token } = useAppSelector((state) => state.auth);
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -45,7 +45,6 @@ const ConsorcioAnalytics: React.FC = () => {
         }
         
         // Cargar tareas de consorcio
-        const token = localStorage.getItem('token');
         const response = await fetch('/api/tareas-consorcio', {
           headers: {
             'Authorization': `Bearer ${token}`

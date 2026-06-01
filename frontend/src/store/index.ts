@@ -7,6 +7,8 @@ import materialsReducer from './slices/materialsSlice';
 import especialidadesReducer from './slices/especialidadesSlice';
 import observationsReducer from './slices/observationsSlice';
 import recibosReducer from './slices/recibosSlice';
+import categoriaMaterialReducer from './slices/categoriaMaterialSlice';
+import tareaLiquidacionReducer from './slices/tareaLiquidacionSlice';
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +19,8 @@ export const store = configureStore({
     especialidades: especialidadesReducer,
     observations: observationsReducer,
     recibos: recibosReducer,
+    categoriaMaterial: categoriaMaterialReducer,
+    tareaLiquidacion: tareaLiquidacionReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

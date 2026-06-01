@@ -1,4 +1,5 @@
 const Tarea = require('../models/Tarea');
+const TareaLiquidacion = require('../models/TareaLiquidacion');
 const mongoose = require('mongoose');
 
 /**
@@ -87,22 +88,19 @@ exports.getTareaDetalles = async (req, res) => {
     let tarea;
     
     // Intentar buscar por número primero (más común para WhatsApp)
-    if (/^\d+$/.test(id)) {
-      tarea = await Tarea.findOne({ numero: id })
-        .populate('tecnicos', 'nombre telefono')
-        .populate('creadoPor', 'nombre');
-    } else {
+    // Acepta cualquier string que podría ser un número de tarea
+    tarea = await Tarea.findOne({ numero: id })
+      .populate('tecnicos', 'nombre telefono')
+      .populate('creadoPor', 'nombre');
+    
+    // Si no se encontró por número, intentar por _id
+    if (!tarea) {
       // Buscar por _id de MongoDB
-      if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({
-          success: false,
-          message: 'ID de tarea no válido'
-        });
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        tarea = await Tarea.findById(id)
+          .populate('tecnicos', 'nombre telefono')
+          .populate('creadoPor', 'nombre');
       }
-      
-      tarea = await Tarea.findById(id)
-        .populate('tecnicos', 'nombre telefono')
-        .populate('creadoPor', 'nombre');
     }
 
     if (!tarea) {
@@ -193,7 +191,7 @@ exports.getTareaDetalles = async (req, res) => {
 exports.buscarTareas = async (req, res) => {
   try {
     const { numero, cliente, estado, limite = 10 } = req.query;
-    
+
     const filtro = {};
     if (numero) filtro.numero = numero;
     if (cliente) filtro.cliente = { $regex: cliente, $options: 'i' };
@@ -212,6 +210,112 @@ exports.buscarTareas = async (req, res) => {
 
   } catch (error) {
     console.error('Error al buscar tareas para bot:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /bot/liquidacion/actualizar:
+ *   put:
+ *     summary: Actualizar liquidación por número de tarea para el bot
+ *     tags: [Bot]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               numeroTarea:
+ *                 type: string
+ *                 description: Número de tarea
+ *               manoObra:
+ *                 type: number
+ *                 description: Mano de obra
+ *               cobertura:
+ *                 type: number
+ *                 description: Cobertura
+ *               materialReal:
+ *                 type: number
+ *                 description: Material real
+ *               boletasMateriales:
+ *                 type: number
+ *                 description: Boletas de materiales
+ *               observacionesFinancieras:
+ *                 type: string
+ *                 description: Observaciones financieras
+ *     responses:
+ *       200:
+ *         description: Liquidación actualizada exitosamente
+ *       404:
+ *         description: Tarea o liquidación no encontrada
+ */
+
+// Actualizar liquidación por número de tarea para el bot
+exports.actualizarLiquidacionPorTarea = async (req, res) => {
+  try {
+    const { numeroTarea, manoObra, cobertura, materialReal, boletasMateriales, observacionesFinancieras } = req.body;
+
+    if (!numeroTarea) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere el número de tarea'
+      });
+    }
+
+    // Buscar tarea por número
+    const tarea = await Tarea.findOne({ numero: numeroTarea });
+    if (!tarea) {
+      return res.status(404).json({
+        success: false,
+        message: `Tarea ${numeroTarea} no encontrada`
+      });
+    }
+
+    // Buscar liquidación asociada a la tarea
+    const liquidacion = await TareaLiquidacion.findOne({ tarea: tarea._id });
+    if (!liquidacion) {
+      return res.status(404).json({
+        success: false,
+        message: `No existe liquidación para la tarea ${numeroTarea}`
+      });
+    }
+
+    // Construir objeto de actualización solo con campos proporcionados
+    const actualizacion = {};
+    if (manoObra !== undefined && manoObra !== null) actualizacion.manoObra = Number(manoObra);
+    if (cobertura !== undefined && cobertura !== null) actualizacion.cobertura = Number(cobertura);
+    if (materialReal !== undefined && materialReal !== null) actualizacion.materialReal = Number(materialReal);
+    if (boletasMateriales !== undefined && boletasMateriales !== null) actualizacion.boletasMateriales = Number(boletasMateriales);
+    if (observacionesFinancieras !== undefined && observacionesFinancieras !== null) actualizacion.observacionesFinancieras = observacionesFinancieras;
+
+    // Actualizar liquidación
+    const liquidacionActualizada = await TareaLiquidacion.findByIdAndUpdate(
+      liquidacion._id,
+      actualizacion,
+      { new: true }
+    ).populate({
+      path: 'tarea',
+      populate: {
+        path: 'tecnicos',
+        select: 'nombre email porcentajeTecnico'
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Liquidación actualizada exitosamente',
+      data: liquidacionActualizada
+    });
+
+  } catch (error) {
+    console.error('Error al actualizar liquidación para bot:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'

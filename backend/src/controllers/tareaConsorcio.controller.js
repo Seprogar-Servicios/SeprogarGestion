@@ -125,7 +125,7 @@ const createTareaConsorcio = async (req, res) => {
 // Obtener todas las tareas de consorcio (con filtros por rol)
 const getTareasConsorcio = async (req, res) => {
   try {
-    const { page = 1, limit = 10, estado, administradorConsorcio } = req.query;
+    const { page = 1, limit = 10, estado, administradorConsorcio, fechaDesde, fechaHasta } = req.query;
     const skip = (page - 1) * limit;
 
     let filtro = {};
@@ -146,6 +146,17 @@ const getTareasConsorcio = async (req, res) => {
     }
     if (administradorConsorcio && req.user.rol === 'admin') {
       filtro.administradorConsorcio = administradorConsorcio;
+    }
+
+    // Filtro por fecha de ejecución
+    if (fechaDesde || fechaHasta) {
+      filtro.fechaEjecucion = {};
+      if (fechaDesde) {
+        filtro.fechaEjecucion.$gte = fechaDesde;
+      }
+      if (fechaHasta) {
+        filtro.fechaEjecucion.$lte = fechaHasta;
+      }
     }
 
     const tareas = await TareaConsorcio.find(filtro)

@@ -27,10 +27,19 @@ const especialidadSchema = Joi.object({
   descripcion: Joi.string().allow('').optional(),
 });
 
+const categoriaMaterialSchema = Joi.object({
+  nombre: Joi.string().required(),
+  descripcion: Joi.string().allow('').optional(),
+});
+
 const materialSchema = Joi.object({
   nombre: Joi.string().required(),
   descripcion: Joi.string().allow('').optional(),
-  cantidadDisponible: Joi.number().integer().min(0).required(),
+  cantidad: Joi.string().required(),
+  unidad: Joi.string().required(),
+  precio: Joi.number().min(0).optional(),
+  categoria: Joi.string().optional().allow(null, ''),
+  codigo: Joi.string().optional().allow(null, ''),
 });
 
 const tareaSchema = Joi.object({
@@ -63,12 +72,55 @@ const firmaSchema = Joi.object({
   // No hay campos de texto para validar aquí, solo el archivo de firma
 });
 
+const tareaLiquidacionSchema = Joi.object({
+  tarea: Joi.string().required(),
+  manoObra: Joi.number().min(0).default(0),
+  materiales: Joi.number().min(0).default(0),
+  cobertura: Joi.number().min(0).default(0),
+  excedente: Joi.number().min(0).default(0),
+  materialReal: Joi.number().min(0).default(0),
+  boletasMateriales: Joi.number().min(0).default(0),
+  observacionesFinancieras: Joi.string().allow('').optional(),
+});
+
+const tareaMaterialAdminSchema = Joi.object({
+  materialId: Joi.string().required(),
+  cantidad: Joi.number().min(1).required(),
+  observaciones: Joi.string().allow('').optional(),
+});
+
+const tareaMaterialTecnicoSchema = Joi.object({
+  nombre: Joi.string().required(),
+  descripcion: Joi.string().allow('').optional(),
+  cantidad: Joi.number().min(1).required(),
+  unidad: Joi.string().allow('').optional(),
+  precio: Joi.number().min(0).required(),
+  observaciones: Joi.string().allow('').optional(),
+});
+
+const tareaMaterialUpdateSchema = Joi.object({
+  cantidad: Joi.number().min(1).optional(),
+  precio: Joi.number().min(0).optional(),
+  observaciones: Joi.string().allow('').optional(),
+});
+
+const comprobanteValidacionSchema = Joi.object({
+  estadoValidacion: Joi.string().valid('pendiente', 'aprobado', 'rechazado').required(),
+  observacionesValidacion: Joi.string().allow('').optional(),
+});
+
 module.exports = {
   userRegisterSchema,
   userUpdateSchema,
   especialidadSchema,
+  categoriaMaterialSchema,
   materialSchema,
   tareaSchema,
   reciboSchema,
   firmaSchema,
+  tareaLiquidacionSchema,
+  tareaMaterialAdminSchema,
+  tareaMaterialTecnicoSchema,
+  tareaMaterialUpdateSchema,
+  comprobanteValidacionSchema,
 };
