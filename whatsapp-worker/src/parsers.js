@@ -1,3 +1,5 @@
+const { normalizeAddress } = require('./addressNormalizer');
+
 const PEDIDO_PATTERNS = {
   CLEAN_CONTENT: /\[INFO\] Contenido limpio: "([\s\S]*?)"/i,
   FULL_MESSAGE: /\[INFO\] Mensaje completo: ([\s\S]*?)(?=\[INFO\]|$)/i,
@@ -337,6 +339,11 @@ function parsePedidoMessage(message) {
       descripcion = descripcion.replace(/^[:\s]+/, '').trim();
       direccion = direccion.replace(/^[:\s]+/, '').trim();
       barrio = barrio.replace(/^[:\s]+/, '').trim();
+      
+      // Normalizar la dirección
+      if (direccion && direccion !== 'Sin dirección') {
+        direccion = normalizeAddress(direccion);
+      }
       
       const pedido = {
         numero: numero,
@@ -703,6 +710,11 @@ function parsePedidoMessage(message) {
       cliente = 'Cliente no especificado';
     }
     
+    // Normalizar la dirección
+    if (direccion && direccion !== 'Dirección no especificada') {
+      direccion = normalizeAddress(direccion);
+    }
+    
     const taskData = {
       numero: numero,
       titulo: `Pedido ${numero}`,
@@ -782,12 +794,18 @@ function parseTareaMessage(message) {
       franja_horaria = `${startTime} - ${endTime}`;
     }
 
+    // Normalizar la dirección
+    let direccion = direccionMatch?.[1]?.trim() || '';
+    if (direccion) {
+      direccion = normalizeAddress(direccion);
+    }
+
     const taskData = {
       numero: numero,
       titulo: tituloMatch?.[1]?.trim() || `Tarea ${numero}`,
       cliente: clienteMatch?.[1]?.trim() || '',
       descripcion: descripcionMatch?.[1]?.trim() || '',
-      direccion: direccionMatch?.[1]?.trim() || '',
+      direccion: direccion,
       numeroTitular: telefonoMatch?.[1]?.trim() || '',
       fechaEjecucion: fechaEjecucion,
       franja_horaria: franja_horaria,

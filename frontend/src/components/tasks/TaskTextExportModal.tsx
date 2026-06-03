@@ -1,7 +1,6 @@
 import React from 'react';
 import { X, Copy } from 'lucide-react';
 import type { Task } from '../../types';
-import { formatDireccionToMapsUrl } from '../../utils/mapsUtils';
 import { showSuccess, showError } from '../../utils/toastUtils';
 
 interface TaskTextExportModalProps {
@@ -14,7 +13,7 @@ const TaskTextExportModal: React.FC<TaskTextExportModalProps> = ({ tasks, onClos
     return `📋 *${task.titulo || 'Tarea sin título'}*
 👤 Cliente: ${task.cliente || 'No especificado'}
 📞 Teléfono: ${task.numeroTitular || 'No especificado'}
-📍 Dirección: ${task.direccion || 'No especificada'}${task.direccion ? `\n   ${formatDireccionToMapsUrl(task.direccion)}` : ''}
+📍 Dirección: ${task.direccion || 'No especificada'}${task.direccion ? `` : ''}
 📅 Fecha: ${task.fechaEjecucion ? new Date(task.fechaEjecucion).toLocaleDateString() : 'No especificada'}
 🕒 Horario: ${task.franja_horaria || 'No especificado'}
 📝 Descripción: ${task.descripcion || 'Sin descripción'}\n`;

@@ -10,7 +10,6 @@ import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPi
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
-import { formatDireccionToMapsUrl } from '../../utils/mapsUtils';
 import { showSuccess, showError } from '../../utils/toastUtils';
 
 // Las clases de botones se definen directamente en los componentes
@@ -543,8 +542,10 @@ const TaskList: React.FC = () => {
       if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
       if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
       if (task.direccion) {
-        const mapsUrl = formatDireccionToMapsUrl(task.direccion);
-        message += `• *Direccion:* ${task.direccion}\n  *Ver en Google Maps:* ${mapsUrl}\n`;
+        // Temporalmente comentado el link de Google Maps
+        // const mapsUrl = formatDireccionToMapsUrl(task.direccion);
+        message += `• *Direccion:* ${task.direccion}\n`;
+        // message += `  *Ver en Google Maps:* ${mapsUrl}\n`;
       }
       // Siempre mostrar información sobre la fecha de ejecución
       if (task.fechaEjecucion) {
@@ -668,8 +669,10 @@ const TaskList: React.FC = () => {
         message += `• *Teléfono:* ${task.numeroTitular}\n`;
       }
       if (task.direccion) {
-        const mapsUrl = formatDireccionToMapsUrl(task.direccion);
-        message += `• *Dirección:* ${task.direccion}\n  🗺️ *Ver en Google Maps:* ${mapsUrl}\n`;
+        // Temporalmente comentado el link de Google Maps
+        // const mapsUrl = formatDireccionToMapsUrl(task.direccion);
+        message += `• *Dirección:* ${task.direccion}\n`;
+        // message += `  🗺️ *Ver en Google Maps:* ${mapsUrl}\n`;
       }
       
       if (task.fechaEjecucion) {

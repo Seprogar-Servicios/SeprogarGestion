@@ -5,6 +5,7 @@ const { tareaSchema } = require('../utils/validators');
 const mongoose = require('mongoose');
 const Subscription = require('../models/Subscription');
 const { sendNotification } = require('../utils/push');
+const { normalizeAddress } = require('../utils/addressNormalizer');
 
 /**
  * @swagger
@@ -106,6 +107,11 @@ exports.createTarea = async (req, res) => {
         // Si viene en formato ISO, convertir a Date
         console.log('Fecha de ejecución recibida (ISO):', datosAjustados.fechaEjecucion);
       }
+    }
+    
+    // Normalizar la dirección si está presente
+    if (datosAjustados.direccion) {
+      datosAjustados.direccion = normalizeAddress(datosAjustados.direccion);
     }
     
     const tarea = new Tarea({
@@ -273,7 +279,14 @@ exports.updateTarea = async (req, res) => {
     if (req.user.rol !== 'admin' && !tarea.creadoPor.equals(req.user._id)) {
       return res.status(403).json({ message: 'No autorizado' });
     }
-    Object.assign(tarea, req.body, { fechaModificacion: new Date() });
+    
+    // Normalizar la dirección si está presente en la actualización
+    let datosActualizados = { ...req.body };
+    if (datosActualizados.direccion) {
+      datosActualizados.direccion = normalizeAddress(datosActualizados.direccion);
+    }
+    
+    Object.assign(tarea, datosActualizados, { fechaModificacion: new Date() });
     await tarea.save();
     res.json({ success: true, data: tarea, message: 'Tarea actualizada' });
   } catch (err) {
