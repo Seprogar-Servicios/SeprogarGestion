@@ -75,7 +75,7 @@ const UserManagement: React.FC = () => {
     rol: 'usuario',
     password: '',
     confirmPassword: '',
-    porcentajeTecnico: 0.7
+    porcentajeTecnico: 0
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -88,7 +88,7 @@ const UserManagement: React.FC = () => {
     confirmPassword: '',
     rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
     especialidad: '',
-    porcentajeTecnico: 0.7
+    porcentajeTecnico: 0
   });
 
   useEffect(() => {
@@ -194,7 +194,7 @@ const UserManagement: React.FC = () => {
       rol: 'usuario',
       password: '',
       confirmPassword: '',
-      porcentajeTecnico: 0.7
+      porcentajeTecnico: 0
     });
   };
 
@@ -208,7 +208,7 @@ const UserManagement: React.FC = () => {
       confirmPassword: '',
       rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
       especialidad: '',
-      porcentajeTecnico: 0.7
+      porcentajeTecnico: 0
     });
   };
 
@@ -254,7 +254,7 @@ const UserManagement: React.FC = () => {
       rol: user.rol as 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio',
       password: '',
       confirmPassword: '',
-      porcentajeTecnico: user.porcentajeTecnico || 0.7
+      porcentajeTecnico: user.porcentajeTecnico || 0
     });
     setShowEditModal(true);
   };
@@ -950,13 +950,13 @@ const UserManagement: React.FC = () => {
                         step="0.01"
                         min="0"
                         max="1"
-                        value={formData.porcentajeTecnico || 0.7}
+                        value={formData.porcentajeTecnico || 0}
                         onChange={(e) => setFormData({ ...formData, porcentajeTecnico: parseFloat(e.target.value) })}
                         className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                        placeholder="0.7"
+                        placeholder="0"
                       />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <span className="text-gray-400 text-sm">({Math.round((formData.porcentajeTecnico || 0.7) * 100)}%)</span>
+                        <span className="text-gray-400 text-sm">({Math.round((formData.porcentajeTecnico || 0) * 100)}%)</span>
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -1279,7 +1279,7 @@ const UserManagement: React.FC = () => {
                           value={createFormData.porcentajeTecnico}
                           onChange={(e) => setCreateFormData({ ...createFormData, porcentajeTecnico: parseFloat(e.target.value) })}
                           className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                          placeholder="0.7"
+                          placeholder="0"
                         />
                         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                           <span className="text-gray-400 text-sm">({Math.round(createFormData.porcentajeTecnico * 100)}%)</span>

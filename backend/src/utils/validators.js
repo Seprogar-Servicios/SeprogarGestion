@@ -8,6 +8,7 @@ const userRegisterSchema = Joi.object({
   especialidad: Joi.string().optional().allow(null, ''),
   telefono: Joi.string().optional().allow(null, ''),
   direccion: Joi.string().optional().allow(null, ''),
+  porcentajeTecnico: Joi.number().min(0).max(1).optional().default(0),
 });
 
 const userUpdateSchema = Joi.object({
@@ -20,6 +21,7 @@ const userUpdateSchema = Joi.object({
   aprobado: Joi.boolean().optional(),
   telefono: Joi.string().optional().allow(null, ''),
   direccion: Joi.string().optional().allow(null, ''),
+  porcentajeTecnico: Joi.number().min(0).max(1).optional(),
 });
 
 const especialidadSchema = Joi.object({
