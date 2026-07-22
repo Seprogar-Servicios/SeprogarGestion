@@ -94,3 +94,15 @@ body {
     background-color: #ffffff;
   }
 }
+
+/* Eliminar flechas de inputs numéricos */
+.no-arrows::-webkit-outer-spin-button,
+.no-arrows::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-arrows {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

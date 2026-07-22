@@ -1,6 +1,6 @@
 const TareaLiquidacion = require('../models/TareaLiquidacion');
 const Tarea = require('../models/Tarea');
-const { tareaLiquidacionSchema } = require('../utils/validators');
+const { tareaLiquidacionSchema, tareaLiquidacionUpdateSchema } = require('../utils/validators');
 const ExcelJS = require('exceljs');
 
 // Obtener todas las liquidaciones (solo de tareas con técnico asignado)
@@ -77,7 +77,7 @@ exports.createLiquidacion = async (req, res) => {
 
 // Actualizar liquidación
 exports.updateLiquidacion = async (req, res) => {
-  const { error } = tareaLiquidacionSchema.validate(req.body);
+  const { error } = tareaLiquidacionUpdateSchema.validate(req.body);
   if (error) return res.status(400).json({ message: error.details[0].message });
 
   try {

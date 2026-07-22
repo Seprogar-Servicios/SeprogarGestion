@@ -83,7 +83,29 @@ const tareaLiquidacionSchema = Joi.object({
   materialReal: Joi.number().min(0).default(0),
   boletasMateriales: Joi.number().min(0).default(0),
   observacionesFinancieras: Joi.string().allow('').optional(),
+  totalPresupuesto: Joi.number().min(0).optional(),
+  gananciaMaterial: Joi.number().min(0).optional(),
+  repartida: Joi.number().min(0).optional(),
+  pagoTecnico: Joi.number().min(0).optional(),
+  futurgas: Joi.number().min(0).optional(),
+  pago15Dias: Joi.number().min(0).optional(),
 });
+
+const tareaLiquidacionUpdateSchema = Joi.object({
+  manoObra: Joi.number().min(0).optional(),
+  materiales: Joi.number().min(0).optional(),
+  cobertura: Joi.number().min(0).optional(),
+  excedente: Joi.number().min(0).optional(),
+  materialReal: Joi.number().min(0).optional(),
+  boletasMateriales: Joi.number().min(0).optional(),
+  observacionesFinancieras: Joi.string().allow('').optional(),
+  totalPresupuesto: Joi.number().min(0).optional(),
+  gananciaMaterial: Joi.number().min(0).optional(),
+  repartida: Joi.number().min(0).optional(),
+  pagoTecnico: Joi.number().min(0).optional(),
+  futurgas: Joi.number().min(0).optional(),
+  pago15Dias: Joi.number().min(0).optional(),
+}).min(1); // Al menos un campo debe estar presente
 
 const tareaMaterialAdminSchema = Joi.object({
   materialId: Joi.string().required(),
@@ -121,6 +143,7 @@ module.exports = {
   reciboSchema,
   firmaSchema,
   tareaLiquidacionSchema,
+  tareaLiquidacionUpdateSchema,
   tareaMaterialAdminSchema,
   tareaMaterialTecnicoSchema,
   tareaMaterialUpdateSchema,

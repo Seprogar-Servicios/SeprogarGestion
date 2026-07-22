@@ -97,23 +97,30 @@ const Liquidaciones: React.FC = () => {
 
   const handleCellEdit = (liquidacion: TareaLiquidacion, field: string) => {
     setEditingCell({ id: liquidacion._id, field });
-    setEditValue(String(liquidacion[field as keyof TareaLiquidacion] || 0));
+    const currentValue = liquidacion[field as keyof TareaLiquidacion];
+    setEditValue(currentValue !== undefined && currentValue !== null ? String(currentValue) : '0');
   };
 
-  const handleCellSave = async (liquidacion: TareaLiquidacion) => {
+  const handleCellSave = async (liquidacion: TareaLiquidacion, newValue: string) => {
     if (!editingCell) return;
 
-    const numericValue = parseFloat(editValue);
+    const numericValue = parseFloat(newValue);
     if (isNaN(numericValue)) return;
 
     try {
-      await dispatch(updateLiquidacion({
+      console.log('Guardando valor:', editingCell.field, numericValue);
+      const result = await dispatch(updateLiquidacion({
         id: liquidacion._id,
         data: { [editingCell.field]: numericValue }
       })).unwrap();
+      console.log('Valor guardado exitosamente:', result);
       setEditingCell(null);
+      setEditValue('');
+      // Recargar liquidaciones para asegurar sincronización
+      await dispatch(fetchLiquidaciones()).unwrap();
     } catch (error) {
       console.error('Error updating liquidacion:', error);
+      // No limpiar el estado de edición si hay error para permitir reintentar
     }
   };
 
@@ -347,7 +354,7 @@ const Liquidaciones: React.FC = () => {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {liquidacion.tarea?.fechaEjecucion}
                       </td>
-                      {['manoObra', 'materiales', 'cobertura', 'excedente', 'materialReal'].map((field) => (
+                      {['manoObra', 'materiales', 'cobertura', 'excedente', 'materialReal', 'totalPresupuesto', 'gananciaMaterial', 'repartida', 'pagoTecnico', 'futurgas', 'pago15Dias'].map((field) => (
                         <td
                           key={field}
                           className={`px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white cursor-pointer hover:bg-blue-50  ${getCellColor(liquidacion[field as keyof TareaLiquidacion] as number, field)}`}
@@ -358,37 +365,28 @@ const Liquidaciones: React.FC = () => {
                               type="number"
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() => handleCellSave(liquidacion)}
+                              onBlur={() => handleCellSave(liquidacion, editValue)}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCellSave(liquidacion);
-                                if (e.key === 'Escape') setEditingCell(null);
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleCellSave(liquidacion, editValue);
+                                }
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  setEditingCell(null);
+                                  setEditValue('');
+                                }
                               }}
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
                               autoFocus
-                              className="w-20 text-right bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-1"
+                              className="w-24 text-right bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-1 no-arrows"
                             />
                           ) : (
                             formatCurrency(liquidacion[field as keyof TareaLiquidacion] as number)
                           )}
                         </td>
                       ))}
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white ${getCellColor(liquidacion.totalPresupuesto || 0, 'totalPresupuesto')}`}>
-                        {formatCurrency(liquidacion.totalPresupuesto || 0)}
-                      </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white ${getCellColor(liquidacion.gananciaMaterial || 0, 'gananciaMaterial')}`}>
-                        {formatCurrency(liquidacion.gananciaMaterial || 0)}
-                      </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white ${getCellColor(liquidacion.repartida || 0, 'repartida')}`}>
-                        {formatCurrency(liquidacion.repartida || 0)}
-                      </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white ${getCellColor(liquidacion.pagoTecnico || 0, 'pagoTecnico')}`}>
-                        {formatCurrency(liquidacion.pagoTecnico || 0)}
-                      </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white ${getCellColor(liquidacion.futurgas || 0, 'futurgas')}`}>
-                        {formatCurrency(liquidacion.futurgas || 0)}
-                      </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white ${getCellColor(liquidacion.pago15Dias || 0, 'pago15Dias')}`}>
-                        {formatCurrency(liquidacion.pago15Dias || 0)}
-                      </td>
                     </tr>
                   ))}
                 </React.Fragment>
