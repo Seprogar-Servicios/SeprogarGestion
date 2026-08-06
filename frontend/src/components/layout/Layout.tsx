@@ -19,7 +19,9 @@ import {
   Shield,
   Package,
   FolderOpen,
-  DollarSign
+  DollarSign,
+  Tag,
+  Wallet
 } from 'lucide-react';
 
 const Layout: React.FC = () => {
@@ -70,6 +72,7 @@ const Layout: React.FC = () => {
     { name: 'Liquidaciones', href: '/tecnico/liquidaciones', icon: DollarSign },
     { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
     { name: 'Mis Recibos', href: '/mis-recibos', icon: FileText },
+    { name: 'Pagos o adicionales', href: '/tecnico/pagos', icon: Wallet },
     { name: 'Tareas de Consorcio', href: '/tecnico/tareas-consorcio', icon: Building },
     { name: 'Tareas Normales', href: '/tasks', icon: Calendar },
   ];
@@ -83,6 +86,8 @@ const Layout: React.FC = () => {
     { name: 'Importar/Exportar', href: '/admin/importar-exportar', icon: Database },
     { name: 'Liquidaciones', href: '/admin/liquidaciones', icon: DollarSign },
     { name: 'Materiales', href: '/admin/materiales', icon: Package },
+    { name: 'Motivos de pago', href: '/admin/motivos-pago', icon: Tag },
+    { name: 'Pagos manuales', href: '/admin/pagos-manuales', icon: Wallet },
     { name: 'Recibos', href: '/admin/recibos', icon: FileText },
     { name: 'Tareas', href: '/tasks', icon: Calendar },
     { name: 'Tareas de Consorcio', href: '/admin/tareas-consorcio', icon: Building },

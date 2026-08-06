@@ -130,10 +130,10 @@ const Liquidaciones: React.FC = () => {
         responseType: 'blob'
       });
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `liquidaciones_admin_${new Date().toISOString().split('T')[0]}.xlsx`);
+      link.setAttribute('download', `liquidaciones_admin_${new Date().toISOString().split('T')[0]}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -154,10 +154,10 @@ const Liquidaciones: React.FC = () => {
         responseType: 'blob'
       });
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `calculo-mensual-${filterMes}-${filterTecnico || 'todos'}.xlsx`);
+      link.setAttribute('download', `calculo-mensual-${filterMes}-${filterTecnico || 'todos'}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -209,7 +209,7 @@ const Liquidaciones: React.FC = () => {
             <button
               onClick={handleExportExcel}
               className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 cursor-pointer"
-              title="Exportar a Excel"
+              title="Exportar a PDF"
             >
               <Download className="h-4 w-4 mr-2" />
               Exportar
@@ -436,7 +436,7 @@ const Liquidaciones: React.FC = () => {
                     <button
                       onClick={handleExportCalculoMensual}
                       className="ml-2 p-2 bg-white hover:bg-gray-100 text-green-600 rounded-full shadow-md transition-all hover:scale-110"
-                      title="Exportar cálculo mensual"
+                      title="Exportar cálculo mensual a PDF"
                     >
                       <Download className="h-4 w-4" />
                     </button>

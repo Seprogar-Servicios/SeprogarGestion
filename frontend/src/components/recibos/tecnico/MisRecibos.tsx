@@ -22,7 +22,8 @@ const MisRecibos: React.FC = () => {
     return (
       recibo.mes.toString().includes(searchLower) ||
       recibo.anio.toString().includes(searchLower) ||
-      recibo.estadoFirma.toLowerCase().includes(searchLower)
+      recibo.estadoFirma.toLowerCase().includes(searchLower) ||
+      (recibo.motivo?.nombre || '').toLowerCase().includes(searchLower)
     );
   });
 
@@ -84,7 +85,7 @@ const MisRecibos: React.FC = () => {
           </div>
           <input
             type="text"
-            placeholder="Buscar por mes, año o estado..."
+            placeholder="Buscar por motivo, mes, año o estado..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -120,6 +121,9 @@ const MisRecibos: React.FC = () => {
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                         {getMonthName(recibo.mes).charAt(0).toUpperCase() + getMonthName(recibo.mes).slice(1)} {recibo.anio}
                       </h3>
+                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-0.5">
+                        {recibo.motivo?.nombre || 'Sin motivo'}
+                      </p>
                       <div className="flex items-center mt-1">
                         {recibo.estadoFirma === 'firmado' ? (
                           <>

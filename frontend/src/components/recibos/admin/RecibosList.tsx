@@ -23,7 +23,7 @@ interface Recibo {
   estadoFirma?: string;
   url?: string;
   tecnico?: Tecnico;
-  // Add other recibo properties as needed
+  motivo?: { _id: string; nombre: string };
 }
 
 const RecibosList: React.FC<RecibosListProps> = ({ selectedTecnico, selectedPeriodo }) => {
@@ -136,6 +136,12 @@ const RecibosList: React.FC<RecibosListProps> = ({ selectedTecnico, selectedPeri
                 scope="col" 
                 className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200"
               >
+                Motivo
+              </th>
+              <th 
+                scope="col" 
+                className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 dark:text-gray-200"
+              >
                 Período
               </th>
               <th 
@@ -174,6 +180,11 @@ const RecibosList: React.FC<RecibosListProps> = ({ selectedTecnico, selectedPeri
                       </div>
                     </div>
                   </div>
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-300">
+                  <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                    {recibo?.motivo?.nombre || 'Sin motivo'}
+                  </span>
                 </td>
                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-300">
                   <div className="font-medium">

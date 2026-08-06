@@ -133,6 +133,8 @@ app.use('/api/categorias-materiales', require('./routes/categoriaMaterial.routes
 app.use('/api/materiales', require('./routes/material.routes'));
 app.use('/api/liquidaciones', require('./routes/tareaLiquidacion.routes'));
 app.use('/api/tarea-materiales', require('./routes/tareaMaterial.routes'));
+app.use('/api/motivos-pago', require('./routes/motivoPago.routes'));
+app.use('/api/pagos-manuales', require('./routes/pagoManual.routes'));
 app.use('/api/data', require('./routes/data.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/subscribe', require('./routes/subscriptionRoutes'));

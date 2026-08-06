@@ -60,10 +60,10 @@ const TecnicoLiquidaciones: React.FC = () => {
         responseType: 'blob'
       });
       
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `liquidaciones_${new Date().toISOString().split('T')[0]}.xlsx`);
+      link.setAttribute('download', `liquidaciones_${new Date().toISOString().split('T')[0]}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -118,7 +118,7 @@ const TecnicoLiquidaciones: React.FC = () => {
               className="inline-flex items-center px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
             >
               <Download className="h-4 w-4 mr-2" />
-              Exportar Excel
+              Exportar PDF
             </button>
           </div>
         </div>

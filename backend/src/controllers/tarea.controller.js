@@ -207,11 +207,12 @@ exports.createTarea = async (req, res) => {
 // Listar tareas con filtros (usuario, estado, fecha, cliente)
 exports.getTareas = async (req, res) => {
   try {
-    const { usuario, estado, fechaDesde, fechaHasta, cliente, useCreatedAt } = req.query;
+    const { usuario, estado, fechaDesde, fechaHasta, cliente, useCreatedAt, numero, limit } = req.query;
     const filtro = {};
     if (usuario) filtro.tecnicos = usuario;
     if (estado) filtro.estado = estado;
     if (cliente) filtro.cliente = { $regex: cliente, $options: 'i' };
+    if (numero) filtro.numero = { $regex: String(numero).trim(), $options: 'i' };
     
     // Manejo de filtros de fecha
     if (fechaDesde || fechaHasta) {
@@ -245,10 +246,17 @@ exports.getTareas = async (req, res) => {
         }
       }
     }
-    const tareas = await Tarea.find(filtro)
+    let query = Tarea.find(filtro)
       .populate('tecnicos', 'nombre email telefono')
       .populate('creadoPor', 'nombre email')
       .sort({ fechaEjecucion: 1 });
+
+    const parsedLimit = limit ? parseInt(limit, 10) : null;
+    if (parsedLimit && parsedLimit > 0) {
+      query = query.limit(parsedLimit);
+    }
+
+    const tareas = await query;
     res.json({ success: true, data: tareas });
   } catch (err) {
     console.error('Error completo al obtener tareas:', err);

@@ -9,6 +9,8 @@ import observationsReducer from './slices/observationsSlice';
 import recibosReducer from './slices/recibosSlice';
 import categoriaMaterialReducer from './slices/categoriaMaterialSlice';
 import tareaLiquidacionReducer from './slices/tareaLiquidacionSlice';
+import motivoPagoReducer from './slices/motivoPagoSlice';
+import pagoManualReducer from './slices/pagoManualSlice';
 
 export const store = configureStore({
   reducer: {
@@ -21,6 +23,8 @@ export const store = configureStore({
     recibos: recibosReducer,
     categoriaMaterial: categoriaMaterialReducer,
     tareaLiquidacion: tareaLiquidacionReducer,
+    motivoPago: motivoPagoReducer,
+    pagoManual: pagoManualReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

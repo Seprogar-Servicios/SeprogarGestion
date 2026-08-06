@@ -1,7 +1,10 @@
 const TareaLiquidacion = require('../models/TareaLiquidacion');
 const Tarea = require('../models/Tarea');
 const { tareaLiquidacionSchema, tareaLiquidacionUpdateSchema } = require('../utils/validators');
-const ExcelJS = require('exceljs');
+const {
+  generateLiquidacionesListPdf,
+  generateCalculoMensualPdf,
+} = require('../utils/liquidacionPdf');
 
 // Obtener todas las liquidaciones (solo de tareas con técnico asignado)
 exports.getLiquidaciones = async (req, res) => {
@@ -166,7 +169,7 @@ exports.getLiquidacionByTarea = async (req, res) => {
   }
 };
 
-// Exportar liquidaciones del técnico a Excel
+// Exportar liquidaciones del técnico a PDF
 exports.exportLiquidacionesTecnico = async (req, res) => {
   try {
     const { tecnicoId } = req.params;
@@ -182,68 +185,32 @@ exports.exportLiquidacionesTecnico = async (req, res) => {
         }
       });
 
-    // Filtrar liquidaciones donde la tarea existe y tiene el técnico
     const liquidacionesFiltradas = liquidaciones.filter(l => l.tarea !== null);
 
     if (liquidacionesFiltradas.length === 0) {
       return res.status(404).json({ message: 'No se encontraron liquidaciones para este técnico' });
     }
 
-    // Crear el archivo Excel
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Futurgas';
-    workbook.lastModifiedBy = 'Sistema';
-    workbook.created = new Date();
-    workbook.modified = new Date();
+    const tecnicoNombre = liquidacionesFiltradas[0]?.tarea?.tecnicos?.[0]?.nombre || 'tecnico';
+    const filename = `liquidaciones_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    const sheet = workbook.addWorksheet('Liquidaciones');
-
-    // Configurar columnas - Solo las que muestra la lista del técnico
-    sheet.columns = [
-      { header: 'Numero', key: 'numero', width: 20 },
-      { header: 'Cliente', key: 'cliente', width: 30 },
-      { header: 'Fecha', key: 'fechaEjecucion', width: 20 },
-      { header: 'Pago Tecnico', key: 'pagoTecnico', width: 15 },
-      { header: 'Pago 15 Dias', key: 'pago15Dias', width: 15 }
-    ];
-
-    // Agregar datos
-    liquidacionesFiltradas.forEach(liquidacion => {
-      const row = {
-        numero: liquidacion.tarea?.numero || '',
-        cliente: liquidacion.tarea?.cliente || '',
-        fechaEjecucion: liquidacion.tarea?.fechaEjecucion || '',
-        pagoTecnico: liquidacion.pagoTecnico || 0,
-        pago15Dias: liquidacion.pago15Dias || 0
-      };
-      sheet.addRow(row);
-    });
-
-    // Estilo para la primera fila (encabezados) - Naranja con letras blancas
-    const headerRow = sheet.getRow(1);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFFF6600' } // Naranja
-    };
-    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-
-    // Configurar el response
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=liquidaciones_${new Date().toISOString().split('T')[0]}.xlsx`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
 
-    await workbook.xlsx.write(res);
-    res.end();
+    generateLiquidacionesListPdf(liquidacionesFiltradas, res, {
+      title: 'Liquidaciones',
+      subtitle: `Técnico: ${tecnicoNombre}  ·  ${new Date().toLocaleDateString('es-AR')}`,
+      mode: 'tecnico',
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Error al exportar liquidaciones', error: err.message });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Error al exportar liquidaciones', error: err.message });
+    }
   }
 };
 
-// Exportar todas las liquidaciones (Admin) a Excel
+// Exportar todas las liquidaciones (Admin) a PDF
 exports.exportLiquidacionesAdmin = async (req, res) => {
   try {
     const liquidaciones = await TareaLiquidacion
@@ -257,91 +224,31 @@ exports.exportLiquidacionesAdmin = async (req, res) => {
         }
       });
 
-    // Filtrar liquidaciones donde la tarea existe
     const liquidacionesFiltradas = liquidaciones.filter(l => l.tarea !== null);
 
     if (liquidacionesFiltradas.length === 0) {
       return res.status(404).json({ message: 'No se encontraron liquidaciones' });
     }
 
-    // Crear el archivo Excel
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Futurgas';
-    workbook.lastModifiedBy = 'Sistema';
-    workbook.created = new Date();
-    workbook.modified = new Date();
+    const filename = `liquidaciones_admin_${new Date().toISOString().split('T')[0]}.pdf`;
 
-    const sheet = workbook.addWorksheet('Liquidaciones');
-
-    // Configurar columnas - Todas las columnas de liquidación
-    sheet.columns = [
-      { header: 'Numero', key: 'numero', width: 20 },
-      { header: 'Cliente', key: 'cliente', width: 30 },
-      { header: 'Fecha', key: 'fechaEjecucion', width: 20 },
-      { header: 'Mano de Obra', key: 'manoObra', width: 15 },
-      { header: 'Materiales', key: 'materiales', width: 15 },
-      { header: 'Cobertura', key: 'cobertura', width: 15 },
-      { header: 'Excedente', key: 'excedente', width: 15 },
-      { header: 'Material Real', key: 'materialReal', width: 15 },
-      { header: 'Total Presupuesto', key: 'totalPresupuesto', width: 18 },
-      { header: 'Dif Excedente', key: 'difExcedente', width: 15 },
-      { header: 'Ganancia Material', key: 'gananciaMaterial', width: 18 },
-      { header: 'Ganancia Total', key: 'gananciaTotal', width: 15 },
-      { header: 'Repartida', key: 'repartida', width: 15 },
-      { header: 'Pago Tecnico', key: 'pagoTecnico', width: 15 },
-      { header: 'Futurgas 30%', key: 'futurgas', width: 15 },
-      { header: 'Pago 15 Dias', key: 'pago15Dias', width: 15 },
-      { header: 'Observaciones', key: 'observacionesFinancieras', width: 40 }
-    ];
-
-    // Agregar datos
-    liquidacionesFiltradas.forEach(liquidacion => {
-      const row = {
-        numero: liquidacion.tarea?.numero || '',
-        cliente: liquidacion.tarea?.cliente || '',
-        fechaEjecucion: liquidacion.tarea?.fechaEjecucion || '',
-        manoObra: liquidacion.manoObra || 0,
-        materiales: liquidacion.materiales || 0,
-        cobertura: liquidacion.cobertura || 0,
-        excedente: liquidacion.excedente || 0,
-        materialReal: liquidacion.materialReal || 0,
-        totalPresupuesto: liquidacion.totalPresupuesto || 0,
-        difExcedente: liquidacion.difExcedente || 0,
-        gananciaMaterial: liquidacion.gananciaMaterial || 0,
-        gananciaTotal: liquidacion.gananciaTotal || 0,
-        repartida: liquidacion.repartida || 0,
-        pagoTecnico: liquidacion.pagoTecnico || 0,
-        futurgas: liquidacion.futurgas || 0,
-        pago15Dias: liquidacion.pago15Dias || 0,
-        observacionesFinancieras: liquidacion.observacionesFinancieras || ''
-      };
-      sheet.addRow(row);
-    });
-
-    // Estilo para la primera fila (encabezados) - Naranja con letras blancas
-    const headerRow = sheet.getRow(1);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFFF6600' } // Naranja
-    };
-    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-
-    // Configurar el response
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=liquidaciones_admin_${new Date().toISOString().split('T')[0]}.xlsx`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
 
-    await workbook.xlsx.write(res);
-    res.end();
+    generateLiquidacionesListPdf(liquidacionesFiltradas, res, {
+      title: 'Liquidaciones',
+      subtitle: `Listado general  ·  ${new Date().toLocaleDateString('es-AR')}`,
+      mode: 'admin',
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Error al exportar liquidaciones', error: err.message });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Error al exportar liquidaciones', error: err.message });
+    }
   }
 };
-// Exportar cálculo mensual (Admin) a Excel
+
+// Exportar cálculo mensual (Admin) a PDF
 exports.exportCalculoMensual = async (req, res) => {
   try {
     const { tecnico, mes } = req.query;
@@ -357,15 +264,12 @@ exports.exportCalculoMensual = async (req, res) => {
         }
       });
 
-    // Filtrar liquidaciones donde la tarea existe
     const liquidacionesFiltradas = liquidaciones.filter(l => l.tarea !== null);
 
-    // Filtrar por técnico si se especifica
-    const filtradasPorTecnico = tecnico 
+    const filtradasPorTecnico = tecnico
       ? liquidacionesFiltradas.filter(l => l.tarea?.tecnicos?.[0]?.nombre === tecnico)
       : liquidacionesFiltradas;
 
-    // Filtrar por mes si se especifica
     const filtradasPorMes = mes
       ? filtradasPorTecnico.filter(l => l.tarea?.fechaEjecucion && l.tarea.fechaEjecucion.startsWith(mes))
       : filtradasPorTecnico;
@@ -374,7 +278,6 @@ exports.exportCalculoMensual = async (req, res) => {
       return res.status(404).json({ message: 'No se encontraron liquidaciones para el cálculo mensual' });
     }
 
-    // Calcular totales
     const totals = filtradasPorMes.reduce((acc, l) => ({
       manoObra: acc.manoObra + (l.manoObra || 0),
       materiales: acc.materiales + (l.materiales || 0),
@@ -403,62 +306,21 @@ exports.exportCalculoMensual = async (req, res) => {
       pago15Dias: 0,
     });
 
-    // Crear el archivo Excel
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Futurgas';
-    workbook.lastModifiedBy = 'Sistema';
-    workbook.created = new Date();
-    workbook.modified = new Date();
+    const filename = `calculo-mensual-${mes || 'todos'}-${tecnico || 'todos'}.pdf`;
 
-    const sheet = workbook.addWorksheet('Cálculo Mensual');
-
-    // Configurar columnas
-    sheet.columns = [
-      { header: 'Campo', key: 'campo', width: 25 },
-      { header: 'Total', key: 'total', width: 20 }
-    ];
-
-    // Agregar datos
-    const rows = [
-      { campo: 'Mano de Obra', total: totals.manoObra },
-      { campo: 'Materiales', total: totals.materiales },
-      { campo: 'Cobertura', total: totals.cobertura },
-      { campo: 'Excedente', total: totals.excedente },
-      { campo: 'Material Real', total: totals.materialReal },
-      { campo: 'Total Presupuesto', total: totals.totalPresupuesto },
-      { campo: 'Ganancia Material', total: totals.gananciaMaterial },
-      { campo: 'Ganancia Total', total: totals.gananciaTotal },
-      { campo: 'Repartida', total: totals.repartida },
-      { campo: 'Pago Técnico', total: totals.pagoTecnico },
-      { campo: 'Futurgas', total: totals.futurgas },
-      { campo: 'Pago 15 Días', total: totals.pago15Dias },
-    ];
-
-    rows.forEach(row => {
-      sheet.addRow(row);
-    });
-
-    // Estilo para la primera fila (encabezados) - Naranja con letras blancas
-    const headerRow = sheet.getRow(1);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FFFF6600' } // Naranja
-    };
-    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-
-    // Configurar el response
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=calculo-mensual-${mes || 'todos'}-${tecnico || 'todos'}.xlsx`);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
 
-    await workbook.xlsx.write(res);
-    res.end();
+    generateCalculoMensualPdf(totals, res, {
+      title: 'Cálculo mensual',
+      tecnico: tecnico || null,
+      mes: mes || null,
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Error al exportar cálculo mensual', error: err.message });
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Error al exportar cálculo mensual', error: err.message });
+    }
   }
 };
 

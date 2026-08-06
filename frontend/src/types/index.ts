@@ -171,6 +171,7 @@ export interface TareaConsorcio {
 export interface Recibo {
   _id: string;
   tecnico: User;
+  motivo?: MotivoPago;
   mes: number;
   anio: number;
   url: string;
@@ -179,6 +180,36 @@ export interface Recibo {
     imagen: string;
     fecha: string;
   };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// MotivoPago types
+export interface MotivoPago {
+  _id: string;
+  nombre: string;
+  descripcion?: string;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// PagoManual types
+export interface PagoManual {
+  _id: string;
+  monto: number;
+  fechaEmision: string;
+  tecnico: User;
+  motivo: MotivoPago;
+  tareas: Array<{
+    _id: string;
+    numero: string;
+    titulo: string;
+    estado?: string;
+    fechaEjecucion?: string;
+  }>;
+  observaciones?: string;
+  creadoPor?: User;
   createdAt: string;
   updatedAt: string;
 }

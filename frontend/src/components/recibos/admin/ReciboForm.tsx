@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
 import { fetchUsers } from '../../../store/slices/usersSlice';
+import { fetchMotivosPago } from '../../../store/slices/motivoPagoSlice';
 import { createRecibo } from '../../../store/slices/recibosSlice';
 import { useAppDispatch } from '../../../store';
 import { toast } from 'react-toastify';
-import { Upload, User, Calendar, FileText, X, Loader2 } from 'lucide-react';
+import { Upload, User, Calendar, FileText, X, Loader2, Tag } from 'lucide-react';
 
 interface ReciboFormProps {
   onSuccess: () => void;
@@ -13,19 +14,26 @@ interface ReciboFormProps {
 
 const ReciboForm: React.FC<ReciboFormProps> = ({ onSuccess }) => {
   const [tecnico, setTecnico] = useState('');
+  const [motivo, setMotivo] = useState('');
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [anio, setAnio] = useState(new Date().getFullYear());
   const [pdf, setPdf] = useState<File | null>(null);
 
   const dispatch = useAppDispatch();
   const { users } = useSelector((state: RootState) => state.users);
+  const { motivos } = useSelector((state: RootState) => state.motivoPago);
   const { loading: isLoading } = useSelector((state: RootState) => state.recibos);
 
   useEffect(() => {
     dispatch(fetchUsers());
+    dispatch(fetchMotivosPago({ activo: true }));
   }, [dispatch]);
 
   const tecnicos = users?.filter((user: any) => user.rol === 'usuario') || [];
+  const motivosActivos = useMemo(
+    () => (motivos || []).filter((m) => m.activo),
+    [motivos]
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -62,13 +70,14 @@ const ReciboForm: React.FC<ReciboFormProps> = ({ onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tecnico || !pdf) {
+    if (!tecnico || !motivo || !pdf) {
       toast.error('Por favor, complete todos los campos y seleccione un archivo.');
       return;
     }
 
     const formData = new FormData();
     formData.append('tecnico', tecnico);
+    formData.append('motivo', motivo);
     formData.append('mes', mes.toString());
     formData.append('anio', anio.toString());
     formData.append('pdf', pdf);
@@ -105,6 +114,31 @@ const ReciboForm: React.FC<ReciboFormProps> = ({ onSuccess }) => {
               {tecnicos.map((t: any) => (
                 <option key={t._id} value={t._id}>
                   {t.nombre} {t.apellido}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="motivo" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Motivo
+          </label>
+          <div className="relative rounded-md shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Tag className="h-5 w-5 text-gray-400" />
+            </div>
+            <select
+              id="motivo"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white"
+              required
+            >
+              <option value="">Seleccionar motivo</option>
+              {motivosActivos.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.nombre}
                 </option>
               ))}
             </select>

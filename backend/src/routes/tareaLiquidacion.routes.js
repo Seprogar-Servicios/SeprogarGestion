@@ -21,16 +21,16 @@ router.use(authenticateToken);
 // Obtener todas las liquidaciones (solo admin)
 router.get('/', authorizeRoles('admin'), getLiquidaciones);
 
-// Exportar todas las liquidaciones (Admin) a Excel
+// Exportar todas las liquidaciones (Admin) a PDF
 router.get('/export', authorizeRoles('admin'), exportLiquidacionesAdmin);
 
-// Exportar cálculo mensual (Admin) a Excel
+// Exportar cálculo mensual (Admin) a PDF
 router.get('/export/calculo-mensual', authorizeRoles('admin'), exportCalculoMensual);
 
 // Obtener liquidaciones por técnico (admin y el propio técnico)
 router.get('/tecnico/:tecnicoId', authorizeRoles('admin', 'usuario'), getLiquidacionesByTecnico);
 
-// Exportar liquidaciones del técnico a Excel
+// Exportar liquidaciones del técnico a PDF
 router.get('/tecnico/:tecnicoId/export', authorizeRoles('admin', 'usuario'), exportLiquidacionesTecnico);
 
 // Obtener liquidación por número de tarea

@@ -66,6 +66,7 @@ const tareaSchema = Joi.object({
 
 const reciboSchema = Joi.object({
   tecnico: Joi.string().required(),
+  motivo: Joi.string().required(),
   mes: Joi.number().integer().min(1).max(12).required(),
   anio: Joi.number().integer().min(2000).required(),
 });
@@ -133,6 +134,30 @@ const comprobanteValidacionSchema = Joi.object({
   observacionesValidacion: Joi.string().allow('').optional(),
 });
 
+const motivoPagoSchema = Joi.object({
+  nombre: Joi.string().required(),
+  descripcion: Joi.string().allow('').optional(),
+  activo: Joi.boolean().optional(),
+});
+
+const pagoManualSchema = Joi.object({
+  monto: Joi.number().positive().required(),
+  fechaEmision: Joi.alternatives().try(Joi.date(), Joi.string()).required(),
+  tecnico: Joi.string().required(),
+  motivo: Joi.string().required(),
+  tareas: Joi.array().items(Joi.string()).default([]),
+  observaciones: Joi.string().allow('').optional(),
+});
+
+const pagoManualUpdateSchema = Joi.object({
+  monto: Joi.number().positive().optional(),
+  fechaEmision: Joi.alternatives().try(Joi.date(), Joi.string()).optional(),
+  tecnico: Joi.string().optional(),
+  motivo: Joi.string().optional(),
+  tareas: Joi.array().items(Joi.string()).optional(),
+  observaciones: Joi.string().allow('').optional(),
+}).min(1);
+
 module.exports = {
   userRegisterSchema,
   userUpdateSchema,
@@ -148,4 +173,7 @@ module.exports = {
   tareaMaterialTecnicoSchema,
   tareaMaterialUpdateSchema,
   comprobanteValidacionSchema,
+  motivoPagoSchema,
+  pagoManualSchema,
+  pagoManualUpdateSchema,
 };

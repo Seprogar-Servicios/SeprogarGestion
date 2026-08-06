@@ -16,6 +16,8 @@ import DataImportExport from './components/admin/DataImportExport';
 import MaterialManagement from './components/admin/MaterialManagement';
 import CategoriaMaterialManagement from './components/admin/CategoriaMaterialManagement';
 import Liquidaciones from './components/admin/Liquidaciones';
+import MotivoPagoManagement from './components/admin/MotivoPagoManagement';
+import PagoManualManagement from './components/admin/PagoManualManagement';
 import ProfilePage from './components/user/ProfilePage';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -26,6 +28,7 @@ import MisRecibos from './components/recibos/tecnico/MisRecibos';
 import TecnicoTareasConsorcio from './components/tecnico/TareasConsorcio';
 import TecnicoDashboard from './components/tecnico/Dashboard';
 import TecnicoLiquidaciones from './components/user/TecnicoLiquidaciones';
+import MisPagosManuales from './components/tecnico/MisPagosManuales';
 // Importar componentes de AdminConsorcio
 import AdminConsorcioDashboard from './components/adminConsorcio/Dashboard';
 import AdminConsorcioTareasManagement from './components/adminConsorcio/TareasManagement';
@@ -71,6 +74,21 @@ const AppRoutes = () => {
         <Route path="tecnico/liquidaciones" element={
           <ProtectedRoute requiredRole="usuario">
             <TecnicoLiquidaciones />
+          </ProtectedRoute>
+        } />
+        <Route path="tecnico/pagos" element={
+          <ProtectedRoute requiredRole="usuario">
+            <MisPagosManuales />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/motivos-pago" element={
+          <ProtectedRoute requiredRole="admin">
+            <MotivoPagoManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/pagos-manuales" element={
+          <ProtectedRoute requiredRole="admin">
+            <PagoManualManagement />
           </ProtectedRoute>
         } />
         <Route path="/admin/users" element={<UserManagement />} />
