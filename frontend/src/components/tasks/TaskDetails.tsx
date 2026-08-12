@@ -350,7 +350,7 @@ const TaskDetails: React.FC = () => {
               <Eye className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                 Detalles de la Tarea
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
@@ -469,7 +469,7 @@ const TaskDetails: React.FC = () => {
               <div className="space-y-6">
                 {/* Client Info */}
                 <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-orange-500/10 dark:from-blue-900/30 dark:to-orange-900/20">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 mr-4">
                         <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -519,8 +519,8 @@ const TaskDetails: React.FC = () => {
 
                       <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
                         <dt className="w-10 flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                            <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                          <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                            <MapPin className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                           </div>
                         </dt>
                         <div className="ml-4 flex-1">
@@ -538,7 +538,7 @@ const TaskDetails: React.FC = () => {
 
                 {/* Schedule Info */}
                 <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-orange-500/10 dark:from-blue-900/30 dark:to-orange-900/20">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 mr-4">
                         <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
@@ -594,7 +594,7 @@ const TaskDetails: React.FC = () => {
                 {/* Technicians */}
                 {currentTask.tecnicos && currentTask.tecnicos.length > 0 && (
                   <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-                    <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                    <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-orange-500/10 dark:from-blue-900/30 dark:to-orange-900/20">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                         <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
                           <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -605,7 +605,7 @@ const TaskDetails: React.FC = () => {
                     <div className="p-6 space-y-3">
                       {currentTask.tecnicos.map((tecnico: UserType, index: number) => (
                         <div key={index} className="flex items-center">
-                          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 flex items-center justify-center mr-3">
+                          <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-orange-100 dark:from-blue-900/50 dark:to-orange-900/40 flex items-center justify-center mr-3">
                             <UserIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div>
@@ -625,7 +625,7 @@ const TaskDetails: React.FC = () => {
               <div className="space-y-6">
                 {/* Description */}
                 <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-orange-500/10 dark:from-blue-900/30 dark:to-orange-900/20">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                       <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
                         <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -644,7 +644,7 @@ const TaskDetails: React.FC = () => {
 
                 {/* Observations */}
                 <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-900/30 dark:to-purple-900/30">
+                  <div className="px-6 py-4 bg-gradient-to-r from-blue-500/10 to-orange-500/10 dark:from-blue-900/30 dark:to-orange-900/20">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                       <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-3">
                         <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -669,7 +669,7 @@ const TaskDetails: React.FC = () => {
       {showEditModal && (
         <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto pt-20">
           <div className="relative w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-purple-600">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-800">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white">Editar Tarea #{currentTask?.numero || ''}</h3>
                 <button

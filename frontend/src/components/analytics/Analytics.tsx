@@ -22,6 +22,7 @@ import {
   ClipboardList
 } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 const Analytics: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -190,8 +191,8 @@ const Analytics: React.FC = () => {
       title: 'Tiempo Promedio',
       value: Math.round(avgCompletionTime),
       icon: Calendar,
-      color: 'bg-purple-500',
-      textColor: 'text-purple-600 dark:text-purple-400',
+      color: 'bg-orange-500',
+      textColor: 'text-orange-600 dark:text-orange-400',
       subtext: 'horas'
     },
     {
@@ -205,48 +206,33 @@ const Analytics: React.FC = () => {
 
   return (
     <div className="space-y-6 h-full flex flex-col animate-fadeIn" style={{ minHeight: '85vh' }}>
-      {/* Header Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-4 animate-fadeIn">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
-              <BarChart3 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Panel de Análisis
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                Visualiza y analiza las métricas de rendimiento del sistema
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 flex-wrap gap-2">
-            <button 
+      <AdminPageHeader
+        title="Panel de Análisis"
+        description="Visualiza y analiza las métricas de rendimiento del sistema"
+        eyebrow="Análisis"
+        icon={<BarChart3 className="h-5 w-5" />}
+        actions={
+          <>
+            <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-lg transition-all duration-200 shadow-sm hover:shadow transform hover:scale-105 cursor-pointer"
+              className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
             >
-              <Filter className="h-5 w-5 mr-2" />
-              <span className="text-sm font-medium">
-                {showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
-              </span>
+              <Filter className="h-4 w-4 mr-2" />
+              {showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
             </button>
-            <div className="flex items-center bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 px-4 py-2 rounded-lg shadow-sm border border-blue-100 dark:border-blue-800/30">
-              <TrendingUp className="h-5 w-5 text-blue-500 mr-2" />
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Datos actualizados: {new Date().toLocaleDateString('es-ES')}
-              </span>
+            <div className="inline-flex items-center px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 text-sm text-slate-600 dark:text-slate-300">
+              <TrendingUp className="h-4 w-4 text-blue-500 mr-2" />
+              Datos actualizados: {new Date().toLocaleDateString('es-ES')}
             </div>
-          </div>
-        </div>
-      </div>
-        
+          </>
+        }
+      />
+
         {/* Panel de filtros mejorado */}
         {showFilters && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 mb-6 animate-fadeIn">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 mb-6 animate-fadeIn">
             {/* Header del panel de filtros */}
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-800 px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
@@ -255,7 +241,7 @@ const Analytics: React.FC = () => {
                 <div className="flex items-center space-x-3">
                   <button 
                     onClick={resetFilters}
-                    className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors bg-white dark:bg-gray-700 px-3 py-1.5 rounded-md shadow-sm border border-blue-100 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-gray-600"
+                    className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors bg-white dark:bg-gray-700 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-600 hover:bg-blue-50 dark:hover:bg-gray-600"
                   >
                     <RefreshCw className="h-4 w-4 mr-1.5" />
                     Restablecer
@@ -391,7 +377,7 @@ const Analytics: React.FC = () => {
         )}  
 
       {/* Tarjetas de estadísticas */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-green-500 animate-fadeIn" style={{ animationDelay: '200ms' }}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 border-t-4 border-t-emerald-500 animate-fadeIn" style={{ animationDelay: '200ms' }}>
         <div className="flex items-center mb-4">
           <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full mr-3">
             <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -430,7 +416,7 @@ const Analytics: React.FC = () => {
       {/* Gráficos */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Gráfico de tareas por tiempo */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-blue-500 animate-fadeIn" style={{ animationDelay: '300ms' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 border-t-4 border-t-blue-500 animate-fadeIn" style={{ animationDelay: '300ms' }}>
           <div className="flex items-center mb-4">
             <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full mr-3">
               <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -445,7 +431,7 @@ const Analytics: React.FC = () => {
         </div>
         
         {/* Gráfico de tareas por estado */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-green-500 animate-fadeIn" style={{ animationDelay: '400ms' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 border-t-4 border-t-emerald-500 animate-fadeIn" style={{ animationDelay: '400ms' }}>
           <div className="flex items-center mb-4">
             <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-full mr-3">
               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -460,22 +446,22 @@ const Analytics: React.FC = () => {
         </div>
         
         {/* Gráfico de tareas por usuario */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-purple-500 animate-fadeIn" style={{ animationDelay: '500ms' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 border-t-4 border-t-orange-500 animate-fadeIn" style={{ animationDelay: '500ms' }}>
           <div className="flex items-center mb-4">
-            <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-full mr-3">
-              <UsersIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="bg-orange-100 dark:bg-orange-900/30 p-2 rounded-full mr-3">
+              <UsersIcon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             </div>
-            <h2 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
               Tareas por Usuario
             </h2>
           </div>
-          <div className="h-80 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+          <div className="min-h-80 overflow-hidden bg-slate-50 dark:bg-slate-700/30 rounded-xl p-3">
             <TasksByUserChart tasks={filteredTasks} users={users} />
           </div>
         </div>
         
         {/* Gráfico adicional: Tiempo promedio de completado */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-yellow-500 animate-fadeIn" style={{ animationDelay: '600ms' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 border-t-4 border-t-amber-500 animate-fadeIn" style={{ animationDelay: '600ms' }}>
           <div className="flex items-center mb-4">
             <div className="bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded-full mr-3">
               <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />

@@ -205,10 +205,10 @@ const SepiTour: React.FC = () => {
       >
         <div className="flex items-start gap-2">
           <div className="relative flex-shrink-0">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/40 flex items-center justify-center border-2 border-white animate-bounce">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-800 text-white shadow-lg shadow-blue-600/40 flex items-center justify-center border-2 border-white">
               <Bot className="h-6 w-6" />
             </div>
-            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-400 border-2 border-white" />
+            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-orange-500 border-2 border-white" />
           </div>
           <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-blue-100 dark:border-gray-700 p-3">
             <div className="flex items-start justify-between gap-2 mb-1">

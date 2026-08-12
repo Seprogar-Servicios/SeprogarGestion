@@ -22,6 +22,7 @@ import api from '../../config/api';
 import type { User } from '../../types';
 import { showSuccess, showError, showInfo } from '../../utils/toastUtils';
 import EmptyCrudState from '../common/EmptyCrudState';
+import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
 
 const UserManagement: React.FC = () => {
@@ -344,36 +345,36 @@ const UserManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div
-        data-sepi-target="usuarios-header"
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-4 animate-fadeIn"
-      >
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
-              <Users className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Gestión de Usuarios
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                Administra usuarios del sistema y aprueba nuevos registros
-              </p>
-              {pendingUsers && pendingUsers.length > 0 && (
-                <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {pendingUsers.length} {pendingUsers.length === 1 ? 'usuario pendiente' : 'usuarios pendientes'} de aprobación
-                </div>
-              )}
-            </div>
+      <div data-sepi-target="usuarios-header">
+        <AdminPageHeader
+          title="Gestión de Usuarios"
+          description="Administra usuarios del sistema y aprueba nuevos registros"
+          eyebrow="Administración"
+          icon={<Users className="h-5 w-5" />}
+          actions={
+            <button
+              data-sepi-target="usuarios-create"
+              onClick={() => {
+                setActiveTab('approved');
+                setShowCreateModal(true);
+              }}
+              className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 cursor-pointer"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Usuario
+            </button>
+          }
+        />
+        {pendingUsers && pendingUsers.length > 0 && (
+          <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {pendingUsers.length} {pendingUsers.length === 1 ? 'usuario pendiente' : 'usuarios pendientes'} de aprobación
           </div>
-        </div>
+        )}
       </div>
       
       {/* Tabs */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="flex -mb-px">
             <button
@@ -418,7 +419,7 @@ const UserManagement: React.FC = () => {
       </div>
 
       {/* Filtros de búsqueda */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -453,18 +454,6 @@ const UserManagement: React.FC = () => {
               <option value="usuario">Usuarios</option>
             </select>
           </div>
-          
-          <button
-            data-sepi-target="usuarios-create"
-            onClick={() => {
-              setActiveTab('approved');
-              setShowCreateModal(true);
-            }}
-            className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            Nuevo Usuario
-          </button>
         </div>
       </div>
 
@@ -582,7 +571,7 @@ const UserManagement: React.FC = () => {
                 <div key={user._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 transform">
                   <div className={`px-4 py-3 border-b ${
                     user.rol === 'admin' 
-                      ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30' 
+                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-900/30' 
                       : user.rol === 'adminConsorcio'
                       ? 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30'
                       : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30'
@@ -593,7 +582,7 @@ const UserManagement: React.FC = () => {
                       </h3>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         user.rol === 'admin'
-                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
                           : user.rol === 'adminConsorcio'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                           : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
@@ -614,7 +603,7 @@ const UserManagement: React.FC = () => {
                       <div className="flex-shrink-0">
                         <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
                           user.rol === 'admin'
-                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                            ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
                             : user.rol === 'adminConsorcio'
                             ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                             : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -806,7 +795,7 @@ const UserManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-yellow-500 to-amber-600 p-4 -mx-6 -mt-6 rounded-t-xl">
+              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-600 to-blue-800 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
                     <Edit2 className="h-5 w-5 text-white" />
@@ -821,7 +810,7 @@ const UserManagement: React.FC = () => {
                     setEditingUser(null);
                     resetForm();
                   }}
-                  className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                  className="text-white/70 hover:text-white transition-colors"
                 >
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1077,7 +1066,7 @@ const UserManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-purple-600 p-4 -mx-6 -mt-6 rounded-t-xl">
+              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-600 to-blue-800 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
                     <Plus className="h-5 w-5 text-white" />
@@ -1091,7 +1080,7 @@ const UserManagement: React.FC = () => {
                     setShowCreateModal(false);
                     resetCreateForm();
                   }}
-                  className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                  className="text-white/70 hover:text-white transition-colors"
                 >
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

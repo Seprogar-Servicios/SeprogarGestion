@@ -5,6 +5,7 @@ import { Plus, Search, Edit, Trash2, FileText, User, DollarSign, Image, CreditCa
 import type { TareaConsorcio } from '../../types';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 // Componente LazyImage optimizado con Intersection Observer
 const LazyImage = memo(({ 
@@ -627,7 +628,7 @@ const TareaConsorcioManagement: React.FC = () => {
     en_progreso: 'bg-orange-100 text-orange-800',
     completada: 'bg-green-100 text-green-800',
     cancelada: 'bg-red-100 text-red-800',
-    PENDIENTE_PAGO: 'bg-purple-100 text-purple-800',
+    PENDIENTE_PAGO: 'bg-orange-100 text-orange-800',
     FACTURADO: 'bg-indigo-100 text-indigo-800',
     PAGADO: 'bg-emerald-100 text-emerald-800'
   };
@@ -664,32 +665,26 @@ const TareaConsorcioManagement: React.FC = () => {
   }
 
   return (
-    <div className="p-4">
-      {/* Header Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Plus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Tareas de Consorcio</h1>
-              <p className="text-gray-600 dark:text-gray-300">Gestiona las tareas de consorcio del sistema</p>
-            </div>
-          </div>
+    <div className="p-4 space-y-6">
+      <AdminPageHeader
+        title="Tareas de Consorcio"
+        description="Gestiona las tareas de consorcio del sistema"
+        eyebrow="Administración"
+        icon={<FileText className="h-5 w-5" />}
+        actions={
           <button
             onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 mr-2" />
             Nueva Tarea
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Filters Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
-        <div className="flex flex-wrap gap-4 mb-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+        <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-48">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Estado
@@ -827,7 +822,7 @@ const TareaConsorcioManagement: React.FC = () => {
                             className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-md ${
                               users.filter(user => user.rol === 'usuario').length === 0
                                 ? 'text-gray-400 bg-gray-100 border border-gray-300 cursor-not-allowed dark:bg-gray-700 dark:border-gray-600'
-                                : 'text-purple-700 bg-purple-100 border border-purple-300 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-600 dark:hover:bg-purple-900/50'
+                                : 'text-orange-700 bg-orange-100 border border-orange-300 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-600 dark:hover:bg-orange-900/50'
                             }`}
                           >
                             <Users className="h-3 w-3 mr-1" />
@@ -888,7 +883,7 @@ const TareaConsorcioManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-purple-600 p-4 -mx-6 -mt-6 rounded-t-xl">
+              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-blue-700 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
                     <Plus className="h-5 w-5 text-white" />
@@ -1502,7 +1497,7 @@ const TareaConsorcioManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto scroll-smooth">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-indigo-600 p-4 -mx-6 -mt-6 rounded-t-xl">
+              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-blue-700 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
                     <Eye className="h-5 w-5 text-white" />
@@ -1533,7 +1528,7 @@ const TareaConsorcioManagement: React.FC = () => {
                       viewingTask.estado === 'presupuesto' ? 'bg-yellow-100 text-yellow-800' :
                       viewingTask.estado === 'confirmado' ? 'bg-blue-100 text-blue-800' :
                       viewingTask.estado === 'pendiente' ? 'bg-orange-100 text-orange-800' :
-                      viewingTask.estado === 'en_progreso' ? 'bg-purple-100 text-purple-800' :
+                      viewingTask.estado === 'en_progreso' ? 'bg-orange-100 text-orange-800' :
                       viewingTask.estado === 'completada' ? 'bg-green-100 text-green-800' :
                       viewingTask.estado === 'cancelada' ? 'bg-red-100 text-red-800' :
                       viewingTask.estado === 'PENDIENTE_PAGO' ? 'bg-indigo-100 text-indigo-800' :
@@ -1851,7 +1846,7 @@ const TareaConsorcioManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-indigo-600 p-4 -mx-6 -mt-6 rounded-t-xl">
+              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-blue-700 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
                     <Users className="h-5 w-5 text-white" />

@@ -75,13 +75,11 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 dark:border-purple-500 p-4 mb-4 animate-fadeIn transition-all duration-300">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full">
-            <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h3 className="text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <Filter className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
             Filtrar Tareas
           </h3>
         </div>
@@ -89,7 +87,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setIsExpanded(!isExpanded)}
-            className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md flex items-center gap-1 transition-colors duration-200 cursor-pointer"
+            className="px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
           >
             <Sliders className="h-4 w-4" />
             {isExpanded ? 'Ocultar' : 'Mostrar'} filtros
@@ -98,7 +96,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
           {(selectedTecnico || selectedEstado) && (
             <button 
               onClick={resetFilters}
-              className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-full transition-colors duration-200"
+              className="p-1.5 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors"
               title="Limpiar filtros"
             >
               <X className="h-4 w-4 text-red-500" />
@@ -111,14 +109,14 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
         {/* Filtro por Técnico - Solo visible para administradores */}
         {isAdmin && (
           <div className="animate-fadeIn" style={{ animationDelay: '100ms' }}>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               <User className="h-4 w-4 text-blue-500" />
               Técnico
             </label>
             <select
               value={selectedTecnico}
               onChange={(e) => setSelectedTecnico(e.target.value)}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 px-3 text-sm text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-colors duration-200 cursor-pointer"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 py-2 px-3 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer"
             >
               <option value="">{tecnicos.length > 0 ? 'Todos los técnicos' : 'No hay técnicos'}</option>
               {tecnicos.map((tecnico: any) => (
@@ -132,7 +130,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
         
         {/* Filtro por Estado */}
         <div className="animate-fadeIn" style={{ animationDelay: '200ms' }}>
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             <Search className="h-4 w-4 text-blue-500" />
             Estado
           </label>
@@ -140,7 +138,7 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
             <select
               value={selectedEstado}
               onChange={(e) => setSelectedEstado(e.target.value)}
-              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-3 pr-10 text-sm text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 hover:border-blue-400 dark:hover:border-blue-500 transition-colors duration-200 appearance-none cursor-pointer"
+              className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 py-2 pl-3 pr-10 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors appearance-none cursor-pointer"
             >
               {estadoOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -157,18 +155,18 @@ const CalendarTasksFilter: React.FC<CalendarTasksFilterProps> = ({
       
       {/* Indicadores de filtros activos */}
       {(selectedTecnico || selectedEstado) && (
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 animate-fadeIn shadow-inner">
-          <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
-            <Filter className="h-4 w-4" />
+        <div className="p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/40">
+          <p className="text-sm text-orange-800 dark:text-orange-300 flex items-center flex-wrap gap-2">
+            <Filter className="h-4 w-4 flex-shrink-0" />
             <strong>Filtros activos:</strong>
             {selectedTecnico && tecnicos.find((t: any) => t._id === selectedTecnico) && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs font-medium">
+              <span className="inline-flex items-center px-2 py-1 rounded-lg bg-white/70 dark:bg-slate-800/50 text-orange-800 dark:text-orange-200 text-xs font-medium border border-orange-200/60 dark:border-orange-800/40">
                 <User className="h-3 w-3 mr-1" />
                 {tecnicos.find((t: any) => t._id === selectedTecnico)?.nombre}
               </span>
             )}
             {selectedEstado && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 text-xs font-medium">
+              <span className="inline-flex items-center px-2 py-1 rounded-lg bg-white/70 dark:bg-slate-800/50 text-orange-800 dark:text-orange-200 text-xs font-medium border border-orange-200/60 dark:border-orange-800/40">
                 {estadoOptions.find(opt => opt.value === selectedEstado)?.icon}
                 <span className="ml-1">{estadoOptions.find(opt => opt.value === selectedEstado)?.label}</span>
               </span>

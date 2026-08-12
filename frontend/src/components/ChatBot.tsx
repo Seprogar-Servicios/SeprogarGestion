@@ -519,7 +519,7 @@ const ChatBot = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-4 right-4 md:right-8 z-50 group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/35 hover:shadow-xl hover:shadow-blue-600/45 hover:scale-[1.03] transition-all duration-200"
+          className="fixed bottom-4 right-4 md:right-8 z-50 group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg shadow-blue-600/35 hover:shadow-xl hover:shadow-blue-600/45 hover:scale-[1.03] transition-all duration-200"
           title="Hablar con Sepi"
           aria-label="Abrir chat con Sepi"
         >
@@ -527,7 +527,7 @@ const ChatBot = () => {
             <span className="h-11 w-11 rounded-full bg-white text-blue-700 flex items-center justify-center border-2 border-white shadow-md">
               <Bot className="h-6 w-6" strokeWidth={2.25} />
             </span>
-            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-400 border-2 border-white" />
+            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-orange-500 border-2 border-white" />
           </span>
           <span className="flex flex-col items-start leading-tight pr-0.5">
             <span className="text-sm font-semibold tracking-tight">Sepi</span>
@@ -545,13 +545,13 @@ const ChatBot = () => {
             isExpanded ? 'md:w-[620px] md:h-[720px]' : 'md:w-[400px] md:h-[620px]'
           } h-[620px] bg-white dark:bg-gray-900 shadow-2xl rounded-t-2xl border border-blue-100 dark:border-gray-700 transition-all`}
         >
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 rounded-t-2xl flex items-center justify-between">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-4 py-3 rounded-t-2xl flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="relative">
                 <div className="h-9 w-9 rounded-full bg-white text-blue-700 flex items-center justify-center border-2 border-white/80 shadow">
                   <Bot className="h-5 w-5" strokeWidth={2.25} />
                 </div>
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 border-2 border-blue-700" />
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-orange-500 border-2 border-blue-800" />
               </div>
               <div>
                 <div className="font-semibold leading-tight">Sepi</div>

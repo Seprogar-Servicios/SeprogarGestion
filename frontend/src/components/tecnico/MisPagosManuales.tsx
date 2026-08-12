@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchMisPagosManuales } from '../../store/slices/pagoManualSlice';
 import { DollarSign, Search, AlertCircle, Calendar, Tag, ListTodo } from 'lucide-react';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 const MisPagosManuales: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -46,23 +47,14 @@ const MisPagosManuales: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6">
-        <div className="flex items-center">
-          <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-4">
-            <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Pagos o adicionales
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Consultá los pagos manuales que te cargó el administrador. El comprobante formal se firma en Mis Recibos.
-            </p>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Pagos o adicionales"
+        description="Consultá los pagos manuales que te cargó el administrador. El comprobante formal se firma en Mis Recibos."
+        eyebrow="Técnico"
+        icon={<DollarSign className="h-5 w-5" />}
+      />
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -76,10 +68,10 @@ const MisPagosManuales: React.FC = () => {
       </div>
 
       {filteredPagos.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center">
-          <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No hay pagos disponibles</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+          <DollarSign className="mx-auto h-12 w-12 text-slate-400" />
+          <h3 className="mt-2 text-lg font-medium text-slate-900 dark:text-white">No hay pagos disponibles</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Cuando el administrador cargue un pago manual, aparecerá aquí.
           </p>
         </div>
@@ -88,7 +80,7 @@ const MisPagosManuales: React.FC = () => {
           {filteredPagos.map((pago) => (
             <div
               key={pago._id}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6"
+              className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6"
             >
               <div className="flex items-start justify-between mb-4">
                 <div>

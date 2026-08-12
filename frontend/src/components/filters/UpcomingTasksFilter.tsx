@@ -72,59 +72,46 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-6">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full">
-          <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-        </div>
-        <h3 className="text-lg font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Filtrar Tareas
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Filter className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+          Filtrar tareas
         </h3>
       </div>
-      
+
       <div className="flex flex-wrap gap-2">
         {filterOptions.map((option) => {
           const isActive = option.value
             ? filters.upcomingFilter === option.value
             : !filters.upcomingFilter;
           const Icon = option.icon;
-          
+
           return (
             <button
               key={option.value || 'all'}
-              className={`group relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 cursor-pointer ${
+              type="button"
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                 isActive
-                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:shadow-lg hover:from-blue-700 hover:to-purple-700'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
+                  : 'bg-slate-50 text-slate-700 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600'
               }`}
               onClick={() => handleUpcomingFilterChange(option.value as any)}
             >
-              <div className={`p-1.5 rounded-full transition-colors ${
-                isActive
-                  ? 'bg-white/20'
-                  : 'bg-gray-100 group-hover:bg-gray-200 dark:bg-gray-600 dark:group-hover:bg-gray-500'
-              }`}>
-                <Icon className={`h-4 w-4 ${
-                  isActive ? 'text-white' : 'text-gray-600 dark:text-gray-300'
-                }`} />
-              </div>
+              <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-300'}`} />
               <span>{option.label}</span>
-              {isActive && (
-                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 flex items-center justify-center">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
-              )}
             </button>
           );
         })}
       </div>
-      
+
       {filters.upcomingFilter && (
-        <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
-          <p className="text-sm text-blue-700 dark:text-blue-300 flex items-center">
+        <div className="mt-3 p-2.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/40">
+          <p className="text-sm text-orange-800 dark:text-orange-300 flex items-center">
             <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
-            <span><strong>Filtro activo:</strong> {getActiveFilterLabel()}</span>
+            <span>
+              <strong>Filtro activo:</strong> {getActiveFilterLabel()}
+            </span>
           </p>
         </div>
       )}

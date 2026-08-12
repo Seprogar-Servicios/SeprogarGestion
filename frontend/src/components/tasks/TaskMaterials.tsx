@@ -418,7 +418,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
               </button>
               <button
                 onClick={() => setShowMultiplesModal(true)}
-                className="inline-flex items-center px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+                className="inline-flex items-center px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar Múltiples
@@ -436,7 +436,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
               </button>
               <button
                 onClick={() => setShowMultiplesModal(true)}
-                className="inline-flex items-center px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+                className="inline-flex items-center px-3 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors text-sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar Múltiples
@@ -484,7 +484,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         material.origen === 'stock'
                           ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
-                          : 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300'
+                          : 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300'
                       }`}>
                         {material.origen === 'stock' ? 'Stock' : 'Excedente'}
                       </span>
@@ -880,7 +880,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                           key={material._id}
                           className={`flex items-center gap-4 p-4 rounded-lg border ${
                             isSelected
-                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                              ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
                               : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                           } transition-colors`}
                         >
@@ -888,7 +888,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleMaterial(material._id)}
-                            className="h-5 w-5 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                            className="h-5 w-5 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
                           />
                           <div className="flex-1">
                             <p className="font-medium text-gray-900 dark:text-white">{material.nombre}</p>
@@ -947,7 +947,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                 <button
                   type="button"
                   onClick={handleAddMultiplesMateriales}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-base font-medium"
+                  className="px-6 py-3 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-base font-medium"
                 >
                   Agregar Materiales
                 </button>

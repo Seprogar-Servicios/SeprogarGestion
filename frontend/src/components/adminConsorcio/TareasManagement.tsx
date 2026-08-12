@@ -14,6 +14,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { preventEnterSubmit } from '../../utils/formGuards';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 const AdminConsorcioTareasManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -86,7 +87,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
     'pendiente_confirmacion': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
     'confirmada': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
     'en_progreso': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-    'finalizada': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    'finalizada': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
     'cancelada': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     'pendiente_pago': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
     'PENDIENTE_PAGO': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
@@ -345,43 +346,33 @@ const AdminConsorcioTareasManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Building className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Gestión de Tareas de Consorcio
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300">
-                Administra las tareas asignadas a tu consorcio
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
+      <AdminPageHeader
+        title="Tareas de consorcio"
+        description="Administrá las tareas asignadas a tu consorcio"
+        eyebrow="Consorcio"
+        icon={<Building className="h-5 w-5" />}
+        actions={
+          <>
             <button
               onClick={() => fetchTasks()}
-              className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+              className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Actualizar
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+              className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Nueva Tarea
+              Nueva tarea
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -412,7 +403,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
       </div>
 
       {/* Tasks List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
         {tareas.length === 0 ? (
           <div className="p-8 text-center">
             <Building className="h-12 w-12 mx-auto text-gray-400 mb-4" />

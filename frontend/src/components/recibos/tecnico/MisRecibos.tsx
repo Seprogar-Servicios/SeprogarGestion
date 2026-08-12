@@ -6,6 +6,7 @@ import type { Recibo } from '../../../types';
 import { Download, FileText, Search, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import AdminPageHeader from '../../common/AdminPageHeader';
 
 const MisRecibos: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -58,27 +59,14 @@ const MisRecibos: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6 animate-fadeIn">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-4">
-              <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Mis Recibos de Sueldo
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Visualiza y gestiona tus recibos de sueldo
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Mis Recibos de Sueldo"
+        description="Visualizá y gestioná tus recibos de sueldo"
+        eyebrow="Técnico"
+        icon={<FileText className="h-5 w-5" />}
+      />
 
-      {/* Search */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="relative max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
@@ -88,19 +76,18 @@ const MisRecibos: React.FC = () => {
             placeholder="Buscar por motivo, mes, año o estado..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
       </div>
 
-      {/* Recibos List */}
       {filteredRecibos.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center">
-          <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 text-center">
+          <FileText className="mx-auto h-12 w-12 text-slate-400" />
+          <h3 className="mt-2 text-lg font-medium text-slate-900 dark:text-white">
             No hay recibos disponibles
           </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {searchTerm ? 'No se encontraron recibos que coincidan con la búsqueda' : 'Tus recibos aparecerán aquí cuando estén disponibles'}
           </p>
         </div>
@@ -109,7 +96,7 @@ const MisRecibos: React.FC = () => {
           {filteredRecibos.map((recibo) => (
             <div 
               key={recibo._id} 
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300"
+              className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500 transition-colors"
             >
               <div className="p-6">
                 <div className="flex items-center justify-between">

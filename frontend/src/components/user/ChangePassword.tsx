@@ -117,16 +117,16 @@ const ChangePassword: React.FC = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 border border-gray-100 dark:border-gray-700 transition-all duration-300">
-      <div className="flex items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-3 rounded-full mr-4 shadow-lg">
-          <Lock className="h-6 w-6 text-white animate-pulse" />
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+      <div className="flex items-center mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="h-10 w-10 rounded-lg bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-400 flex items-center justify-center mr-4">
+          <Lock className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             Cambiar Contraseña
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Actualiza tus credenciales de seguridad</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Actualiza tus credenciales de seguridad</p>
         </div>
       </div>
       
@@ -158,18 +158,18 @@ const ChangePassword: React.FC = () => {
       
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="group">
-          <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+          <label htmlFor="currentPassword" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
             <Lock className="h-4 w-4 mr-2 text-blue-500" />
             Contraseña Actual
           </label>
-          <div className="relative rounded-lg shadow-sm transition-all duration-300 group-hover:shadow-md">
+          <div className="relative rounded-lg">
             <input
               type={showCurrentPassword ? 'text' : 'password'}
               name="currentPassword"
               id="currentPassword"
               value={formData.currentPassword}
               onChange={handleChange}
-              className="block w-full pr-10 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-300 focus:shadow-md"
+              className="block w-full pr-10 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
               placeholder="Ingrese su contraseña actual"
               required
             />
@@ -179,7 +179,7 @@ const ChangePassword: React.FC = () => {
                 e.preventDefault();
                 setShowCurrentPassword(!showCurrentPassword);
               }}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             >
               {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -187,18 +187,18 @@ const ChangePassword: React.FC = () => {
         </div>
         
         <div className="group">
-          <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-            <Shield className="h-4 w-4 mr-2 text-purple-500" />
+          <label htmlFor="newPassword" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+            <Shield className="h-4 w-4 mr-2 text-orange-500" />
             Nueva Contraseña
           </label>
-          <div className="relative rounded-lg shadow-sm transition-all duration-300 group-hover:shadow-md">
+          <div className="relative rounded-lg">
             <input
               type={showNewPassword ? 'text' : 'password'}
               name="newPassword"
               id="newPassword"
               value={formData.newPassword}
               onChange={handleChange}
-              className="block w-full pr-10 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:text-white transition-all duration-300 focus:shadow-md"
+              className="block w-full pr-10 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-700 dark:text-white"
               placeholder="Ingrese su nueva contraseña"
               required
             />
@@ -208,7 +208,7 @@ const ChangePassword: React.FC = () => {
                 e.preventDefault();
                 setShowNewPassword(!showNewPassword);
               }}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors duration-200"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
             >
               {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -247,18 +247,18 @@ const ChangePassword: React.FC = () => {
         </div>
         
         <div className="group">
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
             <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
             Confirmar Nueva Contraseña
           </label>
-          <div className="relative rounded-lg shadow-sm transition-all duration-300 group-hover:shadow-md">
+          <div className="relative rounded-lg">
             <input
               type={showConfirmPassword ? 'text' : 'password'}
               name="confirmPassword"
               id="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="block w-full pr-10 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white transition-all duration-300 focus:shadow-md"
+              className="block w-full pr-10 border border-slate-200 dark:border-slate-600 rounded-lg focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:text-white"
               placeholder="Confirme su nueva contraseña"
               required
             />
@@ -268,7 +268,7 @@ const ChangePassword: React.FC = () => {
                 e.preventDefault();
                 setShowConfirmPassword(!showConfirmPassword);
               }}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors duration-200"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
             >
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -279,11 +279,11 @@ const ChangePassword: React.FC = () => {
           <button
             type="submit"
             disabled={loading || (formData.newPassword !== '' && !passwordValidation.isValid) || formData.newPassword !== formData.confirmPassword}
-            className={`w-full flex justify-center py-3 px-6 border border-transparent rounded-lg shadow-md text-sm font-medium text-white transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+            className={`w-full flex justify-center py-3 px-6 border border-transparent rounded-lg text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
               loading ? 'opacity-70 cursor-not-allowed bg-blue-500' : 
               formData.newPassword !== formData.confirmPassword ? 'bg-gray-500 hover:bg-gray-600 cursor-not-allowed' :
               !passwordValidation.isValid && formData.newPassword !== '' ? 'bg-gray-500 hover:bg-gray-600 cursor-not-allowed' :
-              'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 hover:shadow-lg cursor-pointer'
+              'bg-blue-600 hover:bg-blue-700 cursor-pointer'
             }`}
           >
             {loading ? (

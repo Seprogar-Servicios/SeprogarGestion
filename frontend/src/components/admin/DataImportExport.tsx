@@ -3,6 +3,7 @@ import { useAppSelector } from '../../store';
 import { Download, FileText, CheckCircle, AlertCircle, Info, Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 interface ImportStats {
   especialidades: number;
@@ -227,24 +228,12 @@ const DataImportExport: React.FC = () => {
 
   return (
     <div className="space-y-6 h-full flex flex-col animate-fadeIn" style={{ minHeight: '85vh' }}>
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-6 mb-6 animate-fadeIn">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
-              <Download className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Gestión de Datos
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                Importa y exporta datos del sistema de manera segura
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Gestión de Datos"
+        description="Importa y exporta datos del sistema de manera segura"
+        eyebrow="Administración"
+        icon={<Download className="h-5 w-5" />}
+      />
       
       {/* Tab Navigation */}
       <div className="mb-8">

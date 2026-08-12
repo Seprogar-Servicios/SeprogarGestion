@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import type { TareaConsorcio } from '../../types';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 const ConsorcioAnalytics: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -139,7 +140,7 @@ const ConsorcioAnalytics: React.FC = () => {
       { name: 'Pendiente', value: stats.pendiente, color: 'bg-yellow-500' },
       { name: 'En Progreso', value: stats.enProgreso, color: 'bg-orange-500' },
       { name: 'Completada', value: stats.completada, color: 'bg-green-500' },
-      { name: 'Pendiente Pago', value: stats.pendientePago, color: 'bg-purple-500' },
+      { name: 'Pendiente Pago', value: stats.pendientePago, color: 'bg-orange-500' },
       { name: 'Facturado', value: stats.facturado, color: 'bg-indigo-500' },
       { name: 'Pagado', value: stats.pagado, color: 'bg-emerald-500' }
     ];
@@ -173,38 +174,32 @@ const ConsorcioAnalytics: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Building className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Análisis de Tareas de Consorcio
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300">
-                Estadísticas detalladas de las tareas de consorcio
-              </p>
-            </div>
-          </div>
+      <AdminPageHeader
+        title="Análisis de Tareas de Consorcio"
+        description="Estadísticas detalladas de las tareas de consorcio"
+        eyebrow="Análisis"
+        icon={<Building className="h-5 w-5" />}
+        actions={
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
           >
-            <Filter className="h-4 w-4" />
-            Filtros
+            <Filter className="h-4 w-4 mr-2" />
+            {showFilters ? 'Ocultar filtros' : 'Filtros'}
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Filtros */}
       {showFilters && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Filtros</h3>
-            <button onClick={() => setShowFilters(false)}>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Filtros</h3>
+            <button
+              onClick={() => setShowFilters(false)}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Cerrar filtros"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -377,7 +372,7 @@ const ConsorcioAnalytics: React.FC = () => {
                     <span className={`px-2 py-1 rounded text-xs ${
                       task.estado === 'PAGADO' ? 'bg-emerald-100 text-emerald-800' :
                       task.estado === 'FACTURADO' ? 'bg-indigo-100 text-indigo-800' :
-                      task.estado === 'PENDIENTE_PAGO' ? 'bg-purple-100 text-purple-800' :
+                      task.estado === 'PENDIENTE_PAGO' ? 'bg-orange-100 text-orange-800' :
                       task.estado === 'completada' ? 'bg-green-100 text-green-800' :
                       task.estado === 'en_progreso' ? 'bg-orange-100 text-orange-800' :
                       task.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :

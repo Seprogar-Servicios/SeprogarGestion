@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, User, CheckCircle, 
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useTheme } from '../../hooks/useTheme';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 const TaskCalendar: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -220,36 +221,25 @@ const TaskCalendar: React.FC = () => {
 
   return (
     <div className="space-y-6 h-full flex flex-col animate-fadeIn" style={{ minHeight: '85vh' }}>
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-4 animate-fadeIn">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
-              <Calendar className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Calendario de Tareas
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                Vista de calendario con todas las tareas programadas
-              </p>
-            </div>
-          </div>
-          
-          <button 
+      <AdminPageHeader
+        title="Calendario de Tareas"
+        description="Vista de calendario con todas las tareas programadas"
+        eyebrow="Administración"
+        icon={<Calendar className="h-5 w-5" />}
+        actions={
+          <button
             onClick={() => {
               const today = new Date();
               setCurrentDate(today);
               setSelectedDate(today);
-            }} 
-            className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors duration-200 text-sm font-medium flex items-center gap-2 cursor-pointer"
+            }}
+            className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
           >
-            <CalendarIcon className="h-4 w-4" />
+            <CalendarIcon className="h-4 w-4 mr-2" />
             Ir a Hoy
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Calendar Tasks Filter */}
       <CalendarTasksFilter
@@ -260,7 +250,7 @@ const TaskCalendar: React.FC = () => {
       <div className="flex flex-col lg:flex-row gap-4 h-full min-h-[600px] w-full">
         {/* Calendar */}
         <div className="flex-1 lg:flex-[3] min-w-0 animate-fadeIn" style={{ animationDelay: '100ms' }}>
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl h-full flex flex-col border-t-4 border-blue-500">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 h-full flex flex-col">
             {/* Calendar Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <button
@@ -366,9 +356,9 @@ const TaskCalendar: React.FC = () => {
         <div className="flex-1 lg:flex-[1] min-w-0 lg:min-w-[300px] animate-fadeIn" style={{ animationDelay: '200ms' }}>
           <div className="space-y-4 h-full">
             {/* Task Details Sidebar */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-4 flex-1 overflow-y-auto border-t-4 border-purple-500">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex-1 overflow-y-auto">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
-                <CalendarIcon className="h-5 w-5 mr-2 text-purple-500" />
+                <CalendarIcon className="h-5 w-5 mr-2 text-orange-500" />
                 {selectedDate ? (
                   <span className="capitalize">{format(selectedDate, 'EEEE, d MMMM yyyy', { locale: es })}</span>
                 ) : (
@@ -424,7 +414,7 @@ const TaskCalendar: React.FC = () => {
                             )}
                             
                             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                              <MapPin className="h-3 w-3 mr-1 text-purple-500" />
+                              <MapPin className="h-3 w-3 mr-1 text-orange-500" />
                               <span className="font-medium mr-1">Cliente:</span> {task.cliente || 'No especificado'}
                             </p>
                             
@@ -467,7 +457,7 @@ const TaskCalendar: React.FC = () => {
             </div>
 
             {/* Legend */}
-            <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl border-t-4 border-gray-500 animate-fadeIn" style={{ animationDelay: '300ms' }}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 animate-fadeIn" style={{ animationDelay: '300ms' }}>
               <div className="px-4 py-4">
                 <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-3 flex items-center">
                   <AlertCircle className="h-5 w-5 mr-2 text-gray-500" />

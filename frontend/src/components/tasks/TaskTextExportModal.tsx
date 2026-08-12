@@ -33,7 +33,7 @@ const TaskTextExportModal: React.FC<TaskTextExportModalProps> = ({ tasks, onClos
   return (
     <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-800">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-semibold text-white">Exportar tareas como texto</h3>
             <button

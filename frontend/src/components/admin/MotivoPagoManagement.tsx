@@ -10,6 +10,7 @@ import { Tag, Edit, Plus, Search, Trash2, X } from 'lucide-react';
 import type { MotivoPago } from '../../types';
 import { toast } from 'react-toastify';
 import EmptyCrudState from '../common/EmptyCrudState';
+import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
 
 const MotivoPagoManagement: React.FC = () => {
@@ -92,21 +93,12 @@ const MotivoPagoManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-4">
-              <Tag className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Motivos de pago
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Catálogo para clasificar pagos manuales (adelanto, pago extra, etc.)
-              </p>
-            </div>
-          </div>
+      <AdminPageHeader
+        title="Motivos de pago"
+        description="Catálogo para clasificar pagos manuales (adelanto, pago extra, etc.)"
+        eyebrow="Administración"
+        icon={<Tag className="h-5 w-5" />}
+        actions={
           <button
             data-sepi-target="motivos-create"
             onClick={() => {
@@ -119,10 +111,10 @@ const MotivoPagoManagement: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             Nuevo motivo
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-none p-6">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input

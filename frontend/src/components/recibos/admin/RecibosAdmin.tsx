@@ -7,6 +7,7 @@ import { useAppDispatch } from '../../../store';
 import { fetchRecibos } from '../../../store/slices/recibosSlice';
 import { fetchUsers } from '../../../store/slices/usersSlice';
 import type { RootState } from '../../../store';
+import AdminPageHeader from '../../common/AdminPageHeader';
 
 const RecibosAdmin: React.FC = () => {
   const [selectedTecnico, setSelectedTecnico] = useState('');
@@ -36,22 +37,12 @@ const RecibosAdmin: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6 animate-fadeIn">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-4">
-              <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Gestión de Recibos de Sueldo
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                Administra los recibos de sueldo de los técnicos
-              </p>
-            </div>
-          </div>
+      <AdminPageHeader
+        title="Gestión de Recibos de Sueldo"
+        description="Administra los recibos de sueldo de los técnicos"
+        eyebrow="Administración"
+        icon={<FileText className="h-5 w-5" />}
+        actions={
           <button
             data-sepi-target="recibos-create"
             onClick={() => setShowCreateModal(true)}
@@ -60,11 +51,11 @@ const RecibosAdmin: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Recibo
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Search and Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="tecnico-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filtrar por Técnico</label>
@@ -132,7 +123,7 @@ const RecibosAdmin: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-300 animate-fadeIn">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col transform transition-all duration-300 animate-scaleIn">
             {/* Modal Header */}
-            <div className="flex-shrink-0 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-t-2xl flex justify-between items-center">
+            <div className="flex-shrink-0 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800 rounded-t-2xl flex justify-between items-center">
               <div className="flex items-center">
                 <FileText className="h-6 w-6 text-white mr-3" />
                 <h2 className="text-xl font-semibold text-white">

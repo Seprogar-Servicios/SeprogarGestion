@@ -1,23 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  Calendar, 
-  CheckSquare, 
-  CheckCircle, 
-  Clock, 
-  Activity, 
-  Building, 
+import {
+  Calendar,
+  CheckSquare,
+  CheckCircle,
+  Clock,
+  Activity,
+  Building,
   ChevronRight,
   RefreshCw,
-  Wrench
+  Wrench,
 } from 'lucide-react';
 import { showError } from '../../utils/toastUtils';
 import { useAppSelector } from '../../store';
 
 const TecnicoDashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
-  
-  // Estados para las tareas del técnico
+
   const [tareas, setTareas] = useState<any[]>([]);
   const [tareasNormales, setTareasNormales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +25,7 @@ const TecnicoDashboard: React.FC = () => {
     pendientes: 0,
     enProgreso: 0,
     completadas: 0,
-    hoy: 0
+    hoy: 0,
   });
   const [statsNormales, setStatsNormales] = useState({
     total: 0,
@@ -34,8 +33,10 @@ const TecnicoDashboard: React.FC = () => {
     enProgreso: 0,
     pendientes: 0,
     canceladas: 0,
-    hoy: 0
+    hoy: 0,
   });
+
+  const today = new Date();
 
   useEffect(() => {
     fetchMisTareas();
@@ -45,12 +46,12 @@ const TecnicoDashboard: React.FC = () => {
   const fetchMisTareas = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      
+
       const response = await fetch('/api/tareas-consorcio/mis-tareas', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
@@ -71,17 +72,15 @@ const TecnicoDashboard: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('accessToken');
-      
-      // Filtrar tareas del técnico actual
+
       const response = await fetch(`/api/tareas?usuario=${user?._id}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (!response.ok) {
-        // Si hay error, simplemente no mostrar tareas normales
         setTareasNormales([]);
         setStatsNormales({
           total: 0,
@@ -89,7 +88,7 @@ const TecnicoDashboard: React.FC = () => {
           enProgreso: 0,
           pendientes: 0,
           canceladas: 0,
-          hoy: 0
+          hoy: 0,
         });
         return;
       }
@@ -100,7 +99,6 @@ const TecnicoDashboard: React.FC = () => {
       calcularEstadisticasNormales(tareasData);
     } catch (error) {
       console.error('Error:', error);
-      // No mostrar error al usuario, solo log
       setTareasNormales([]);
       setStatsNormales({
         total: 0,
@@ -108,7 +106,7 @@ const TecnicoDashboard: React.FC = () => {
         enProgreso: 0,
         pendientes: 0,
         canceladas: 0,
-        hoy: 0
+        hoy: 0,
       });
     } finally {
       setLoading(false);
@@ -119,76 +117,75 @@ const TecnicoDashboard: React.FC = () => {
     const ahora = new Date();
     const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
 
-    const estadisticas = tareasData.reduce((acc, tarea) => {
-      // Total de tareas
-      acc.total++;
+    const estadisticas = tareasData.reduce(
+      (acc, tarea) => {
+        acc.total++;
 
-      // Por estado
-      switch (tarea.estado) {
-        case 'pendiente':
-          acc.pendientes++;
-          break;
-        case 'en_progreso':
-          acc.enProgreso++;
-          break;
-        case 'completada':
-          acc.completadas++;
-          break;
+        switch (tarea.estado) {
+          case 'pendiente':
+            acc.pendientes++;
+            break;
+          case 'en_progreso':
+            acc.enProgreso++;
+            break;
+          case 'completada':
+            acc.completadas++;
+            break;
+        }
+
+        const fechaTarea = new Date(tarea.fechaEjecucion);
+        if (fechaTarea >= hoy && fechaTarea < new Date(hoy.getTime() + 24 * 60 * 60 * 1000)) {
+          acc.hoy++;
+        }
+
+        return acc;
+      },
+      {
+        total: 0,
+        pendientes: 0,
+        enProgreso: 0,
+        completadas: 0,
+        hoy: 0,
       }
-
-      // Por fecha
-      const fechaTarea = new Date(tarea.fechaEjecucion);
-      if (fechaTarea >= hoy && fechaTarea < new Date(hoy.getTime() + 24 * 60 * 60 * 1000)) {
-        acc.hoy++;
-      }
-
-      return acc;
-    }, {
-      total: 0,
-      pendientes: 0,
-      enProgreso: 0,
-      completadas: 0,
-      hoy: 0
-    });
+    );
 
     setStats(estadisticas);
   };
 
   const calcularEstadisticasNormales = (tareasData: any[]) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
+    const day = new Date();
+    day.setHours(0, 0, 0, 0);
+
     const todayStr = [
-      today.getFullYear(),
-      String(today.getMonth() + 1).padStart(2, '0'),
-      String(today.getDate()).padStart(2, '0')
+      day.getFullYear(),
+      String(day.getMonth() + 1).padStart(2, '0'),
+      String(day.getDate()).padStart(2, '0'),
     ].join('-');
 
-    const todayTasks = tareasData?.filter(task => {
-      if (!task.fechaEjecucion) return false;
+    const todayTasks =
+      tareasData?.filter((task) => {
+        if (!task.fechaEjecucion) return false;
 
-      const taskDate = new Date(task.fechaEjecucion);
-      taskDate.setDate(taskDate.getDate() + 1);
-      
-      const taskDateStr = [
-        taskDate.getFullYear(),
-        String(taskDate.getMonth() + 1).padStart(2, '0'),
-        String(taskDate.getDate()).padStart(2, '0')
-      ].join('-')
-      
-      return taskDateStr === todayStr;
-    }) || [];
+        const taskDate = new Date(task.fechaEjecucion);
+        taskDate.setDate(taskDate.getDate() + 1);
 
-    const estadisticas = {
+        const taskDateStr = [
+          taskDate.getFullYear(),
+          String(taskDate.getMonth() + 1).padStart(2, '0'),
+          String(taskDate.getDate()).padStart(2, '0'),
+        ].join('-');
+
+        return taskDateStr === todayStr;
+      }) || [];
+
+    setStatsNormales({
       total: tareasData?.length || 0,
-      completadas: tareasData?.filter(task => task.estado === 'completada').length || 0,
-      enProgreso: tareasData?.filter(task => task.estado === 'en progreso').length || 0,
-      pendientes: tareasData?.filter(task => task.estado === 'pendiente').length || 0,
-      canceladas: tareasData?.filter(task => task.estado === 'cancelada').length || 0,
-      hoy: todayTasks.length
-    };
-
-    setStatsNormales(estadisticas);
+      completadas: tareasData?.filter((task) => task.estado === 'completada').length || 0,
+      enProgreso: tareasData?.filter((task) => task.estado === 'en progreso').length || 0,
+      pendientes: tareasData?.filter((task) => task.estado === 'pendiente').length || 0,
+      canceladas: tareasData?.filter((task) => task.estado === 'cancelada').length || 0,
+      hoy: todayTasks.length,
+    });
   };
 
   const getEstadoColor = (estado: string) => {
@@ -196,6 +193,7 @@ const TecnicoDashboard: React.FC = () => {
       case 'pendiente':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
       case 'en_progreso':
+      case 'en progreso':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
       case 'completada':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
@@ -209,6 +207,7 @@ const TecnicoDashboard: React.FC = () => {
       case 'pendiente':
         return 'Pendiente';
       case 'en_progreso':
+      case 'en progreso':
         return 'En Progreso';
       case 'completada':
         return 'Completada';
@@ -221,321 +220,251 @@ const TecnicoDashboard: React.FC = () => {
     return new Date(fecha).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
+  const StatCard = ({
+    name,
+    value,
+    icon: Icon,
+    tone,
+    hint,
+  }: {
+    name: string;
+    value: number;
+    icon: React.ElementType;
+    tone: { bar: string; icon: string };
+    hint?: string;
+  }) => (
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${tone.bar}`} />
+      <div className="flex items-start justify-between gap-3 pl-2">
+        <div>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{name}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{value}</p>
+          {hint && <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
+        </div>
+        <div className={`p-2.5 rounded-xl ${tone.icon}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[16rem]">
         <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Dashboard Técnico
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Resumen de tus tareas asignadas (Normales y de Consorcio)
-        </p>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-1">
+            {today.toLocaleDateString('es-AR', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Hola, {user?.nombre?.split(' ')[0] || 'técnico'}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Resumen de tus tareas normales y de consorcio
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            fetchMisTareas();
+            fetchTareasNormales();
+          }}
+          className="inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/25 transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Actualizar
+        </button>
       </div>
 
-      {/* Cards de Estadísticas de Tareas Normales */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-          <Calendar className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-          Tareas Normales
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+          Tareas normales
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-          {/* Total de Tareas Normales */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Tareas</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{statsNormales.total}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Normales</p>
-              </div>
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                <CheckSquare className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Completadas Normales */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completadas</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{statsNormales.completadas}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Normales</p>
-              </div>
-              <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* En Progreso Normales */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En Progreso</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{statsNormales.enProgreso}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Normales</p>
-              </div>
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
-                <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Pendientes Normales */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pendientes</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{statsNormales.pendientes}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Normales</p>
-              </div>
-              <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
-                <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Tareas del Día Normales */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Para Hoy</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{statsNormales.hoy}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Normales</p>
-              </div>
-              <div className="p-3 bg-cyan-50 dark:bg-cyan-900/30 rounded-lg">
-                <Calendar className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+          <StatCard
+            name="Total"
+            value={statsNormales.total}
+            icon={CheckSquare}
+            tone={{ bar: 'bg-blue-500', icon: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' }}
+          />
+          <StatCard
+            name="Completadas"
+            value={statsNormales.completadas}
+            icon={CheckCircle}
+            tone={{ bar: 'bg-emerald-500', icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' }}
+          />
+          <StatCard
+            name="En progreso"
+            value={statsNormales.enProgreso}
+            icon={Clock}
+            tone={{ bar: 'bg-amber-500', icon: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' }}
+          />
+          <StatCard
+            name="Pendientes"
+            value={statsNormales.pendientes}
+            icon={Calendar}
+            tone={{ bar: 'bg-orange-500', icon: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' }}
+          />
+          <StatCard
+            name="Para hoy"
+            value={statsNormales.hoy}
+            icon={Calendar}
+            tone={{ bar: 'bg-blue-500', icon: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' }}
+          />
         </div>
       </div>
 
-      {/* Cards de Estadísticas de Tareas de Consorcio */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-          <Building className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
-          Tareas de Consorcio
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
+          Tareas de consorcio
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Total de Tareas de Consorcio */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total de Tareas</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.total}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">De consorcio</p>
-              </div>
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                <CheckSquare className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Pendientes de Consorcio */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pendientes</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.pendientes}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">De consorcio</p>
-              </div>
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
-                <Clock className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* En Progreso de Consorcio */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">En Progreso</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.enProgreso}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">De consorcio</p>
-              </div>
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Completadas de Consorcio */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completadas</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stats.completadas}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">De consorcio</p>
-              </div>
-              <div className="p-3 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <StatCard
+            name="Total"
+            value={stats.total}
+            icon={Building}
+            tone={{ bar: 'bg-blue-500', icon: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' }}
+          />
+          <StatCard
+            name="Pendientes"
+            value={stats.pendientes}
+            icon={Clock}
+            tone={{ bar: 'bg-amber-500', icon: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' }}
+          />
+          <StatCard
+            name="En progreso"
+            value={stats.enProgreso}
+            icon={Activity}
+            tone={{ bar: 'bg-orange-500', icon: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' }}
+          />
+          <StatCard
+            name="Completadas"
+            value={stats.completadas}
+            icon={CheckCircle}
+            tone={{ bar: 'bg-emerald-500', icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' }}
+          />
         </div>
       </div>
 
-
-      {/* Acciones Rápidas - Separadas por tipo */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Acciones de Tareas Normales */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-            <Calendar className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-            Tareas Normales
-          </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Tareas normales</h2>
           <div className="space-y-3">
             <Link
               to="/tasks"
-              className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors group"
+              className="flex items-center justify-between p-4 rounded-xl bg-blue-50/80 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors group"
             >
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Ver Tareas Normales</span>
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Ver tareas normales</span>
               </div>
               <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
               to="/calendar"
-              className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors group"
+              className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors group"
             >
-              <div className="flex items-center space-x-3">
-                <Calendar className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Calendario Normal</span>
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Calendario</span>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:translate-x-1 transition-transform" />
+              <ChevronRight className="h-4 w-4 text-slate-500 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         </div>
 
-        {/* Acciones de Tareas de Consorcio */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-            <Building className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
-            Tareas de Consorcio
-          </h2>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Tareas de consorcio</h2>
           <div className="space-y-3">
             <Link
               to="/tecnico/tareas-consorcio"
-              className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors group"
+              className="flex items-center justify-between p-4 rounded-xl bg-orange-50/80 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors group"
             >
-              <div className="flex items-center space-x-3">
-                <Wrench className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">Ver Tareas de Consorcio</span>
+              <div className="flex items-center gap-3">
+                <Wrench className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                <span className="text-sm font-medium text-orange-700 dark:text-orange-300">Ver tareas de consorcio</span>
               </div>
-              <ChevronRight className="h-4 w-4 text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform" />
+              <ChevronRight className="h-4 w-4 text-orange-600 dark:text-orange-400 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <button
-              onClick={() => {
-                fetchMisTareas();
-                fetchTareasNormales();
-              }}
-              className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors group w-full"
-            >
-              <div className="flex items-center space-x-3">
-                <RefreshCw className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Actualizar Datos</span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-400 group-hover:translate-x-1 transition-transform" />
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Próximas Tareas Normales */}
-      {tareasNormales.length > 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-              <Calendar className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-              Próximas Tareas Normales
-            </h2>
-            <Link
-              to="/tasks"
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-            >
-              Ver todas
-            </Link>
-          </div>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Próximas tareas normales</h2>
+          <Link to="/tasks" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700">
+            Ver todas
+          </Link>
+        </div>
+        {tareasNormales.length > 0 ? (
           <div className="space-y-3">
             {tareasNormales.slice(0, 5).map((tarea) => (
-              <div key={tarea._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{tarea.titulo}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{tarea.cliente || 'Sin cliente'} • {formatDate(tarea.fechaEjecucion)}</p>
+              <div
+                key={tarea._id}
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-700/40"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{tarea.titulo}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {tarea.cliente || 'Sin cliente'} • {formatDate(tarea.fechaEjecucion)}
+                  </p>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getEstadoColor(tarea.estado)}`}>
+                <span className={`ml-3 px-2 py-1 text-xs font-medium rounded-full ${getEstadoColor(tarea.estado)}`}>
                   {getEstadoTexto(tarea.estado)}
                 </span>
               </div>
             ))}
           </div>
-        </div>
-      ) : (
-        !loading && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-                Próximas Tareas Normales
-              </h2>
-              <Link
-                to="/tasks"
-                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-              >
-                Ver todas
-              </Link>
-            </div>
-            <div className="text-center py-8">
-              <div className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500">
-                <Calendar className="h-full w-full" />
-              </div>
-              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No tienes tareas normales</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Las tareas normales asignadas aparecerán aquí
-              </p>
-            </div>
+        ) : (
+          <div className="text-center py-8">
+            <Calendar className="mx-auto h-10 w-10 text-slate-400" />
+            <h3 className="mt-2 text-sm font-medium text-slate-900 dark:text-white">No tienes tareas normales</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Las tareas normales asignadas aparecerán aquí
+            </p>
           </div>
-        )
-      )}
+        )}
+      </div>
 
-      {/* Próximas Tareas de Consorcio */}
       {tareas.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-              <Building className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
-              Próximas Tareas de Consorcio
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Próximas tareas de consorcio</h2>
             <Link
               to="/tecnico/tareas-consorcio"
-              className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+              className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700"
             >
               Ver todas
             </Link>
           </div>
           <div className="space-y-3">
             {tareas.slice(0, 5).map((tarea) => (
-              <div key={tarea._id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{tarea.titulo}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{tarea.cliente} • {formatDate(tarea.fechaEjecucion)}</p>
+              <div
+                key={tarea._id}
+                className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-700/40"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{tarea.titulo}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {tarea.cliente} • {formatDate(tarea.fechaEjecucion)}
+                  </p>
                 </div>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getEstadoColor(tarea.estado)}`}>
+                <span className={`ml-3 px-2 py-1 text-xs font-medium rounded-full ${getEstadoColor(tarea.estado)}`}>
                   {getEstadoTexto(tarea.estado)}
                 </span>
               </div>

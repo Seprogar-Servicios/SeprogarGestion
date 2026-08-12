@@ -3,6 +3,7 @@ import { useAppSelector, useAppDispatch } from '../../store';
 import { DollarSign, Filter, Download } from 'lucide-react';
 import { fetchLiquidacionesByTecnico } from '../../store/slices/tareaLiquidacionSlice';
 import api from '../../config/api';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 const TecnicoLiquidaciones: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -76,28 +77,26 @@ const TecnicoLiquidaciones: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-green-500 p-6">
-        <div className="flex items-center">
-          <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-lg mr-4">
-            <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Mis Liquidaciones
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Pagos por tarea
-            </p>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Mis Liquidaciones"
+        description="Pagos por tarea"
+        eyebrow="Técnico"
+        icon={<DollarSign className="h-5 w-5" />}
+        actions={
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-orange-500 hover:bg-orange-600"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Exportar PDF
+          </button>
+        }
+      />
 
-      {/* Filtro por mes */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-green-500 p-6">
-        <div className="flex items-end gap-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+        <div className="flex items-end gap-4 max-w-md">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Filtrar por Mes
             </label>
             <div className="relative">
@@ -108,24 +107,14 @@ const TecnicoLiquidaciones: React.FC = () => {
                 type="month"
                 value={filterMes}
                 onChange={(e) => setFilterMes(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-          </div>
-          <div className="flex-shrink-0">
-            <button
-              onClick={handleExportExcel}
-              className="inline-flex items-center px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar PDF
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Tabla de liquidaciones */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
@@ -177,18 +166,18 @@ const TecnicoLiquidaciones: React.FC = () => {
               )}
             </tbody>
             {filterMes && filteredLiquidaciones.length > 0 && (
-              <tfoot className="bg-gradient-to-r from-green-500 to-emerald-600 dark:from-green-600 dark:to-emerald-700 border-t-4 border-green-700 dark:border-green-800 shadow-lg">
+              <tfoot className="bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-700">
                 <tr>
-                  <td colSpan={3} className="px-6 py-4 text-left text-sm font-extrabold text-white uppercase tracking-wider">
+                  <td colSpan={3} className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
-                      TOTAL MENSUAL - {filterMes}
+                      <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      Total mensual — {filterMes}
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-right text-sm font-bold text-white">
+                  <td className="px-4 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
                     {formatCurrency(totals.pagoTecnico)}
                   </td>
-                  <td className="px-4 py-4 text-right text-sm font-bold text-white">
+                  <td className="px-4 py-4 text-right text-sm font-bold text-blue-600 dark:text-blue-400">
                     {formatCurrency(totals.pago15Dias)}
                   </td>
                 </tr>

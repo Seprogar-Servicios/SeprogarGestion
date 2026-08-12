@@ -239,16 +239,16 @@ const TaskLiquidacion: React.FC<TaskLiquidacionProps> = ({ taskId, userRole }) =
         </div>
 
         {/* Virtuals Calculados */}
-        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg shadow border border-purple-200 dark:border-purple-800 p-4">
+        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg shadow border border-orange-200 dark:border-orange-800 p-4">
           <div className="flex justify-between items-center mb-2">
-            <label className="block text-sm font-medium text-purple-800 dark:text-purple-300">
+            <label className="block text-sm font-medium text-orange-800 dark:text-orange-300">
               Total Presupuesto
             </label>
-            <span className="px-2 py-1 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 text-xs font-medium rounded">
+            <span className="px-2 py-1 bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200 text-xs font-medium rounded">
               Calculado
             </span>
           </div>
-          <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">${(liquidacion as any).totalPresupuesto?.toLocaleString() || 0}</p>
+          <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">${(liquidacion as any).totalPresupuesto?.toLocaleString() || 0}</p>
         </div>
 
         <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg shadow border border-orange-200 dark:border-orange-800 p-4">

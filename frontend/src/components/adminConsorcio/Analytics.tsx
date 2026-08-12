@@ -10,6 +10,7 @@ import {
   ArrowDownRight,
   TrendingUp
 } from 'lucide-react';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 interface FinancialStats {
   totalPagado: number;
@@ -143,7 +144,7 @@ const AdminConsorcioAnalytics: React.FC = () => {
       title: 'En Presupuesto',
       value: formatCurrency(stats.totalPresupuesto),
       icon: PieChart,
-      color: 'bg-purple-500',
+      color: 'bg-orange-500',
       change: `${stats.tareasPresupuesto} tareas`,
       changeType: 'neutral' as 'positive' | 'negative' | 'neutral',
       description: 'Monto en etapa de presupuesto'
@@ -169,54 +170,44 @@ const AdminConsorcioAnalytics: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Análisis Financiero
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300">
-                Resumen financiero de las tareas del consorcio
-              </p>
-            </div>
-          </div>
+      <AdminPageHeader
+        title="Análisis financiero"
+        description="Resumen financiero de las tareas del consorcio"
+        eyebrow="Consorcio"
+        icon={<TrendingUp className="h-5 w-5" />}
+        actions={
           <button
             onClick={fetchTareas}
-            className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+            className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
           >
             <Calendar className="h-4 w-4 mr-2" />
             Actualizar
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Financial Stats Grid */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {financialCards.map((card, index) => {
           const Icon = card.icon;
           return (
             <div
               key={index}
-              className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg"
+              className="bg-white dark:bg-slate-800 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700"
             >
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <div className={`${card.color} rounded-md p-3`}>
-                      <Icon className="h-6 w-6 text-white" />
+                    <div className={`${card.color} rounded-xl p-2.5`}>
+                      <Icon className="h-5 w-5 text-white" />
                     </div>
                   </div>
-                  <div className="ml-5 w-0 flex-1">
+                  <div className="ml-4 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400 truncate">
                         {card.title}
                       </dt>
-                      <dd className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <dd className="text-lg font-semibold text-slate-900 dark:text-white">
                         {card.value}
                       </dd>
                     </dl>
@@ -225,15 +216,15 @@ const AdminConsorcioAnalytics: React.FC = () => {
                 <div className="mt-4">
                   <div className="flex items-center text-sm">
                     {card.changeType === 'positive' ? (
-                      <ArrowUpRight className="h-4 w-4 text-green-500 mr-1" />
+                      <ArrowUpRight className="h-4 w-4 text-emerald-500 mr-1" />
                     ) : card.changeType === 'negative' ? (
                       <ArrowDownRight className="h-4 w-4 text-red-500 mr-1" />
                     ) : null}
-                    <span className={`text-gray-600 dark:text-gray-400 mr-2`}>
+                    <span className="text-slate-600 dark:text-slate-400 mr-2">
                       {card.change}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     {card.description}
                   </p>
                 </div>
@@ -244,10 +235,10 @@ const AdminConsorcioAnalytics: React.FC = () => {
       </div>
 
       {/* Summary Section */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
-            Resumen General
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+            Resumen general
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

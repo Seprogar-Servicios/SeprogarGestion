@@ -12,6 +12,7 @@ import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 // Las clases de botones se definen directamente en los componentes
 
@@ -719,32 +720,21 @@ const TaskList: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-4 animate-fadeIn">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
-              <CheckSquare className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-                Gestión de Tareas
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                Administra y organiza todas las tareas del sistema
-              </p>
-            </div>
-          </div>
-          
-          <button 
-            onClick={() => setShowCreateModal(true)} 
-            className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-md hover:from-blue-600 hover:to-purple-700 transition-all duration-200 text-sm font-medium flex items-center gap-2 shadow-md hover:shadow-lg transform hover:scale-105 cursor-pointer"
+      <AdminPageHeader
+        title="Gestión de Tareas"
+        description="Administra y organiza todas las tareas del sistema"
+        eyebrow="Administración"
+        icon={<CheckSquare className="h-5 w-5" />}
+        actions={
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors cursor-pointer"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 mr-2" />
             Nueva Tarea
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Upcoming Tasks Filter - Only for Admin */}
       {user?.rol === 'admin' && (
@@ -755,7 +745,7 @@ const TaskList: React.FC = () => {
       )}
 
       {/* Search and Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-purple-500 animate-fadeIn" style={{ animationDelay: '100ms' }}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative mb-3 sm:mb-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-500 dark:text-blue-400" />
@@ -772,12 +762,12 @@ const TaskList: React.FC = () => {
             <div className="flex items-center">
               {selectedTasks.length > 0 ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm bg-blue-100 dark:bg-blue-900/80 text-blue-800 dark:text-blue-100 px-4 py-2 rounded-lg h-10 flex items-center font-semibold shadow-sm border border-blue-200 dark:border-blue-800">
+                  <span className="text-sm bg-blue-50 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100 px-4 py-2 rounded-lg h-10 flex items-center font-medium border border-blue-200 dark:border-blue-800">
                     {selectedTasks.length} {selectedTasks.length === 1 ? 'tarea seleccionada' : 'tareas seleccionadas'}
                   </span>
                   <button
                     onClick={() => setShowStatusChangeModal(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 text-sm font-semibold flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-indigo-600 dark:border-indigo-400"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer"
                   >
                     <RefreshCw className="h-4 w-4" />
                     Cambiar estado
@@ -785,14 +775,14 @@ const TaskList: React.FC = () => {
                   <button
                     onClick={handleDeleteMultipleTasks}
                     disabled={selectedTasks.length === 0}
-                    className={`px-4 py-2 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-lg ${selectedTasks.length > 0 ? 'opacity-100 hover:from-red-600 hover:to-pink-700' : 'opacity-50 cursor-not-allowed'} transition-all duration-200 text-sm font-semibold flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-red-600 dark:border-red-400`}
+                    className={`px-4 py-2 bg-red-600 text-white rounded-lg ${selectedTasks.length > 0 ? 'opacity-100 hover:bg-red-700' : 'opacity-50 cursor-not-allowed'} transition-colors text-sm font-medium flex items-center gap-2`}
                   >
                     <Trash2 className="h-4 w-4" />
                     Eliminar
                   </button>
                   <button
                     onClick={() => setSelectedTasks([])}
-                    className="h-10 px-3 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:from-gray-200 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-gray-300 dark:border-gray-600 flex items-center justify-center"
+                    className="h-10 px-3 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer border border-gray-300 dark:border-gray-600 flex items-center justify-center"
                     title="Deseleccionar todo"
                   >
                     <X className="h-5 w-5 font-bold" />
@@ -801,7 +791,7 @@ const TaskList: React.FC = () => {
               ) : (
                 <button
                   onClick={handleSelectAllTasks}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 text-sm font-semibold flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-blue-600 dark:border-blue-400"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer"
                 >
                   <CheckSquare className="h-4 w-4" />
                   Seleccionar tareas
@@ -812,7 +802,7 @@ const TaskList: React.FC = () => {
             {/* Filters Button */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-lg hover:from-gray-300 hover:to-gray-400 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-gray-300 dark:border-gray-600"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors flex items-center gap-2 border border-gray-300 dark:border-gray-600 cursor-pointer"
             >
               <Filter className="h-4 w-4" />
               {showFilters ? 'Ocultar filtros' : 'Mostrar filtros'}
@@ -823,11 +813,11 @@ const TaskList: React.FC = () => {
             <button
               onClick={() => setShowTextExportModal(true)}
               disabled={selectedTasks.length === 0}
-              className={`px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg ${
+              className={`px-4 py-2 bg-orange-500 text-white rounded-lg ${
                 selectedTasks.length > 0 
-                  ? 'opacity-100 hover:from-purple-600 hover:to-indigo-700' 
+                  ? 'opacity-100 hover:bg-orange-600' 
                   : 'opacity-50 cursor-not-allowed'
-              } transition-all duration-200 text-sm font-semibold flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-purple-600 dark:border-purple-400`}
+              } transition-colors text-sm font-medium flex items-center gap-2`}
             >
               <FileText className="h-4 w-4" />
               Exportar texto
@@ -841,7 +831,7 @@ const TaskList: React.FC = () => {
             {/* WhatsApp Button */}
             <button
               onClick={() => setShowWhatsAppPanel(!showWhatsAppPanel)}
-              className={`px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 text-sm font-semibold flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 border border-green-600 dark:border-green-400 ${
+              className={`px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 cursor-pointer ${
                 selectedTasks.length > 0 ? 'ring-2 ring-offset-2 ring-green-400 dark:ring-green-500' : ''
               }`}
             >
@@ -859,10 +849,10 @@ const TaskList: React.FC = () => {
 
       {/* Filtros avanzados */}
       {showFilters && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border-t-4 border-purple-500 animate-fadeIn space-y-4" style={{ animationDelay: '150ms' }}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-4">
           <div className="flex items-center mb-2">
-            <Filter className="h-5 w-5 mr-2 text-purple-500" />
-            <h3 className="text-lg font-medium bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            <Filter className="h-5 w-5 mr-2 text-orange-500" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
               Filtros avanzados
             </h3>
           </div>
@@ -877,7 +867,7 @@ const TaskList: React.FC = () => {
       {showStatusChangeModal && (
         <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-purple-600">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-800">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">
                   Cambiar estado de {selectedTasks.length} tarea{selectedTasks.length !== 1 ? 's' : ''}
@@ -1209,7 +1199,7 @@ const TaskList: React.FC = () => {
                         )}
                         
                         <div className="flex items-center px-2 py-1 bg-gray-50 dark:bg-gray-700/50 rounded-md shadow-sm">
-                          <Calendar className="h-3 w-3 mr-1.5 text-purple-500 dark:text-purple-400" />
+                          <Calendar className="h-3 w-3 mr-1.5 text-orange-500 dark:text-orange-400" />
                           <span className="whitespace-nowrap">
                             {task.fechaEjecucion 
                               ? (() => {
@@ -1225,7 +1215,7 @@ const TaskList: React.FC = () => {
                               : "Sin fecha"}
                           </span>
                           {task.franja_horaria && (
-                            <span className="ml-2 text-xs font-medium bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 dark:from-blue-900/70 dark:to-purple-900/70 dark:text-blue-200 py-0.5 px-1.5 rounded shadow-sm whitespace-nowrap">
+                            <span className="ml-2 text-xs font-medium bg-gradient-to-r from-blue-100 to-orange-100 text-blue-800 dark:from-blue-900/70 dark:to-orange-900/50 dark:text-blue-200 py-0.5 px-1.5 rounded shadow-sm whitespace-nowrap">
                               {task.franja_horaria}
                             </span>
                           )}
@@ -1315,7 +1305,7 @@ const TaskList: React.FC = () => {
       {showCreateModal && (
         <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-purple-600">
+            <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   {editingTask ? (

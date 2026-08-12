@@ -5,6 +5,7 @@ import { fetchUsers } from '../../store/slices/usersSlice';
 import { Download, DollarSign, Filter } from 'lucide-react';
 import type { TareaLiquidacion } from '../../types';
 import api from '../../config/api';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 const Liquidaciones: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -189,37 +190,25 @@ const Liquidaciones: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-green-500 p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-green-100 dark:bg-green-900/30 p-2 rounded-lg mr-4">
-              <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                Liquidaciones Financieras
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Gestión de liquidaciones por técnico
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleExportExcel}
-              className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 cursor-pointer"
-              title="Exportar a PDF"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </button>
-          </div>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Liquidaciones Financieras"
+        description="Gestión de liquidaciones por técnico"
+        eyebrow="Administración"
+        icon={<DollarSign className="h-5 w-5" />}
+        actions={
+          <button
+            onClick={handleExportExcel}
+            className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 cursor-pointer"
+            title="Exportar a PDF"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </button>
+        }
+      />
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-green-500 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -232,7 +221,7 @@ const Liquidaciones: React.FC = () => {
               <select
                 value={filterTecnico}
                 onChange={(e) => setFilterTecnico(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               >
                 {tecnicos.map(tecnico => (
                   <option key={tecnico} value={tecnico}>{tecnico}</option>
@@ -248,7 +237,7 @@ const Liquidaciones: React.FC = () => {
               type="month"
               value={filterMes}
               onChange={(e) => setFilterMes(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             />
           </div>
           <button
@@ -307,7 +296,7 @@ const Liquidaciones: React.FC = () => {
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Total Presupuesto
-                  <span className="ml-1 px-1.5 py-0.5 bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 text-xs rounded">Calc</span>
+                  <span className="ml-1 px-1.5 py-0.5 bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200 text-xs rounded">Calc</span>
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Ganancia Material

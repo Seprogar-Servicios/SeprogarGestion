@@ -8,6 +8,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { preventEnterSubmit } from '../../utils/formGuards';
+import AdminPageHeader from '../common/AdminPageHeader';
 
 interface Tarea {
   _id: string;
@@ -57,7 +58,7 @@ const AdminConsorcioCalendar: React.FC = () => {
     'pendiente_confirmacion': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
     'confirmada': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
     'en_progreso': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-    'finalizada': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    'finalizada': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
     'cancelada': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     'pendiente_pago': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
     'facturada': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
@@ -221,43 +222,33 @@ const AdminConsorcioCalendar: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <CalendarIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Calendario de Tareas de Consorcio
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300">
-                Visualiza y gestiona las tareas por fecha
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
+      <AdminPageHeader
+        title="Calendario de tareas"
+        description="Visualizá y gestioná las tareas por fecha"
+        eyebrow="Consorcio"
+        icon={<CalendarIcon className="h-5 w-5" />}
+        actions={
+          <>
             <button
               onClick={() => fetchTareas()}
-              className="inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+              className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Actualizar
             </button>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+              className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Nueva Tarea
+              Nueva tarea
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Calendar Navigation */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={handlePreviousMonth}
@@ -338,7 +329,7 @@ const AdminConsorcioCalendar: React.FC = () => {
 
       {/* Tasks for Selected Day */}
       {selectedDate && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Tareas para {selectedDate.toLocaleDateString('es-AR')}
           </h3>

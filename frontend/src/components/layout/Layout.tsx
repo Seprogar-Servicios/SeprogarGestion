@@ -47,18 +47,15 @@ const Layout: React.FC = () => {
     navigate('/login');
   };
 
-  const navItemClass = (active: boolean, isDashboard: boolean) => {
-    if (isDashboard) {
-      return 'bg-blue-500/90 text-white shadow-md shadow-blue-900/20 hover:bg-blue-500';
-    }
+  const navItemClass = (active: boolean) => {
     if (active) {
-      return 'bg-white/20 text-white shadow-sm ring-1 ring-white/25';
+      return 'bg-orange-500 text-white shadow-md shadow-orange-900/25 hover:bg-orange-600';
     }
     return 'text-blue-50/90 hover:bg-white/15 hover:text-white';
   };
 
-  const navIconClass = (active: boolean, isDashboard: boolean) => {
-    if (isDashboard || active) return 'text-white';
+  const navIconClass = (active: boolean) => {
+    if (active) return 'text-white';
     return 'text-blue-100/80 group-hover:text-white';
   };
 
@@ -128,17 +125,20 @@ const Layout: React.FC = () => {
     <div className="min-h-screen flex flex-col lg:flex-row bg-gray-100 dark:bg-gray-900">
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-900 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex-shrink-0 overflow-y-auto border-r border-blue-500/20 dark:border-gray-700`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-blue-600 via-blue-700 to-blue-800 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex-shrink-0 overflow-y-auto border-r border-blue-500/20 dark:border-slate-700`}>
         <div className="flex flex-col h-full">
           {/* Logo and close button */}
-          <div className="flex items-center justify-between h-20 px-6 py-4 bg-blue-700 dark:bg-gray-900/50">
+          <div className="flex items-center justify-between h-20 px-6 py-4 bg-blue-800/40 dark:bg-slate-950/50 border-b border-white/10">
             <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
-              <div className="flex-shrink-0 bg-white/10 p-2 rounded-lg backdrop-blur-sm hover:bg-white/20 transition-colors">
+              <div className="flex-shrink-0 bg-white p-1.5 rounded-xl shadow-sm hover:shadow transition-shadow">
                 <img src="/Seprogar vector.svg" alt="Seprogar Logo" className="h-8 w-8 object-contain" />
               </div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent hover:text-blue-50 transition-colors">
-                Seprogar
-              </h1>
+              <div>
+                <h1 className="text-lg font-bold text-white leading-tight tracking-tight">
+                  Seprogar
+                </h1>
+                <p className="text-[10px] text-blue-100/80 font-medium tracking-wide uppercase">Gestión</p>
+              </div>
             </div>
             <button
               className="lg:hidden text-blue-100 hover:text-white"
@@ -156,7 +156,6 @@ const Layout: React.FC = () => {
                 {tecnicoNavigation.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
-                  const isDashboard = item.name === 'Dashboard';
                   return (
                     <button
                       key={item.name}
@@ -164,11 +163,11 @@ const Layout: React.FC = () => {
                         navigate(item.href);
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
-                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active, isDashboard)}`}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active)}`}
                     >
-                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active, isDashboard)}`} />
+                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active)}`} />
                       <span className="text-left">{item.name}</span>
-                      {active && !isDashboard && (
+                      {active && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-white"></span>
                       )}
                     </button>
@@ -183,7 +182,6 @@ const Layout: React.FC = () => {
                 {navigation.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
-                  const isDashboard = item.name === 'Dashboard';
                   return (
                     <button
                       key={item.name}
@@ -191,11 +189,11 @@ const Layout: React.FC = () => {
                         navigate(item.href);
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
-                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active, isDashboard)}`}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active)}`}
                     >
-                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active, isDashboard)}`} />
+                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active)}`} />
                       <span className="text-left">{item.name}</span>
-                      {active && !isDashboard && (
+                      {active && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-white"></span>
                       )}
                     </button>
@@ -210,7 +208,6 @@ const Layout: React.FC = () => {
                 {adminNavigation.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
-                  const isDashboard = item.name === 'Dashboard';
                   return (
                     <button
                       key={item.name}
@@ -218,11 +215,11 @@ const Layout: React.FC = () => {
                         navigate(item.href);
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
-                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active, isDashboard)}`}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active)}`}
                     >
-                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active, isDashboard)}`} />
+                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active)}`} />
                       <span className="text-left">{item.name}</span>
-                      {active && !isDashboard && (
+                      {active && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-white"></span>
                       )}
                     </button>
@@ -237,7 +234,6 @@ const Layout: React.FC = () => {
                 {adminConsorcioNavigation.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
-                  const isDashboard = item.name === 'Dashboard';
                   return (
                     <button
                       key={item.name}
@@ -245,11 +241,11 @@ const Layout: React.FC = () => {
                         navigate(item.href);
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
-                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active, isDashboard)}`}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active)}`}
                     >
-                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active, isDashboard)}`} />
+                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active)}`} />
                       <span className="text-left">{item.name}</span>
-                      {active && !isDashboard && (
+                      {active && (
                         <span className="ml-auto h-2 w-2 rounded-full bg-white"></span>
                       )}
                     </button>

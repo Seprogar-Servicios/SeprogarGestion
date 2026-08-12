@@ -12,6 +12,7 @@ import {
 import { showSuccess, showError } from '../../utils/toastUtils';
 import type { Especialidad } from '../../types';
 import EmptyCrudState from '../common/EmptyCrudState';
+import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
 
 const SpecialtyManagement: React.FC = () => {
@@ -154,20 +155,12 @@ const SpecialtyManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6 animate-fadeIn">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg mr-4">
-              <Briefcase className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Gestión de Especialidades</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                Administra las especialidades técnicas del sistema
-              </p>
-            </div>
-          </div>
+      <AdminPageHeader
+        title="Gestión de Especialidades"
+        description="Administra las especialidades técnicas del sistema"
+        eyebrow="Administración"
+        icon={<Briefcase className="h-5 w-5" />}
+        actions={
           <button
             data-sepi-target="especialidades-create"
             onClick={() => {
@@ -180,11 +173,10 @@ const SpecialtyManagement: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             Nueva Especialidad
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Search and Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border-t-4 border-blue-500 p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-none p-6">
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 w-full">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -310,7 +302,7 @@ const SpecialtyManagement: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-purple-600 p-4 -mx-6 -mt-6 rounded-t-xl">
+              <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-600 to-blue-800 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
                     {editingEspecialidad ? (
