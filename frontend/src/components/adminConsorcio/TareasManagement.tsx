@@ -13,6 +13,7 @@ import {
   Eye,
   CreditCard
 } from 'lucide-react';
+import { preventEnterSubmit } from '../../utils/formGuards';
 
 const AdminConsorcioTareasManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -546,7 +547,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
                 Crear Nueva Tarea de Consorcio
               </h2>
             </div>
-            <form onSubmit={handleCreateTask} className="p-6 space-y-4">
+            <form onSubmit={handleCreateTask} onKeyDown={preventEnterSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -960,7 +961,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
                 </p>
               </div>
 
-              <form onSubmit={handleComprobanteUpload} className="space-y-4">
+              <form onSubmit={handleComprobanteUpload} onKeyDown={preventEnterSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Comprobante de Pago

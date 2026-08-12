@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTaskById, clearCurrentTask, deleteTask, updateTask } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { showSuccess, showError } from '../../utils/toastUtils';
+import { preventEnterSubmit } from '../../utils/formGuards';
 import { format } from 'date-fns';
 import type { User as UserType } from '../../types';
 import { es } from 'date-fns/locale';
@@ -680,7 +681,7 @@ const TaskDetails: React.FC = () => {
               </div>
             </div>
             
-            <form onSubmit={handleUpdateTask} className="p-6">
+            <form onSubmit={handleUpdateTask} onKeyDown={preventEnterSubmit} className="p-6">
               <div className="space-y-5">
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <div className="space-y-1">

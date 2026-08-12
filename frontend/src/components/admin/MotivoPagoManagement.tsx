@@ -9,6 +9,8 @@ import {
 import { Tag, Edit, Plus, Search, Trash2, X } from 'lucide-react';
 import type { MotivoPago } from '../../types';
 import { toast } from 'react-toastify';
+import EmptyCrudState from '../common/EmptyCrudState';
+import { preventEnterSubmit } from '../../utils/formGuards';
 
 const MotivoPagoManagement: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -106,6 +108,7 @@ const MotivoPagoManagement: React.FC = () => {
             </div>
           </div>
           <button
+            data-sepi-target="motivos-create"
             onClick={() => {
               setEditingMotivo(null);
               resetForm();
@@ -171,10 +174,23 @@ const MotivoPagoManagement: React.FC = () => {
             </div>
           ))
         ) : (
-          <div className="col-span-full bg-white dark:bg-gray-800 rounded-xl p-8 text-center">
-            <Tag className="mx-auto h-10 w-10 text-gray-400" />
-            <p className="mt-3 text-gray-600 dark:text-gray-300">No hay motivos registrados</p>
-          </div>
+          <EmptyCrudState
+            title={searchTerm ? 'No se encontraron motivos' : 'No hay motivos registrados'}
+            description={
+              searchTerm
+                ? 'Probá con otros términos de búsqueda.'
+                : 'Todavía no hay motivos. Sepi puede guiarte para crear el primero.'
+            }
+            tutorialId="motivos"
+            showTutorial={!searchTerm && !loading && (motivos || []).length === 0}
+            icon={<Tag className="h-8 w-8" />}
+            onCreateClick={() => {
+              setEditingMotivo(null);
+              resetForm();
+              setShowCreateModal(true);
+            }}
+            createLabel="Nuevo motivo"
+          />
         )}
       </div>
 
@@ -196,10 +212,11 @@ const MotivoPagoManagement: React.FC = () => {
                   <X className="h-5 w-5 text-gray-400" />
                 </button>
               </div>
-              <form onSubmit={editingMotivo ? handleUpdate : handleCreate} className="space-y-4">
+              <form onSubmit={editingMotivo ? handleUpdate : handleCreate} onKeyDown={preventEnterSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre *</label>
                   <input
+                    data-sepi-target="motivos-nombre"
                     type="text"
                     required
                     value={formData.nombre}
@@ -211,13 +228,17 @@ const MotivoPagoManagement: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
                   <textarea
+                    data-sepi-target="motivos-descripcion"
                     rows={3}
                     value={formData.descripcion}
                     onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                     className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <label
+                  data-sepi-target="motivos-activo"
+                  className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                >
                   <input
                     type="checkbox"
                     checked={formData.activo}
@@ -238,7 +259,11 @@ const MotivoPagoManagement: React.FC = () => {
                   >
                     Cancelar
                   </button>
-                  <button type="submit" className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                  <button
+                    data-sepi-target="motivos-guardar"
+                    type="submit"
+                    className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  >
                     {editingMotivo ? 'Actualizar' : 'Crear'}
                   </button>
                 </div>

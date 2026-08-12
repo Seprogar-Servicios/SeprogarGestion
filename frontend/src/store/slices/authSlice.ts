@@ -124,9 +124,15 @@ export const refreshToken = createAsyncThunk(
         throw new Error('No refresh token available');
       }
       
-      const response = await api.post<ApiResponse<{ accessToken: string }>>('/auth/refresh', { refreshToken });
-      const { accessToken } = response.data.data;
-      
+      const response = await api.post<ApiResponse<{ accessToken: string }> & { accessToken?: string }>(
+        '/auth/refresh',
+        { refreshToken }
+      );
+      const accessToken = response.data?.data?.accessToken || response.data?.accessToken;
+      if (!accessToken) {
+        throw new Error('Refresh sin accessToken');
+      }
+
       localStorage.setItem('accessToken', accessToken);
       
       return { accessToken };

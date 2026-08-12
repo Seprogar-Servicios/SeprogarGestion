@@ -21,6 +21,8 @@ import {
 import api from '../../config/api';
 import type { User } from '../../types';
 import { showSuccess, showError, showInfo } from '../../utils/toastUtils';
+import EmptyCrudState from '../common/EmptyCrudState';
+import { preventEnterSubmit } from '../../utils/formGuards';
 
 const UserManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -343,7 +345,10 @@ const UserManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-4 animate-fadeIn">
+      <div
+        data-sepi-target="usuarios-header"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-blue-500 p-4 mb-4 animate-fadeIn"
+      >
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center">
             <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full mr-4">
@@ -382,6 +387,7 @@ const UserManagement: React.FC = () => {
               Usuarios Aprobados
             </button>
             <button
+              data-sepi-target="usuarios-pendientes"
               onClick={() => setActiveTab('pending')}
               className={`${activeTab === 'pending' 
                 ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400' 
@@ -448,15 +454,17 @@ const UserManagement: React.FC = () => {
             </select>
           </div>
           
-          {activeTab === 'approved' && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              Nuevo Usuario
-            </button>
-          )}
+          <button
+            data-sepi-target="usuarios-create"
+            onClick={() => {
+              setActiveTab('approved');
+              setShowCreateModal(true);
+            }}
+            className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-2 rounded-md flex items-center justify-center gap-2 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo Usuario
+          </button>
         </div>
       </div>
 
@@ -671,13 +679,13 @@ const UserManagement: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 p-8 text-center">
-              <Users className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No se encontraron usuarios</h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                No hay usuarios que coincidan con los filtros actuales
-              </p>
-            </div>
+            <EmptyCrudState
+              title="No se encontraron usuarios"
+              description="No hay usuarios que coincidan con los filtros actuales, o todavía no hay registros."
+              tutorialId="usuarios"
+              showTutorial={(users || []).length === 0}
+              icon={<Users className="h-8 w-8" />}
+            />
           )}
         </div>
       )}
@@ -821,7 +829,7 @@ const UserManagement: React.FC = () => {
                 </button>
               </div>
               
-              <form onSubmit={handleUpdateUser} className="space-y-4">
+              <form onSubmit={handleUpdateUser} onKeyDown={preventEnterSubmit} className="space-y-4">
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Nombre
@@ -1091,7 +1099,7 @@ const UserManagement: React.FC = () => {
                 </button>
               </div>
               
-              <form onSubmit={handleCreateUser} className="space-y-4">
+              <form onSubmit={handleCreateUser} onKeyDown={preventEnterSubmit} className="space-y-4">
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Nombre

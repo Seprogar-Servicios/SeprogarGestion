@@ -4,10 +4,13 @@ import { useAppDispatch } from '../../../store';
 import type { RootState } from '../../../store';
 import { fetchRecibos, deleteRecibo } from '../../../store/slices/recibosSlice';
 import { toast } from 'react-toastify';
+import { FileText } from 'lucide-react';
+import EmptyCrudState from '../../common/EmptyCrudState';
 
 interface RecibosListProps {
   selectedTecnico: string;
   selectedPeriodo: string;
+  onCreateClick?: () => void;
 }
 
 interface Tecnico {
@@ -26,7 +29,7 @@ interface Recibo {
   motivo?: { _id: string; nombre: string };
 }
 
-const RecibosList: React.FC<RecibosListProps> = ({ selectedTecnico, selectedPeriodo }) => {
+const RecibosList: React.FC<RecibosListProps> = ({ selectedTecnico, selectedPeriodo, onCreateClick }) => {
   const dispatch = useAppDispatch();
   const { recibos, loading: isLoading, error } = useSelector((state: RootState) => state.recibos);
 
@@ -96,27 +99,22 @@ const RecibosList: React.FC<RecibosListProps> = ({ selectedTecnico, selectedPeri
 
   // Empty state
   if (filteredRecibos.filter(Boolean).length === 0) {
+    const hasFilters = Boolean(selectedTecnico || selectedPeriodo);
+    const noRecibosAtAll = (typedRecibos || []).length === 0;
     return (
-      <div className="text-center py-12 px-4 sm:px-6 lg:px-8">
-        <svg
-          className="mx-auto h-12 w-12 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1}
-            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-          />
-        </svg>
-        <h3 className="mt-2 text-lg font-medium text-gray-900 dark:text-white">No hay recibos</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          No se encontraron recibos que coincidan con los filtros seleccionados.
-        </p>
-      </div>
+      <EmptyCrudState
+        title={hasFilters ? 'No hay recibos con esos filtros' : 'No hay recibos'}
+        description={
+          hasFilters
+            ? 'Probá limpiar los filtros de técnico o período.'
+            : 'Todavía no cargaste recibos. Sepi puede guiarte para subir el primero.'
+        }
+        tutorialId="recibos"
+        showTutorial={!hasFilters && noRecibosAtAll}
+        icon={<FileText className="h-8 w-8" />}
+        onCreateClick={onCreateClick}
+        createLabel="Nuevo recibo"
+      />
     );
   }
 

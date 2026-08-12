@@ -11,6 +11,7 @@ import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
 import { showSuccess, showError } from '../../utils/toastUtils';
+import { preventEnterSubmit } from '../../utils/formGuards';
 
 // Las clases de botones se definen directamente en los componentes
 
@@ -1345,7 +1346,7 @@ const TaskList: React.FC = () => {
             </div>
             
             <div className="p-6 max-h-[80vh] overflow-y-auto">
-              <form onSubmit={editingTask ? handleUpdateTask : handleCreateTask} className="space-y-6">
+              <form onSubmit={editingTask ? handleUpdateTask : handleCreateTask} onKeyDown={preventEnterSubmit} className="space-y-6">
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Número de Tarea <span className="text-red-500">*</span>

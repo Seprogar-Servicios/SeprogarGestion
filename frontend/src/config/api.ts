@@ -32,61 +32,60 @@ declare module 'axios' {
   }
 }
 
+const clearSessionAndRedirect = () => {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('user');
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+};
+
 // Response interceptor for token refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    
-    // Si el error es 401 y no es una solicitud de refresh
-    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('auth/refresh')) {
-      // Si ya se intentó refrescar el token, redirigir a login
-      if (originalRequest._retry) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return Promise.reject(new Error('Sesión expirada'));
-      }
+    if (!originalRequest) return Promise.reject(error);
 
+    // Si el error es 401 y no es una solicitud de refresh
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes('auth/refresh') &&
+      !originalRequest.url?.includes('auth/login')
+    ) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          // Intenta refrescar el token
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-          
-          // Marcar la solicitud original como reintentada
-          originalRequest._retry = true;
-
-          const { accessToken } = response.data.data;
-          localStorage.setItem('accessToken', accessToken);
-
-          // Reintentar la petición original con el nuevo token
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        } else {
+        if (!refreshToken) {
           throw new Error('No refresh token available');
         }
+
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+          refreshToken,
+        });
+
+        const accessToken =
+          response.data?.data?.accessToken || response.data?.accessToken;
+        if (!accessToken) {
+          throw new Error('Refresh sin accessToken');
+        }
+
+        localStorage.setItem('accessToken', accessToken);
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
       } catch (refreshError) {
-        // Si falla el refresh, limpiar y redirigir
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        clearSessionAndRedirect();
         return Promise.reject(refreshError);
       }
     }
 
-    // Si es otro error 401, redirigir a login
-    if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+    // 401 en refresh/login o reintento fallido
+    if (error.response?.status === 401 && originalRequest._retry) {
+      clearSessionAndRedirect();
     }
 
     return Promise.reject(error);

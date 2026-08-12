@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../config/api';
 import { showSuccess, showError } from '../../utils/toastUtils';
+import { preventEnterSubmit } from '../../utils/formGuards';
 import { Package, Plus, Upload, Download, CheckCircle, XCircle, Clock, Eye, X, Trash } from 'lucide-react';
 import type { MaterialTarea, Material } from '../../types';
 
@@ -584,7 +585,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
               </h3>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
-              <form onSubmit={userRole === 'admin' ? handleAddMaterialAdmin : handleAddMaterialTecnicoDesdeLista}>
+              <form onSubmit={userRole === 'admin' ? handleAddMaterialAdmin : handleAddMaterialTecnicoDesdeLista} onKeyDown={preventEnterSubmit}>
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -684,7 +685,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Agregar Material Manual (Técnico)
             </h3>
-            <form onSubmit={handleAddMaterialTecnico}>
+            <form onSubmit={handleAddMaterialTecnico} onKeyDown={preventEnterSubmit}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

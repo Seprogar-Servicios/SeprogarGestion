@@ -22,6 +22,8 @@ import {
   Download,
   FileText,
 } from 'lucide-react';
+import EmptyCrudState from '../common/EmptyCrudState';
+import { preventEnterSubmit } from '../../utils/formGuards';
 
 type TareaSeleccionada = {
   _id: string;
@@ -269,6 +271,7 @@ const PagoManualManagement: React.FC = () => {
             </div>
           </div>
           <button
+            data-sepi-target="pagos-create"
             onClick={openCreate}
             className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
           >
@@ -313,8 +316,20 @@ const PagoManualManagement: React.FC = () => {
                 </tr>
               ) : filteredPagos.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    No hay pagos manuales
+                  <td colSpan={6} className="px-4 py-6">
+                    <EmptyCrudState
+                      title={searchTerm ? 'No se encontraron pagos' : 'No hay pagos manuales'}
+                      description={
+                        searchTerm
+                          ? 'Probá con otros filtros de búsqueda.'
+                          : 'Aún no cargaste pagos. Sepi puede explicarte cómo crear el primero y generar el PDF.'
+                      }
+                      tutorialId="pagos"
+                      showTutorial={!searchTerm && !loading && (pagos || []).length === 0}
+                      icon={<DollarSign className="h-8 w-8" />}
+                      onCreateClick={openCreate}
+                      createLabel="Nuevo pago"
+                    />
                   </td>
                 </tr>
               ) : (
@@ -389,13 +404,14 @@ const PagoManualManagement: React.FC = () => {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} onKeyDown={preventEnterSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Técnico *
                     </label>
                     <select
+                      data-sepi-target="pagos-tecnico"
                       required
                       value={formData.tecnico}
                       onChange={(e) => {
@@ -419,6 +435,7 @@ const PagoManualManagement: React.FC = () => {
                       Motivo *
                     </label>
                     <select
+                      data-sepi-target="pagos-motivo"
                       required
                       value={formData.motivo}
                       onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
@@ -449,6 +466,7 @@ const PagoManualManagement: React.FC = () => {
                       Monto *
                     </label>
                     <input
+                      data-sepi-target="pagos-monto"
                       type="number"
                       required
                       min="0.01"
@@ -569,6 +587,7 @@ const PagoManualManagement: React.FC = () => {
                     Cancelar
                   </button>
                   <button
+                    data-sepi-target="pagos-guardar"
                     type="submit"
                     disabled={saving}
                     className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"

@@ -4,6 +4,7 @@ import { fetchUsers } from '../../store/slices/usersSlice';
 import { Plus, Search, Edit, Trash2, FileText, User, DollarSign, Image, CreditCard, RefreshCw, Users, Eye, X } from 'lucide-react';
 import type { TareaConsorcio } from '../../types';
 import { showError, showSuccess } from '../../utils/toastUtils';
+import { preventEnterSubmit } from '../../utils/formGuards';
 
 // Componente LazyImage optimizado con Intersection Observer
 const LazyImage = memo(({ 
@@ -909,7 +910,7 @@ const TareaConsorcioManagement: React.FC = () => {
                 </button>
               </div>
               
-              <form onSubmit={handleCreateTask} className="space-y-4">
+              <form onSubmit={handleCreateTask} onKeyDown={preventEnterSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1160,7 +1161,7 @@ const TareaConsorcioManagement: React.FC = () => {
                 </button>
               </div>
               
-              <form onSubmit={handleUpdateTask} className="space-y-4">
+              <form onSubmit={handleUpdateTask} onKeyDown={preventEnterSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

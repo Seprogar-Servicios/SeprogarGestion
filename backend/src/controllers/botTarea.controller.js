@@ -112,6 +112,7 @@ exports.getTareaDetalles = async (req, res) => {
 
     // Formatear respuesta para el bot
     const tareaFormateada = {
+      _id: tarea._id,
       numero: tarea.numero,
       titulo: tarea.titulo,
       cliente: tarea.cliente || 'No especificado',
@@ -260,6 +261,17 @@ exports.buscarTareas = async (req, res) => {
 // Actualizar liquidación por número de tarea para el bot
 exports.actualizarLiquidacionPorTarea = async (req, res) => {
   try {
+    // Si viene por JWT (app web), solo admin. API_KEY (worker) se permite.
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    const isApiKey = token && token === process.env.API_KEY;
+    if (!isApiKey && req.user?.rol !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Solo administradores pueden actualizar liquidaciones desde el asistente'
+      });
+    }
+
     const { numeroTarea, manoObra, cobertura, materialReal, boletasMateriales, observacionesFinancieras } = req.body;
 
     if (!numeroTarea) {

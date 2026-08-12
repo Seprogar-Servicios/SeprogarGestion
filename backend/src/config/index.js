@@ -6,8 +6,8 @@ module.exports = {
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET,
     refreshSecret: process.env.JWT_REFRESH_SECRET,
-    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '30d',
-    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15d',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '15d',
   },
   email: {
     host: process.env.EMAIL_HOST,

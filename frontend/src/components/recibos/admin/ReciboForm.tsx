@@ -7,6 +7,7 @@ import { createRecibo } from '../../../store/slices/recibosSlice';
 import { useAppDispatch } from '../../../store';
 import { toast } from 'react-toastify';
 import { Upload, User, Calendar, FileText, X, Loader2, Tag } from 'lucide-react';
+import { preventEnterSubmit } from '../../../utils/formGuards';
 
 interface ReciboFormProps {
   onSuccess: () => void;
@@ -93,7 +94,7 @@ const ReciboForm: React.FC<ReciboFormProps> = ({ onSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} onKeyDown={preventEnterSubmit} className="space-y-6">
       <div className="space-y-6">
         <div>
           <label htmlFor="tecnico" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -104,6 +105,7 @@ const ReciboForm: React.FC<ReciboFormProps> = ({ onSuccess }) => {
               <User className="h-5 w-5 text-gray-400" />
             </div>
             <select
+              data-sepi-target="recibos-tecnico"
               id="tecnico"
               value={tecnico}
               onChange={(e) => setTecnico(e.target.value)}
@@ -129,6 +131,7 @@ const ReciboForm: React.FC<ReciboFormProps> = ({ onSuccess }) => {
               <Tag className="h-5 w-5 text-gray-400" />
             </div>
             <select
+              data-sepi-target="recibos-motivo"
               id="motivo"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
@@ -195,6 +198,7 @@ const ReciboForm: React.FC<ReciboFormProps> = ({ onSuccess }) => {
             Archivo PDF
           </label>
           <div
+            data-sepi-target="recibos-pdf"
             className={`mt-1 flex justify-center px-6 pt-8 pb-8 border-2 border-dashed rounded-lg transition-colors ${
               pdf
                 ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20'
@@ -263,6 +267,7 @@ const ReciboForm: React.FC<ReciboFormProps> = ({ onSuccess }) => {
               Cancelar
             </button>
             <button
+              data-sepi-target="recibos-guardar"
               type="submit"
               disabled={isLoading}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"

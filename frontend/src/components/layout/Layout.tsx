@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
 import ChatBot from '../../components/ChatBot';
+import SepiTour from '../../components/chatbot/SepiTour';
 import {
   Menu,
   X,
@@ -44,6 +45,21 @@ const Layout: React.FC = () => {
   const handleLogout = () => {
     dispatch(logoutUser());
     navigate('/login');
+  };
+
+  const navItemClass = (active: boolean, isDashboard: boolean) => {
+    if (isDashboard) {
+      return 'bg-blue-500/90 text-white shadow-md shadow-blue-900/20 hover:bg-blue-500';
+    }
+    if (active) {
+      return 'bg-white/20 text-white shadow-sm ring-1 ring-white/25';
+    }
+    return 'text-blue-50/90 hover:bg-white/15 hover:text-white';
+  };
+
+  const navIconClass = (active: boolean, isDashboard: boolean) => {
+    if (isDashboard || active) return 'text-white';
+    return 'text-blue-100/80 group-hover:text-white';
   };
 
 
@@ -148,22 +164,12 @@ const Layout: React.FC = () => {
                         navigate(item.href);
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
-                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                        isDashboard
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700'
-                          : active
-                          ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                          : 'text-blue-100 hover:bg-white/5 hover:text-white'
-                      }`}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active, isDashboard)}`}
                     >
-                      <Icon 
-                        className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                          isDashboard ? 'text-white' : active ? 'text-blue-200' : 'text-blue-200/70'
-                        }`} 
-                      />
+                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active, isDashboard)}`} />
                       <span className="text-left">{item.name}</span>
                       {active && !isDashboard && (
-                        <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                        <span className="ml-auto h-2 w-2 rounded-full bg-white"></span>
                       )}
                     </button>
                   );
@@ -185,22 +191,12 @@ const Layout: React.FC = () => {
                         navigate(item.href);
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
-                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                        isDashboard
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700'
-                          : active
-                          ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                          : 'text-blue-100 hover:bg-white/5 hover:text-white'
-                      }`}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active, isDashboard)}`}
                     >
-                      <Icon 
-                        className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                          isDashboard ? 'text-white' : active ? 'text-blue-200' : 'text-blue-200/70'
-                        }`} 
-                      />
+                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active, isDashboard)}`} />
                       <span className="text-left">{item.name}</span>
                       {active && !isDashboard && (
-                        <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                        <span className="ml-auto h-2 w-2 rounded-full bg-white"></span>
                       )}
                     </button>
                   );
@@ -222,22 +218,12 @@ const Layout: React.FC = () => {
                         navigate(item.href);
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
-                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                        isDashboard
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700'
-                          : active
-                          ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                          : 'text-blue-100 hover:bg-white/5 hover:text-white'
-                      }`}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active, isDashboard)}`}
                     >
-                      <Icon 
-                        className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                          isDashboard ? 'text-white' : active ? 'text-blue-200' : 'text-blue-200/70'
-                        }`} 
-                      />
+                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active, isDashboard)}`} />
                       <span className="text-left">{item.name}</span>
                       {active && !isDashboard && (
-                        <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                        <span className="ml-auto h-2 w-2 rounded-full bg-white"></span>
                       )}
                     </button>
                   );
@@ -259,22 +245,12 @@ const Layout: React.FC = () => {
                         navigate(item.href);
                         if (window.innerWidth < 1024) setSidebarOpen(false);
                       }}
-                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
-                        isDashboard
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-blue-700'
-                          : active
-                          ? 'bg-white/10 text-white shadow-lg shadow-blue-500/10'
-                          : 'text-blue-100 hover:bg-white/5 hover:text-white'
-                      }`}
+                      className={`group w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active, isDashboard)}`}
                     >
-                      <Icon 
-                        className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                          isDashboard ? 'text-white' : active ? 'text-blue-200' : 'text-blue-200/70'
-                        }`} 
-                      />
+                      <Icon className={`mr-3 h-5 w-5 flex-shrink-0 transition-colors ${navIconClass(active, isDashboard)}`} />
                       <span className="text-left">{item.name}</span>
                       {active && !isDashboard && (
-                        <span className="ml-auto h-2 w-2 rounded-full bg-blue-300"></span>
+                        <span className="ml-auto h-2 w-2 rounded-full bg-white"></span>
                       )}
                     </button>
                   );
@@ -358,8 +334,9 @@ const Layout: React.FC = () => {
         />
       )}
       
-      {/* ChatBot Component */}
+      {/* ChatBot + tour guiado Sepi */}
       <ChatBot />
+      <SepiTour />
       
     </div>
   );

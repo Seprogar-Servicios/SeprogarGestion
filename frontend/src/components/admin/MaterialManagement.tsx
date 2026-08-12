@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import type { Material } from '../../types';
 import ExcelJS from 'exceljs';
+import EmptyCrudState from '../common/EmptyCrudState';
+import { preventEnterSubmit } from '../../utils/formGuards';
 
 const MaterialManagement: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -428,6 +430,7 @@ const MaterialManagement: React.FC = () => {
               />
             </label>
             <button
+              data-sepi-target="materiales-create"
               onClick={() => {
                 setEditingMaterial(null);
                 resetForm();
@@ -570,38 +573,25 @@ const MaterialManagement: React.FC = () => {
       </div>
 
       {filteredMaterials.length === 0 && !loading && (
-        <div className="col-span-full">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
-              <Package className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-              {searchTerm ? 'No se encontraron materiales' : 'No hay materiales registrados'}
-            </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {searchTerm 
-                ? 'No hay materiales que coincidan con tu búsqueda. Intenta con otros términos.'
-                : 'Comienza creando tu primer material para administrar el inventario.'}
-            </p>
-            <div className="mt-6">
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-all duration-200 cursor-pointer"
-              >
-                <Plus className="-ml-1 mr-2 h-5 w-5" />
-                {searchTerm ? 'Limpiar búsqueda' : 'Nuevo material'}
-              </button>
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-900 transition-colors"
-                >
-                  Limpiar búsqueda
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <EmptyCrudState
+          title={searchTerm ? 'No se encontraron materiales' : 'No hay materiales registrados'}
+          description={
+            searchTerm
+              ? 'No hay materiales que coincidan con tu búsqueda.'
+              : 'Creá el primer material o pedile a Sepi un tutorial del catálogo.'
+          }
+          tutorialId="materiales"
+          showTutorial={!searchTerm && (materials || []).length === 0}
+          icon={<Package className="h-8 w-8" />}
+          onCreateClick={() => {
+            if (searchTerm) setSearchTerm('');
+            else {
+              setEditingMaterial(null);
+              setShowCreateModal(true);
+            }
+          }}
+          createLabel={searchTerm ? 'Limpiar búsqueda' : 'Nuevo material'}
+        />
       )}
 
       {/* Create/Edit Modal */}
@@ -635,7 +625,7 @@ const MaterialManagement: React.FC = () => {
                 </button>
               </div>
               
-              <form onSubmit={editingMaterial ? handleUpdateMaterial : handleCreateMaterial} className="space-y-4">
+              <form onSubmit={editingMaterial ? handleUpdateMaterial : handleCreateMaterial} onKeyDown={preventEnterSubmit} className="space-y-4">
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Nombre *
@@ -647,6 +637,7 @@ const MaterialManagement: React.FC = () => {
                       </svg>
                     </div>
                     <input
+                      data-sepi-target="materiales-nombre"
                       type="text"
                       required
                       placeholder="ej: Cemento, Arena, Ladrillos"
@@ -769,6 +760,7 @@ const MaterialManagement: React.FC = () => {
                       <DollarSign className="h-4 w-4 text-gray-400" />
                     </div>
                     <input
+                      data-sepi-target="materiales-precio"
                       type="number"
                       min="0"
                       step="0.01"
@@ -793,6 +785,7 @@ const MaterialManagement: React.FC = () => {
                     Cancelar
                   </button>
                   <button
+                    data-sepi-target="materiales-guardar"
                     type="submit"
                     className="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center cursor-pointer"
                   >

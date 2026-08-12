@@ -50,14 +50,25 @@ exports.login = async (req, res) => {
 };
 
 // Refresh token
-exports.refreshToken = (req, res) => {
+exports.refreshToken = async (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) return res.status(400).json({ message: 'Refresh token requerido' });
-  jwt.verify(refreshToken, config.jwt.refreshSecret, (err, decoded) => {
-    if (err) return res.status(401).json({ message: 'Refresh token inválido o expirado' });
-    const accessToken = jwt.sign({ id: decoded.id }, config.jwt.accessSecret, { expiresIn: config.jwt.accessExpiresIn });
-    res.json({ accessToken });
-  });
+  try {
+    const decoded = jwt.verify(refreshToken, config.jwt.refreshSecret);
+    const usuario = await Usuario.findById(decoded.id);
+    if (!usuario) return res.status(401).json({ message: 'Usuario no encontrado' });
+    if (!usuario.aprobado) return res.status(403).json({ message: 'Cuenta pendiente de aprobación' });
+
+    const accessToken = jwt.sign(
+      { id: usuario._id, rol: usuario.rol },
+      config.jwt.accessSecret,
+      { expiresIn: config.jwt.accessExpiresIn }
+    );
+    // Formato compatible con el frontend ({ data: { accessToken } }) y legacy ({ accessToken })
+    res.json({ accessToken, data: { accessToken } });
+  } catch (err) {
+    return res.status(401).json({ message: 'Refresh token inválido o expirado' });
+  }
 };
 
 // Logout (solo frontend borra tokens, opcional invalidar refresh en DB)
