@@ -3,6 +3,9 @@ node_modules/
 
 # Archivos de entorno (excepto ejemplos)
 .env
+.env.*
+!.env.example
+!.env*.example
 
 # Logs
 logs
@@ -21,9 +24,6 @@ temp/
 dist/
 build/
 
-# Mantener la estructura de la sesión de WhatsApp pero ignorar archivos temporales
-# NO eliminar estas carpetas - son necesarias para la sesión
-
 # Ignorar archivos temporales y de bloqueo dentro de la sesión
 .wwebjs_auth/**/*.log
 .wwebjs_auth/**/*.tmp
@@ -39,4 +39,3 @@ build/
 *.7z
 *.tar
 *.gz
-git remote add origin https://github.com/FedericoRocha/FuturgasGestion.git
