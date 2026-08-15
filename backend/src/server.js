@@ -26,7 +26,7 @@ const corsOptions = {
       'http://localhost:3000',  // Frontend en desarrollo (React)
       'http://localhost:5173',  // Frontend en desarrollo (Vite)
       'http://localhost:4000',  // Backend (si se accede directamente)
-      'https://futurgas-gestion.vercel.app',  // Producción frontend
+      'https://seprogar-gestion.vercel.app',  // Producción frontend
       ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [])
     ];
     

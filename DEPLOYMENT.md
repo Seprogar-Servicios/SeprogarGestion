@@ -140,7 +140,7 @@ En la sección "Environment" de tu servicio en Render, añade las siguientes var
 - `JWT_REFRESH_EXPIRES_IN`: 7d
 - `VAPID_PUBLIC_KEY`: BNViIcnJEK84VIGpr8Sq8mlxsOXFUkrAMIx-z6MSPMP5cXpyiaw96PPMpyey2NDwAoD6QRHbpTWzk6g2xtkIJF0
 - `VAPID_PRIVATE_KEY`: xDySzpYtVG8EgffRDtIUtP5PnEJTzVprn_63hx0QJeQ
-- `CORS_ORIGINS`: https://futurgas-gestion.vercel.app
+- `CORS_ORIGINS`: https://seprogar-gestion.vercel.app
 - `API_KEY`: Una cadena aleatoria segura para autenticar el worker de WhatsApp (generar con `openssl rand -hex 32`)
 
 Para generar claves JWT seguras si deseas cambiarlas:
@@ -202,7 +202,7 @@ En la sección "Environment Variables" de tu proyecto en Vercel, añade:
 
 1. Haz clic en "Deploy"
 2. Vercel automáticamente construirá y desplegará tu aplicación
-3. Una vez completado, podrás acceder a tu aplicación en la URL proporcionada (ej. https://futurgas-gestion.vercel.app)
+3. Una vez completado, podrás acceder a tu aplicación en la URL proporcionada (ej. https://seprogar-gestion.vercel.app)
 
 ## 4. Despliegue del Worker de WhatsApp en Render
 
@@ -293,7 +293,7 @@ const allowedOrigins = [
 ];
 ```
 
-Asegúrate de configurar `CORS_ORIGINS=https://futurgas-gestion.vercel.app` en las variables de entorno de Render.
+Asegúrate de configurar `CORS_ORIGINS=https://seprogar-gestion.vercel.app` en las variables de entorno de Render.
 
 3. **Rate Limiting**: Implementa límites de tasa para prevenir ataques de fuerza bruta:
 
