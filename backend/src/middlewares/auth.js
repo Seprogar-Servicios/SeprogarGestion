@@ -20,6 +20,7 @@ const authenticateToken = async (req, res, next) => {
 };
 
 // Middleware para verificar roles
+// super_admin tiene acceso a todo (poder sobre el resto de roles)
 const authorizeRoles = (...roles) => {
   // Aplanar el array de roles en caso de que venga anidado
   const flatRoles = roles.flat(Infinity);
@@ -28,6 +29,10 @@ const authorizeRoles = (...roles) => {
     
     if (!req.user) {
       return res.status(401).json({ message: 'No autenticado' });
+    }
+
+    if (req.user.rol === 'super_admin') {
+      return next();
     }
     
     if (!flatRoles.includes(req.user.rol)) {
@@ -38,7 +43,6 @@ const authorizeRoles = (...roles) => {
       });
     }
     
-    console.log('User authorized');
     next();
   };
 };

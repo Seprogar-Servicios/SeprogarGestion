@@ -16,7 +16,7 @@ router.post('/change-password', userCtrl.changePassword);
 router.put('/profile', userCtrl.updateProfile);
 
 // Admin-only routes (require admin role)
-router.use(authorizeRoles('admin'));
+router.use(authorizeRoles('admin', 'super_admin'));
 router.get('/', userCtrl.getUsers);
 router.get('/pending', userCtrl.getPendingUsers);
 router.post('/', userCtrl.createUser);

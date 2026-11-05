@@ -46,6 +46,13 @@ const tareaSchema = new mongoose.Schema({
   cliente: { type: String, default: '' },
   numeroTitular: { type: String, default: '' },
   direccion: { type: String, default: '' },
+  // Ubicación en mapa mientras la tarea está "en progreso"
+  ubicacionMapa: {
+    lat: { type: Number },
+    lng: { type: Number },
+    fuente: { type: String, enum: ['gps', 'direccion', 'tecnico'] },
+    actualizadoAt: { type: Date },
+  },
   // Nuevos campos para integración con WhatsApp
   origen: {
     type: String,

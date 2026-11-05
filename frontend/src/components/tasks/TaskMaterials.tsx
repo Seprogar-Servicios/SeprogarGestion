@@ -4,6 +4,7 @@ import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import { Package, Plus, Upload, Download, CheckCircle, XCircle, Clock, Eye, X, Trash } from 'lucide-react';
 import type { MaterialTarea, Material } from '../../types';
+import { isAdminRole } from '../../utils/roles';
 
 interface TaskMaterialsProps {
   taskId: string;
@@ -13,6 +14,7 @@ interface TaskMaterialsProps {
 }
 
 const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId, taskTechnicians }) => {
+  const isAdmin = isAdminRole(userRole);
   const [materiales, setMateriales] = useState<MaterialTarea[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -68,7 +70,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
 
   useEffect(() => {
     fetchMateriales();
-    if (userRole === 'admin' || userRole === 'usuario') {
+    if (isAdmin || userRole === 'usuario') {
       fetchMaterialesList();
       fetchCategorias();
     }
@@ -182,7 +184,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
     }
 
     try {
-      const endpoint = userRole === 'admin' 
+      const endpoint = isAdmin 
         ? `/tarea-materiales/tarea/${taskId}/admin/multiples`
         : `/tarea-materiales/tarea/${taskId}/tecnico/multiples`;
       
@@ -407,7 +409,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
           Materiales de la Tarea
         </h3>
         <div className="flex gap-2">
-          {userRole === 'admin' && (
+          {isAdmin && (
             <>
               <button
                 onClick={() => setShowAddModal(true)}
@@ -523,7 +525,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                   )}
                 </div>
                 <div className="flex gap-2 ml-4">
-                  {material.comprobante && userRole === 'admin' && (
+                  {material.comprobante && isAdmin && (
                     <>
                       <button
                         onClick={() => handleVerComprobante(material._id, material.comprobante?.originalName, material.comprobante?.mimetype)}
@@ -559,7 +561,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
                       )}
                     </>
                   )}
-                  {(userRole === 'admin' || (userRole === 'usuario' && material.tecnico?._id === userId)) && (
+                  {(isAdmin || (userRole === 'usuario' && material.tecnico?._id === userId)) && (
                     <button
                       onClick={() => handleEliminarMaterial(material._id, material.nombre)}
                       className="p-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
@@ -581,11 +583,11 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {userRole === 'admin' ? 'Agregar Material (Admin)' : 'Agregar Material del Stock (Técnico)'}
+                {isAdmin ? 'Agregar Material (Admin)' : 'Agregar Material del Stock (Técnico)'}
               </h3>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
-              <form onSubmit={userRole === 'admin' ? handleAddMaterialAdmin : handleAddMaterialTecnicoDesdeLista} onKeyDown={preventEnterSubmit}>
+              <form onSubmit={isAdmin ? handleAddMaterialAdmin : handleAddMaterialTecnicoDesdeLista} onKeyDown={preventEnterSubmit}>
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -800,7 +802,7 @@ const TaskMaterials: React.FC<TaskMaterialsProps> = ({ taskId, userRole, userId,
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col relative mt-95">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                {userRole === 'admin' ? 'Agregar Múltiples Materiales (Admin)' : 'Agregar Múltiples Materiales (Técnico)'}
+                {isAdmin ? 'Agregar Múltiples Materiales (Admin)' : 'Agregar Múltiples Materiales (Técnico)'}
               </h3>
             </div>
             <div className="flex-1 overflow-y-auto p-6 scroll-smooth">

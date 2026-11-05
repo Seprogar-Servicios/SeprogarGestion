@@ -9,6 +9,10 @@ exports.register = async (req, res) => {
   const { error } = userRegisterSchema.validate(req.body);
   if (error) return res.status(400).json({ message: error.details[0].message });
   try {
+    // Nadie puede auto-registrarse como Super Admin
+    if (req.body.rol === 'super_admin') {
+      return res.status(403).json({ message: 'No se puede registrar un Super Admin por este medio' });
+    }
     const exists = await Usuario.findOne({ email: req.body.email });
     if (exists) return res.status(409).json({ message: 'Email ya registrado' });
     const hash = await bcrypt.hash(req.body.password, 10);

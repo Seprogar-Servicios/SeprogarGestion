@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Dark mode por clase .dark en <html> (toggle manual + sistema) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Seprogar brand tokens ───
  * Logo: #00A4EB (celeste) + #FF8300 (naranja)
  * Apoyo: #0056A2 (azul profundo)
@@ -79,16 +82,10 @@ body {
   color: #0f172a;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #e2e8f0;
-    background-color: #0f172a;
-  }
-
-  body {
-    background-color: #0f172a;
-    color: #e2e8f0;
-  }
+html.dark,
+html.dark body {
+  color: #e2e8f0;
+  background-color: #0f172a;
 }
 
 /* Animaciones */

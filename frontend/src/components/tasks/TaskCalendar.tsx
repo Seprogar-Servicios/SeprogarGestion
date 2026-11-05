@@ -1,506 +1,450 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import listPlugin from '@fullcalendar/list';
+import interactionPlugin from '@fullcalendar/interaction';
+import esLocale from '@fullcalendar/core/locales/es';
+import type {
+  DateSelectArg,
+  DatesSetArg,
+  EventClickArg,
+  EventInput,
+} from '@fullcalendar/core';
+import { Calendar, Plus } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchCalendarTasks } from '../../store/slices/tasksSlice';
 import CalendarTasksFilter from '../filters/CalendarTasksFilter';
-import type { TaskFilters } from '../../types';
-import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, User, CheckCircle, AlertCircle, Loader, XCircle, Calendar as CalendarIcon } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { useTheme } from '../../hooks/useTheme';
 import AdminPageHeader from '../common/AdminPageHeader';
+import TaskEventPopover from './TaskEventPopover';
+import TaskQuickCreateModal, { type QuickCreateDefaults } from './TaskQuickCreateModal';
+import type { Task, TaskFilters } from '../../types';
+import { parseFranjaHoraria, toFechaEjecucionYmd } from '../../utils/franjaHoraria';
+import { useTheme } from '../../hooks/useTheme';
+import './TaskCalendar.css';
+import { isAdminRole } from '../../utils/roles';
+
+const STATUS_COLORS: Record<string, { bg: string; border: string }> = {
+  pendiente: { bg: '#5f6368', border: '#5f6368' },
+  'en progreso': { bg: '#f9ab00', border: '#f9ab00' },
+  completada: { bg: '#1e8e3e', border: '#1e8e3e' },
+  cancelada: { bg: '#d93025', border: '#d93025' },
+};
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+const toLocalYmd = (d: Date) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const toLocalHm = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
+const taskToEvent = (task: Task): EventInput | null => {
+  const ymd = toFechaEjecucionYmd(task.fechaEjecucion);
+  if (!ymd) return null;
+
+  const colors = STATUS_COLORS[task.estado] || STATUS_COLORS.pendiente;
+  const title = task.numero ? `#${task.numero} · ${task.titulo}` : task.titulo;
+  const franja = parseFranjaHoraria(task.franja_horaria);
+
+  const base: EventInput = {
+    id: task._id,
+    title,
+    backgroundColor: colors.bg,
+    borderColor: colors.border,
+    textColor: '#ffffff',
+    extendedProps: { task },
+  };
+
+  if (franja) {
+    return {
+      ...base,
+      start: `${ymd}T${franja.startTime}:00`,
+      end: `${ymd}T${franja.endTime}:00`,
+      allDay: false,
+    };
+  }
+
+  return {
+    ...base,
+    start: ymd,
+    allDay: true,
+  };
+};
 
 const TaskCalendar: React.FC = () => {
   const dispatch = useAppDispatch();
   const { tasks, loading } = useAppSelector((state) => state.tasks);
   const { user } = useAppSelector((state) => state.auth);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [filters, setFilters] = useState<TaskFilters>({});
   const { isDarkMode } = useTheme();
+  const calendarRef = useRef<FullCalendar>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const slotHoverRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const startDate = startOfMonth(currentDate);
-    const endDate = endOfMonth(currentDate);
-    
-    // Extender el rango de fechas para incluir un día antes y después del mes
-    // para asegurar que se muestren todas las tareas
-    const extendedStartDate = new Date(startDate);
-    extendedStartDate.setDate(extendedStartDate.getDate() - 1);
-    
-    const extendedEndDate = new Date(endDate);
-    extendedEndDate.setDate(extendedEndDate.getDate() + 1);
-    
-    const calendarFilters = {
-      ...filters,
-      fechaDesde: extendedStartDate.toISOString(),
-      fechaHasta: extendedEndDate.toISOString()
-    };
-    
-    // Si el usuario no es admin, filtrar solo sus tareas
-    if (user && user.rol !== 'admin') {
-      calendarFilters.usuario = user._id;
-    }
-    
-    dispatch(fetchCalendarTasks(calendarFilters));
-  }, [dispatch, currentDate, filters, user]);
-  
-  // El efecto de depuración ha sido eliminado
-  
+  const canCreate = isAdminRole(user);
+
+  const [filters, setFilters] = useState<TaskFilters>({});
+  const [visibleRange, setVisibleRange] = useState<{ desde: string; hasta: string } | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [quickCreate, setQuickCreate] = useState<QuickCreateDefaults | null>(null);
+
+  const clearSlotHover = useCallback(() => {
+    slotHoverRef.current?.remove();
+    slotHoverRef.current = null;
+  }, []);
+
+  const updateSlotHover = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!canCreate || quickCreate) {
+        clearSlotHover();
+        return;
+      }
+
+      const target = e.target as HTMLElement;
+      const shell = shellRef.current;
+      if (!shell) {
+        clearSlotHover();
+        return;
+      }
+
+      // Vista mes: hover por CSS de día
+      if (target.closest('.fc-daygrid-body') && !target.closest('.fc-timegrid')) {
+        clearSlotHover();
+        return;
+      }
+
+      if (
+        target.closest('.fc-event') ||
+        target.closest('.fc-col-header') ||
+        target.closest('.fc-timegrid-axis') ||
+        target.closest('.fc-highlight') ||
+        target.closest('.fc-toolbar')
+      ) {
+        clearSlotHover();
+        return;
+      }
+
+      const timeBody = target.closest('.fc-timegrid-body') as HTMLElement | null;
+      if (!timeBody) {
+        clearSlotHover();
+        return;
+      }
+
+      // Los slots son filas a ancho completo; la columna se deduce por X
+      const cols = Array.from(
+        timeBody.querySelectorAll('.fc-timegrid-cols .fc-timegrid-col')
+      ) as HTMLElement[];
+      const dayCols = cols.filter((c) => !c.classList.contains('fc-timegrid-axis'));
+      const col = dayCols.find((c) => {
+        const r = c.getBoundingClientRect();
+        return e.clientX >= r.left && e.clientX < r.right;
+      });
+      if (!col) {
+        clearSlotHover();
+        return;
+      }
+
+      const frame =
+        (col.querySelector('.fc-timegrid-col-frame') as HTMLElement | null) || col;
+
+      const slotSample = shell.querySelector('.fc-timegrid-slot') as HTMLElement | null;
+      const slotHeight = slotSample?.getBoundingClientRect().height || 48;
+      if (slotHeight <= 0) {
+        clearSlotHover();
+        return;
+      }
+
+      // Y relativo al área de slots (misma altura que las columnas)
+      const slotsEl = timeBody.querySelector('.fc-timegrid-slots') as HTMLElement | null;
+      const yBase = (slotsEl || frame).getBoundingClientRect();
+      const y = e.clientY - yBase.top;
+      if (y < 0 || y >= yBase.height) {
+        clearSlotHover();
+        return;
+      }
+
+      const index = Math.floor(y / slotHeight);
+      const top = index * slotHeight;
+
+      let el = slotHoverRef.current;
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'task-calendar-slot-hover';
+        slotHoverRef.current = el;
+      }
+      if (el.parentElement !== frame) {
+        if (getComputedStyle(frame).position === 'static') {
+          frame.style.position = 'relative';
+        }
+        frame.appendChild(el);
+      }
+      el.style.top = `${top}px`;
+      el.style.height = `${slotHeight}px`;
+      el.style.display = 'block';
+    },
+    [canCreate, quickCreate, clearSlotHover]
+  );
+
+  useEffect(() => () => clearSlotHover(), [clearSlotHover]);
 
   const handleFiltersChange = (newFilters: TaskFilters) => {
     setFilters(newFilters);
   };
 
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  
-  // Get the first day of the week (0 = Sunday, 1 = Monday, etc.)
-  const firstDayOfWeek = 0; // 0 for Sunday, 1 for Monday, etc.
-  
-  // Calculate the start date to include the beginning of the week
-  let startDate = new Date(monthStart);
-  while (startDate.getDay() !== firstDayOfWeek) {
-    startDate.setDate(startDate.getDate() - 1);
-  }
-  
-  // Calculate the end date to include the end of the week
-  let endDate = new Date(monthEnd);
-  while (endDate.getDay() !== (firstDayOfWeek + 6) % 7) {
-    endDate.setDate(endDate.getDate() + 1);
-  }
-  
-  // Generate all days for the calendar view
-  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
-
-  const getTasksForDate = (date: Date) => {
-    if (!tasks || !Array.isArray(tasks)) {
-      return [];
+  const calendarFiltersForReload = useMemo((): Record<string, string> => {
+    const base: Record<string, string> = {};
+    if (visibleRange) {
+      base.fechaDesde = visibleRange.desde;
+      base.fechaHasta = visibleRange.hasta;
     }
-    
-    const tasksForDate = tasks.filter(task => {
-      if (!task) {
-        return false;
-      }
-      
-      // Aplicar filtro por técnico si está seleccionado y no está vacío
-      if (filters.tecnico && filters.tecnico !== '') {
-        // Si la tarea no tiene técnicos asignados, no mostrarla cuando hay filtro de técnico
-        if (!task.tecnicos || !Array.isArray(task.tecnicos) || task.tecnicos.length === 0) {
-          return false;
-        }
-        
-        // Verificar si el técnico seleccionado está asignado a esta tarea
-        const tecnicoFound = task.tecnicos.some((tecnico: any) => {
-          // Manejar tanto objetos completos como IDs de técnicos
-          if (typeof tecnico === 'object' && tecnico !== null) {
-            return tecnico._id === filters.tecnico;
-          } else {
-            return tecnico === filters.tecnico;
-          }
-        });
-        
-        if (!tecnicoFound) return false;
-      }
-      
-      // Aplicar filtro por estado si está seleccionado
-      if (filters.estado && task.estado !== filters.estado) {
-        return false;
-      }
-      
-      // Si no hay fecha de ejecución, no mostrar en el calendario
-      if (!task.fechaEjecucion) {
-        return false;
-      }
-      
-      // Verificar si es una tarea del worker (sin logs de depuración)
-      
-      try {
-        // Convertir la fecha de la tarea a objeto Date
-        // Asegurarnos de que la fecha se interprete correctamente para Argentina (UTC-3)
-        let taskDate: Date;
-        
-        if (typeof task.fechaEjecucion === 'string') {
-          // Detectar formato de fecha
-          if (task.fechaEjecucion.includes('T')) {
-            // Si la fecha incluye componente de tiempo (formato ISO)
-            taskDate = new Date(task.fechaEjecucion);
-            
-            // Verificar si la fecha es válida
-            if (isNaN(taskDate.getTime())) {
-              return false;
-            }
-          } else if (task.fechaEjecucion.includes('-')) {
-            // Si la fecha es formato YYYY-MM-DD sin componente de tiempo (formato del worker)
-            const parts = task.fechaEjecucion.split('-');
-            
-            if (parts.length === 3) {
-              const year = parseInt(parts[0], 10);
-              const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
-              const day = parseInt(parts[2], 10);
-              
-              // Crear la fecha a las 12:00 del día para evitar problemas de zona horaria
-              taskDate = new Date(year, month, day, 12, 0, 0);
-              
-              // Verificar si la fecha es válida
-              if (isNaN(taskDate.getTime())) {
-                return false;
-              }
-            } else {
-              return false;
-            }
-          } else if (task.fechaEjecucion.includes('/')) {
-            // Si la fecha es formato DD/MM/YYYY (formato común en mensajes de WhatsApp)
-            const parts = task.fechaEjecucion.split('/');
-            
-            if (parts.length === 3) {
-              // Intentar interpretar como DD/MM/YYYY
-              const day = parseInt(parts[0], 10);
-              const month = parseInt(parts[1], 10) - 1; // Meses en JS son 0-11
-              const year = parseInt(parts[2], 10);
-              
-              // Ajustar año si viene en formato corto (22 -> 2022)
-              const fullYear = year < 100 ? 2000 + year : year;
-              
-              // Crear la fecha a las 12:00 del día para evitar problemas de zona horaria
-              taskDate = new Date(fullYear, month, day, 12, 0, 0);
-              
-              // Verificar si la fecha es válida
-              if (isNaN(taskDate.getTime())) {
-                return false;
-              }
-            } else {
-              return false;
-            }
-          } else {
-            return false; // Formato de fecha no reconocido
-          }
-        } else if (Object.prototype.toString.call(task.fechaEjecucion) === '[object Date]') {
-          // Si ya es un objeto Date
-          taskDate = new Date(task.fechaEjecucion as Date);
-          
-          // Verificar si la fecha es válida
-          if (isNaN(taskDate.getTime())) {
-            return false;
-          }
-        } else {
-          // Si no es ni string ni Date, no podemos procesarlo
-          return false;
-        }
-        
-        // Verificar que la fecha es válida
-        if (isNaN(taskDate.getTime())) {
-          return false;
-        }
-        
-        // Comparar si es el mismo día usando date-fns que maneja correctamente las zonas horarias
-        return isSameDay(taskDate, date);
-      } catch (error) {
-        return false;
-      }
+    if (filters.estado) base.estado = String(filters.estado);
+    if (filters.tecnico) base.tecnico = String(filters.tecnico);
+    if (user && !isAdminRole(user)) base.usuario = user._id;
+    return base;
+  }, [visibleRange, filters.estado, filters.tecnico, user]);
+
+  const loadCalendar = useCallback(() => {
+    if (!visibleRange) return;
+
+    const calendarFilters: TaskFilters = {
+      ...filters,
+      fechaDesde: visibleRange.desde,
+      fechaHasta: visibleRange.hasta,
+    };
+
+    if (user && !isAdminRole(user)) {
+      calendarFilters.usuario = user._id;
+    }
+
+    dispatch(fetchCalendarTasks(calendarFilters));
+  }, [dispatch, filters, visibleRange, user]);
+
+  useEffect(() => {
+    loadCalendar();
+  }, [loadCalendar]);
+
+  const handleDatesSet = (arg: DatesSetArg) => {
+    const desde = arg.startStr.slice(0, 10);
+    const end = new Date(arg.end);
+    end.setDate(end.getDate() - 1);
+    const hasta = toLocalYmd(end);
+
+    setVisibleRange((prev) => {
+      if (prev && prev.desde === desde && prev.hasta === hasta) return prev;
+      return { desde, hasta };
     });
-    
-    return tasksForDate;
   };
 
-  const getStatusColor = (estado: string) => {
-    switch (estado) {
-      case 'completada':
-        return isDarkMode ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-green-400 to-green-500';
-      case 'cancelada':
-        return isDarkMode ? 'bg-gradient-to-r from-red-500 to-red-600' : 'bg-gradient-to-r from-red-400 to-red-500';
-      case 'en progreso':
-        return isDarkMode ? 'bg-gradient-to-r from-amber-500 to-yellow-600' : 'bg-gradient-to-r from-amber-400 to-yellow-500';
-      default:
-        return isDarkMode ? 'bg-gradient-to-r from-gray-500 to-gray-600' : 'bg-gradient-to-r from-gray-400 to-gray-500';
+  const events = useMemo(() => {
+    if (!Array.isArray(tasks)) return [];
+
+    return tasks
+      .filter((task) => {
+        if (filters.estado && task.estado !== filters.estado) return false;
+        if (filters.tecnico) {
+          const tecnicos = Array.isArray(task.tecnicos) ? task.tecnicos : [];
+          if (tecnicos.length === 0) return false;
+          const found = tecnicos.some((t) => {
+            if (typeof t === 'object' && t !== null) return t._id === filters.tecnico;
+            return t === filters.tecnico;
+          });
+          if (!found) return false;
+        }
+        return true;
+      })
+      .map(taskToEvent)
+      .filter((e): e is EventInput => e !== null);
+  }, [tasks, filters.estado, filters.tecnico]);
+
+  const handleEventClick = (info: EventClickArg) => {
+    info.jsEvent.preventDefault();
+    const task = info.event.extendedProps.task as Task | undefined;
+    if (task) {
+      setSelectedTask(task);
     }
   };
-  
-  
 
-  const selectedDateTasks = selectedDate ? getTasksForDate(selectedDate) : [];
+  const openCreateFromRange = (start: Date, end: Date, allDay: boolean) => {
+    if (!canCreate) return;
+
+    const fechaEjecucion = toLocalYmd(start);
+    if (allDay) {
+      setQuickCreate({ fechaEjecucion, allDay: true });
+      return;
+    }
+
+    let horaFin = toLocalHm(end);
+    if (end.getTime() <= start.getTime()) {
+      const plus = new Date(start.getTime() + 60 * 60 * 1000);
+      horaFin = toLocalHm(plus);
+    }
+
+    setQuickCreate({
+      fechaEjecucion,
+      horaInicio: toLocalHm(start),
+      horaFin,
+      allDay: false,
+    });
+  };
+
+  const handleSelect = (arg: DateSelectArg) => {
+    arg.view.calendar.unselect();
+    openCreateFromRange(arg.start, arg.end, arg.allDay);
+  };
+
+  const handleDateClick = (arg: { date: Date; allDay: boolean }) => {
+    if (!canCreate) return;
+    if (arg.allDay) {
+      openCreateFromRange(arg.date, arg.date, true);
+      return;
+    }
+    const end = new Date(arg.date.getTime() + 60 * 60 * 1000);
+    openCreateFromRange(arg.date, end, false);
+  };
+
+  const filterTrailing = (
+    <>
+      <div className="hidden sm:flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+        <span className="inline-flex items-center gap-1">
+          <span className="task-calendar-legend-dot" style={{ background: STATUS_COLORS.pendiente.bg }} />
+          Pendiente
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="task-calendar-legend-dot" style={{ background: STATUS_COLORS['en progreso'].bg }} />
+          En progreso
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="task-calendar-legend-dot" style={{ background: STATUS_COLORS.completada.bg }} />
+          OK
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="task-calendar-legend-dot" style={{ background: STATUS_COLORS.cancelada.bg }} />
+          Cancelada
+        </span>
+      </div>
+      {loading && (
+        <span className="text-[11px] text-blue-600 dark:text-blue-400 animate-pulse">Cargando…</span>
+      )}
+    </>
+  );
 
   return (
-    <div className="space-y-6 h-full flex flex-col animate-fadeIn" style={{ minHeight: '85vh' }}>
+    <div className="h-[calc(100vh-5.5rem)] min-h-0 flex flex-col gap-2 animate-fadeIn">
       <AdminPageHeader
-        title="Calendario de Tareas"
-        description="Vista de calendario con todas las tareas programadas"
-        eyebrow="Administración"
+        title="Calendario"
+        description={
+          canCreate
+            ? 'Clic o arrastre en la grilla para crear una tarea'
+            : 'Tus tareas programadas'
+        }
+        eyebrow="Operación"
         icon={<Calendar className="h-5 w-5" />}
         actions={
-          <button
-            onClick={() => {
-              const today = new Date();
-              setCurrentDate(today);
-              setSelectedDate(today);
-            }}
-            className="inline-flex items-center px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors cursor-pointer"
-          >
-            <CalendarIcon className="h-4 w-4 mr-2" />
-            Ir a Hoy
-          </button>
+          canCreate ? (
+            <button
+              type="button"
+              onClick={() =>
+                setQuickCreate({
+                  fechaEjecucion: toLocalYmd(new Date()),
+                  horaInicio: '09:00',
+                  horaFin: '10:00',
+                  allDay: false,
+                })
+              }
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow text-sm font-medium"
+            >
+              <Plus className="h-4 w-4 text-blue-600" />
+              Crear
+            </button>
+          ) : undefined
         }
       />
 
-      {/* Calendar Tasks Filter */}
       <CalendarTasksFilter
         filters={filters}
         onFiltersChange={handleFiltersChange}
+        trailing={filterTrailing}
       />
 
-      <div className="flex flex-col lg:flex-row gap-4 h-full min-h-[600px] w-full">
-        {/* Calendar */}
-        <div className="flex-1 lg:flex-[3] min-w-0 animate-fadeIn" style={{ animationDelay: '100ms' }}>
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 h-full flex flex-col">
-            {/* Calendar Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-                className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-md transition-colors duration-200"
-              >
-                <ChevronLeft className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </button>
-              
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white capitalize flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-blue-500" />
-                {format(currentDate, 'MMMM yyyy', { locale: es })}
-              </h2>
-              
-              <button
-                onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-                className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-md transition-colors duration-200"
-              >
-                <ChevronRight className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </button>
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="p-4 flex-grow overflow-auto">
-              {/* Days of week header */}
-              <div className="grid grid-cols-7 gap-1 mb-4 min-w-[600px]">
-                {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
-                  // Get the day of week using date-fns with Spanish locale
-                  const dayDate = new Date(2023, 0, dayIndex + 1); // Any date where we can get the day of week
-                  const dayName = format(dayDate, 'EEE', { locale: es });
-                  return (
-                    <div 
-                      key={dayIndex} 
-                      className="p-2 text-center text-sm font-medium rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/10"
-                    >
-                      {dayName}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Calendar days */}
-              <div className="grid grid-cols-7 gap-1 auto-rows-fr min-w-[600px]" style={{ minHeight: '400px' }}>
-                {calendarDays.map((day) => {
-                  const dayTasks = getTasksForDate(day);
-                  const isSelected = selectedDate && isSameDay(day, selectedDate);
-                  const isCurrentMonth = isSameMonth(day, currentDate);
-                  const isToday = isSameDay(day, new Date());
-
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      onClick={() => setSelectedDate(day)}
-                      className={`
-                        h-full min-h-[80px] p-1 sm:p-2 border border-gray-200 dark:border-gray-700 cursor-pointer 
-                        hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 overflow-hidden rounded-lg
-                        ${isSelected ? 'ring-2 ring-blue-500 dark:ring-blue-400 shadow-md' : ''}
-                        ${!isCurrentMonth ? 'opacity-40' : ''}
-                        ${isToday ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-500 dark:border-blue-400' : ''}
-                      `}
-                    >
-                      <div className={`
-                        text-sm font-medium mb-1 flex justify-center items-center w-6 h-6 rounded-full mx-auto
-                        ${isToday ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-white'}
-                      `}>
-                        {format(day, 'd')}
-                      </div>
-                      
-                      <div className="space-y-1 overflow-y-auto max-h-[60px] mt-1">
-                        {dayTasks.length > 0 ? (
-                          dayTasks.slice(0, 2).map((task) => (
-                            <div
-                              key={task._id}
-                              className={`
-                                text-xs p-1 px-2 rounded-md truncate ${getStatusColor(task.estado)} text-white
-                                shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center gap-1
-                              `}
-                              title={`${task.titulo} - ${task.estado}`}
-                            >
-                              {task.estado === 'completada' && <CheckCircle className="h-3 w-3 text-white" />}
-                              {task.estado === 'en progreso' && <Loader className="h-3 w-3 text-white animate-spin" />}
-                              {task.estado === 'cancelada' && <XCircle className="h-3 w-3 text-white" />}
-                              {task.estado !== 'completada' && task.estado !== 'en progreso' && task.estado !== 'cancelada' && <AlertCircle className="h-3 w-3 text-white" />}
-                              <span className="truncate">{task.titulo}</span>
-                            </div>
-                          ))
-                        ) : null}
-                        {dayTasks.length > 2 && (
-                          <div className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium p-1 rounded-md text-center animate-pulse">
-                            +{dayTasks.length - 2} más
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="flex-1 lg:flex-[1] min-w-0 lg:min-w-[300px] animate-fadeIn" style={{ animationDelay: '200ms' }}>
-          <div className="space-y-4 h-full">
-            {/* Task Details Sidebar */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex-1 overflow-y-auto">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
-                <CalendarIcon className="h-5 w-5 mr-2 text-orange-500" />
-                {selectedDate ? (
-                  <span className="capitalize">{format(selectedDate, 'EEEE, d MMMM yyyy', { locale: es })}</span>
-                ) : (
-                  'Selecciona un día'
-                )}
-              </h3>
-
-              {selectedDate && (
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Tareas ({selectedDateTasks.length})
-                  </h4>
-
-                  {selectedDateTasks.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <CalendarIcon className="h-12 w-12 text-gray-300 dark:text-gray-600 mb-2" />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        No hay tareas programadas para este día.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {selectedDateTasks.map((task) => (
-                        <div
-                          key={task._id}
-                          className={`p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 border-l-4 border-${task.estado === 'completada' ? 'green' : task.estado === 'en progreso' ? 'yellow' : task.estado === 'cancelada' ? 'red' : 'gray'}-500 mb-3 animate-fadeIn`}
-                          style={{ animationDelay: `${(selectedDateTasks.indexOf(task) * 100)}ms` }}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <h5 className="font-medium text-gray-900 dark:text-white flex items-center">
-                              {task.titulo}
-                            </h5>
-                            <div className="flex items-center gap-1">
-                              <span
-                                className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-                                  task.estado
-                                )} text-white flex items-center gap-1`}
-                              >
-                                {task.estado === 'completada' && <CheckCircle className="h-4 w-4 text-white" />}
-                                {task.estado === 'en progreso' && <Loader className="h-4 w-4 text-white animate-spin" />}
-                                {task.estado === 'cancelada' && <XCircle className="h-4 w-4 text-white" />}
-                                {task.estado !== 'completada' && task.estado !== 'en progreso' && task.estado !== 'cancelada' && <AlertCircle className="h-4 w-4 text-white" />}
-                                <span>{task.estado}</span>
-                              </span>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
-                            {task.numero && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                                <span className="font-medium mr-1">Número:</span> {task.numero}
-                              </p>
-                            )}
-                            
-                            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                              <MapPin className="h-3 w-3 mr-1 text-orange-500" />
-                              <span className="font-medium mr-1">Cliente:</span> {task.cliente || 'No especificado'}
-                            </p>
-                            
-                            {task.tecnicos && task.tecnicos.length > 0 && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                                <User className="h-3 w-3 mr-1 text-blue-500" />
-                                <span className="font-medium mr-1">Técnicos:</span> {
-                                  Array.isArray(task.tecnicos) 
-                                    ? task.tecnicos.map((t: any) => t.nombre || t).join(', ')
-                                    : 'No asignados'
-                                }
-                              </p>
-                            )}
-                            
-                            {task.fechaEjecucion && (
-                              <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
-                                <Clock className="h-3 w-3 mr-1 text-amber-500" />
-                                <span className="font-medium mr-1">Fecha:</span> {
-                                  typeof task.fechaEjecucion === 'string' 
-                                    ? task.fechaEjecucion 
-                                    : format(new Date(task.fechaEjecucion), 'dd/MM/yyyy')
-                                }
-                              </p>
-                            )}
-                          </div>
-                          
-                          {task.descripcion && (
-                            <div className="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-                                {task.descripcion}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Legend */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 animate-fadeIn" style={{ animationDelay: '300ms' }}>
-              <div className="px-4 py-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-3 flex items-center">
-                  <AlertCircle className="h-5 w-5 mr-2 text-gray-500" />
-                  Leyenda
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <div className={`w-4 h-4 rounded mr-2 flex items-center justify-center ${isDarkMode ? 'bg-gradient-to-r from-green-500 to-emerald-600' : 'bg-gradient-to-r from-green-400 to-green-500'}`}>
-                      <CheckCircle className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Completada</span>
-                  </div>
-                  <div className="flex items-center p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <div className={`w-4 h-4 rounded mr-2 flex items-center justify-center ${isDarkMode ? 'bg-gradient-to-r from-amber-500 to-yellow-600' : 'bg-gradient-to-r from-amber-400 to-yellow-500'}`}>
-                      <Loader className="h-3 w-3 text-white animate-spin" />
-                    </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">En Progreso</span>
-                  </div>
-                  <div className="flex items-center p-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <div className={`w-4 h-4 rounded mr-2 flex items-center justify-center ${isDarkMode ? 'bg-gradient-to-r from-gray-500 to-gray-600' : 'bg-gradient-to-r from-gray-400 to-gray-500'}`}>
-                      <AlertCircle className="h-3 w-3 text-white" />
-                    </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Pendiente</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div
+        ref={shellRef}
+        className={`task-calendar-shell flex-1 min-h-0 bg-white dark:bg-gray-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden ${
+          isDarkMode ? 'dark' : ''
+        } ${canCreate ? 'task-calendar-can-create' : ''}`}
+        onMouseMove={canCreate ? updateSlotHover : undefined}
+        onMouseLeave={clearSlotHover}
+      >
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+          initialView="timeGridWeek"
+          locale={esLocale}
+          firstDay={0}
+          headerToolbar={{
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+          }}
+          buttonText={{
+            today: 'Hoy',
+            month: 'Mes',
+            week: 'Semana',
+            day: 'Día',
+            list: 'Agenda',
+          }}
+          height="100%"
+          expandRows
+          stickyHeaderDates
+          nowIndicator
+          dayMaxEvents={3}
+          moreLinkText={(n) => `+${n} más`}
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
+          scrollTime="07:00:00"
+          slotDuration="00:30:00"
+          slotLabelInterval="01:00:00"
+          allDaySlot
+          allDayText="Todo el día"
+          weekends
+          editable={false}
+          selectable={canCreate}
+          selectMirror
+          selectMinDistance={4}
+          unselectAuto
+          events={events}
+          datesSet={handleDatesSet}
+          eventClick={handleEventClick}
+          select={(arg) => {
+            clearSlotHover();
+            handleSelect(arg);
+          }}
+          dateClick={handleDateClick}
+          eventTimeFormat={{
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'short',
+            hour12: true,
+          }}
+          slotLabelFormat={{
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'short',
+            hour12: true,
+          }}
+          dayHeaderFormat={{ weekday: 'short', day: 'numeric', omitCommas: true }}
+        />
       </div>
 
-      {loading && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-xl border border-blue-100 dark:border-blue-900 animate-fadeIn">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
-            </div>
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 flex items-center justify-center">
-              <Loader className="h-4 w-4 mr-2 text-blue-500 animate-spin" />
-              Cargando tareas...
-            </p>
-          </div>
-        </div>
+      {selectedTask && (
+        <TaskEventPopover task={selectedTask} onClose={() => setSelectedTask(null)} />
+      )}
+
+      {quickCreate && (
+        <TaskQuickCreateModal
+          defaults={quickCreate}
+          onClose={() => setQuickCreate(null)}
+          onCreated={loadCalendar}
+          calendarFilters={calendarFiltersForReload}
+        />
       )}
     </div>
   );

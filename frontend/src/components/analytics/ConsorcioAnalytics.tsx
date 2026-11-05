@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchUsers } from '../../store/slices/usersSlice';
-import { 
-  Clock, 
-  CheckCircle, 
+import {
+  Clock,
+  CheckCircle,
   Filter,
   X,
   RefreshCw,
@@ -11,65 +11,111 @@ import {
   DollarSign,
   Building,
   CreditCard,
-  Image
+  Percent,
+  AlertTriangle,
+  Calendar,
+  Users,
+  Tag,
+  Image,
+  Briefcase,
+  Check,
 } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import type { TareaConsorcio } from '../../types';
 import AdminPageHeader from '../common/AdminPageHeader';
+import { isAdminRole } from '../../utils/roles';
+import api from '../../config/api';
+import { buildConsorcioSummary, formatMoney } from '../../utils/analyticsHelpers';
+import SimpleCategoryChart from './SimpleCategoryChart';
+import ConsorcioDrilldownPanel, { type ConsorcioDrilldown } from './ConsorcioDrilldownPanel';
 
-const ConsorcioAnalytics: React.FC = () => {
+const ESTADO_KEYS = [
+  'presupuesto',
+  'confirmado',
+  'pendiente',
+  'en_progreso',
+  'completada',
+  'PENDIENTE_PAGO',
+  'FACTURADO',
+  'PAGADO',
+  'cancelada',
+] as const;
+
+const ESTADO_LABEL: Record<string, string> = {
+  presupuesto: 'Presupuesto',
+  confirmado: 'Confirmado',
+  pendiente: 'Pendiente',
+  en_progreso: 'En progreso',
+  completada: 'Completada',
+  PENDIENTE_PAGO: 'Pendiente pago',
+  FACTURADO: 'Facturado',
+  PAGADO: 'Pagado',
+  cancelada: 'Cancelada',
+};
+
+const ChartCard: React.FC<{
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, icon, children }) => (
+  <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-4">
+    <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+      {icon}
+      {title}
+    </h2>
+    <div className="h-72">{children}</div>
+  </div>
+);
+
+interface Props {
+  /** Oculta filtro de administradores (vista adminConsorcio) */
+  hideAdminFilter?: boolean;
+  title?: string;
+  description?: string;
+}
+
+const ConsorcioAnalytics: React.FC<Props> = ({
+  hideAdminFilter = false,
+  title = 'Análisis de Consorcio',
+  description = 'Embudo operativo, cobranza e ingresos por administrador',
+}) => {
   const dispatch = useAppDispatch();
   const { users } = useAppSelector((state) => state.users);
-  const { user, token } = useAppSelector((state) => state.auth);
+  const { user } = useAppSelector((state) => state.auth);
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  
-  // Estados para datos
+  const [detail, setDetail] = useState<ConsorcioDrilldown | null>(null);
+
   const [tareas, setTareas] = useState<TareaConsorcio[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<TareaConsorcio[]>([]);
-  
-  // Filtros
-  const [dateRange, setDateRange] = useState<{start: string, end: string}>({ 
-    start: format(startOfMonth(subMonths(new Date(), 3)), 'yyyy-MM-dd'), 
-    end: format(endOfMonth(new Date()), 'yyyy-MM-dd') 
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
+    start: format(startOfMonth(subMonths(new Date(), 12)), 'yyyy-MM-dd'),
+    end: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
   });
-  const [statusFilter, setStatusFilter] = useState<string[]>(['presupuesto', 'confirmado', 'pendiente', 'en_progreso', 'completada', 'PENDIENTE_PAGO', 'FACTURADO', 'PAGADO']);
+  const [statusFilter, setStatusFilter] = useState<string[]>([...ESTADO_KEYS]);
   const [adminConsorcioFilter, setAdminConsorcioFilter] = useState<string[]>([]);
 
-  // Cargar datos
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        if (user?.rol === 'admin') {
+        if (isAdminRole(user) && !hideAdminFilter) {
           await dispatch(fetchUsers());
         }
-        
-        // Cargar tareas de consorcio
-        const response = await fetch('/api/tareas-consorcio', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          // Si no hay tareas o hay error, simplemente mostrar array vacío
-          setTareas([]);
-          return;
-        }
 
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          // La respuesta no es JSON, probablemente HTML de error
-          setTareas([]);
-          return;
-        }
-        
-        const data = await response.json();
-        setTareas(data.data || []);
+        const response = await api.get('/tareas-consorcio', {
+          params: { limit: 2000, page: 1 },
+        });
+        const payload = response.data;
+        const list: TareaConsorcio[] = Array.isArray(payload?.tareas)
+          ? payload.tareas
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload)
+              ? payload
+              : [];
+        setTareas(list);
       } catch (error) {
         console.error('Error al cargar los datos:', error);
-        // En caso de error, mostrar tareas vacías
         setTareas([]);
       } finally {
         setIsLoading(false);
@@ -77,91 +123,62 @@ const ConsorcioAnalytics: React.FC = () => {
     };
 
     loadData();
-  }, [dispatch, user?.rol]);
+  }, [dispatch, user?.rol, hideAdminFilter]);
 
-  // Filtrar tareas
-  useEffect(() => {
-    let filtered = tareas;
+  const filteredTasks = useMemo(() => {
+    let filtered = [...tareas];
 
-    // Filtrar por rango de fechas
     if (dateRange.start && dateRange.end) {
-      filtered = filtered.filter(task => {
-        const taskDate = new Date(task.fechaEjecucion);
-        const startDate = new Date(dateRange.start);
-        const endDate = new Date(dateRange.end);
+      const startDate = new Date(dateRange.start);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter((task) => {
+        const raw = task.fechaEjecucion || task.fechaCreacion;
+        if (!raw) return true;
+        const taskDate = new Date(raw);
+        if (isNaN(taskDate.getTime())) return true;
         return taskDate >= startDate && taskDate <= endDate;
       });
     }
 
-    // Filtrar por estado
     if (statusFilter.length > 0) {
-      filtered = filtered.filter(task => statusFilter.includes(task.estado));
+      filtered = filtered.filter((task) => statusFilter.includes(task.estado));
     }
 
-    // Filtrar por administrador de consorcio
-    if (adminConsorcioFilter.length > 0) {
-      filtered = filtered.filter(task => 
-        task.administradorConsorcio && adminConsorcioFilter.includes(task.administradorConsorcio._id)
+    if (!hideAdminFilter && adminConsorcioFilter.length > 0) {
+      filtered = filtered.filter(
+        (task) =>
+          task.administradorConsorcio &&
+          adminConsorcioFilter.includes(task.administradorConsorcio._id)
       );
     }
 
-    setFilteredTasks(filtered);
-  }, [tareas, dateRange, statusFilter, adminConsorcioFilter]);
+    return filtered;
+  }, [tareas, dateRange, statusFilter, adminConsorcioFilter, hideAdminFilter]);
 
-  // Calcular estadísticas
-  const stats = {
-    total: filteredTasks.length,
-    presupuesto: filteredTasks.filter(t => t.estado === 'presupuesto').length,
-    confirmado: filteredTasks.filter(t => t.estado === 'confirmado').length,
-    pendiente: filteredTasks.filter(t => t.estado === 'pendiente').length,
-    enProgreso: filteredTasks.filter(t => t.estado === 'en_progreso').length,
-    completada: filteredTasks.filter(t => t.estado === 'completada').length,
-    pendientePago: filteredTasks.filter(t => t.estado === 'PENDIENTE_PAGO').length,
-    facturado: filteredTasks.filter(t => t.estado === 'FACTURADO').length,
-    pagado: filteredTasks.filter(t => t.estado === 'PAGADO').length,
-    totalRevenue: filteredTasks
-      .filter(t => t.estado === 'PAGADO')
-      .reduce((sum, t) => sum + t.precio, 0),
-    pendingRevenue: filteredTasks
-      .filter(t => ['confirmado', 'pendiente', 'en_progreso', 'completada', 'PENDIENTE_PAGO', 'FACTURADO'].includes(t.estado))
-      .reduce((sum, t) => sum + t.precio, 0),
-    withComprobante: filteredTasks.filter(t => t.comprobantePago).length,
-    withPhotos: filteredTasks.filter(t => t.fotos && t.fotos.length > 0).length
+  const summary = useMemo(() => buildConsorcioSummary(filteredTasks), [filteredTasks]);
+  const adminConsorcios = useMemo(
+    () => (Array.isArray(users) ? users.filter((u) => u.rol === 'adminConsorcio') : []),
+    [users]
+  );
+
+  const openTasks = (titleText: string, list: TareaConsorcio[], subtitle?: string) => {
+    setDetail({ title: titleText, subtitle, tasks: list });
   };
 
-  // Obtener administradores de consorcio
-  const adminConsorcios = users.filter(u => u.rol === 'adminConsorcio');
-
-  // Renderizar gráficos simples
-  const renderStatusChart = () => {
-    const statusData = [
-      { name: 'Presupuesto', value: stats.presupuesto, color: 'bg-gray-500' },
-      { name: 'Confirmado', value: stats.confirmado, color: 'bg-blue-500' },
-      { name: 'Pendiente', value: stats.pendiente, color: 'bg-yellow-500' },
-      { name: 'En Progreso', value: stats.enProgreso, color: 'bg-orange-500' },
-      { name: 'Completada', value: stats.completada, color: 'bg-green-500' },
-      { name: 'Pendiente Pago', value: stats.pendientePago, color: 'bg-orange-500' },
-      { name: 'Facturado', value: stats.facturado, color: 'bg-indigo-500' },
-      { name: 'Pagado', value: stats.pagado, color: 'bg-emerald-500' }
-    ];
-
-    return (
-      <div className="space-y-2">
-        {statusData.map((item) => (
-          <div key={item.name} className="flex items-center">
-            <div className="w-32 text-sm">{item.name}</div>
-            <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-6 ml-2">
-              <div 
-                className={`${item.color} h-6 rounded-full transition-all duration-500`}
-                style={{ width: `${stats.total > 0 ? (item.value / stats.total) * 100 : 0}%` }}
-              />
-            </div>
-            <div className="w-12 text-sm text-right ml-2">{item.value}</div>
-          </div>
-        ))}
-      </div>
-    );
+  const resetFilters = () => {
+    setDateRange({
+      start: format(startOfMonth(subMonths(new Date(), 12)), 'yyyy-MM-dd'),
+      end: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+    });
+    setStatusFilter([...ESTADO_KEYS]);
+    setAdminConsorcioFilter([]);
+    setDetail(null);
   };
+
+  const adminNameOf = (task: TareaConsorcio) =>
+    task.administradorConsorcio?.nombre || 'Sin admin';
 
   if (isLoading) {
     return (
@@ -172,223 +189,412 @@ const ConsorcioAnalytics: React.FC = () => {
     );
   }
 
+  const kpis = [
+    {
+      title: 'Tareas',
+      value: summary.total,
+      icon: ClipboardList,
+      color: 'bg-blue-500',
+      list: filteredTasks,
+    },
+    {
+      title: 'Cobrados',
+      value: formatMoney(summary.revenuePaid),
+      icon: DollarSign,
+      color: 'bg-emerald-500',
+      list: filteredTasks.filter((t) => t.estado === 'PAGADO'),
+    },
+    {
+      title: 'Por cobrar',
+      value: formatMoney(summary.revenuePending),
+      icon: Clock,
+      color: 'bg-orange-500',
+      list: filteredTasks.filter((t) =>
+        ['PENDIENTE_PAGO', 'FACTURADO', 'completada', 'en_progreso', 'confirmado', 'pendiente'].includes(
+          t.estado
+        )
+      ),
+    },
+    {
+      title: 'Ticket prom.',
+      value: formatMoney(summary.ticketPromedio),
+      icon: CreditCard,
+      color: 'bg-indigo-500',
+      list: filteredTasks.filter((t) => (t.precio || 0) > 0),
+    },
+    {
+      title: 'Conv. a pago',
+      value: `${summary.conversionPago}%`,
+      icon: Percent,
+      color: 'bg-sky-500',
+      list: filteredTasks.filter((t) => t.estado === 'PAGADO'),
+    },
+    {
+      title: 'Aging cobranza',
+      value: summary.agingCobranza,
+      icon: AlertTriangle,
+      color: 'bg-amber-500',
+      list: filteredTasks.filter((t) => ['PENDIENTE_PAGO', 'FACTURADO'].includes(t.estado)),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        title="Análisis de Tareas de Consorcio"
-        description="Estadísticas detalladas de las tareas de consorcio"
-        eyebrow="Análisis"
-        icon={<Building className="h-5 w-5" />}
-        actions={
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            {showFilters ? 'Ocultar filtros' : 'Filtros'}
-          </button>
-        }
-      />
-
-      {/* Filtros */}
-      {showFilters && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Filtros</h3>
+    <div className="pb-6 animate-fadeIn">
+      <div className="space-y-4">
+        <AdminPageHeader
+          title={title}
+          description={description}
+          eyebrow="Análisis"
+          icon={<Building className="h-5 w-5" />}
+          actions={
             <button
-              onClick={() => setShowFilters(false)}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              aria-label="Cerrar filtros"
+              onClick={() => setShowFilters(!showFilters)}
+              className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
             >
-              <X className="h-5 w-5" />
+              <Filter className="h-4 w-4 mr-2" />
+              Filtros
             </button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Rango de Fechas</label>
+          }
+        />
+
+        {showFilters && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                Filtros
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={resetFilters}
+                  className="text-xs text-blue-600 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 inline-flex items-center gap-1"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Restablecer
+                </button>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div
+              className={`grid grid-cols-1 gap-4 ${hideAdminFilter ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}
+            >
               <div className="space-y-2">
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                />
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                />
+                <label className="text-xs text-slate-500">Desde / hasta</label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange((p) => ({ ...p, start: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-gray-700 text-sm py-2 px-2"
+                  />
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange((p) => ({ ...p, end: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-gray-700 text-sm py-2 px-2"
+                  />
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Estados</label>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {['presupuesto', 'confirmado', 'pendiente', 'en_progreso', 'completada', 'PENDIENTE_PAGO', 'FACTURADO', 'PAGADO'].map(estado => (
-                  <label key={estado} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={statusFilter.includes(estado)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setStatusFilter([...statusFilter, estado]);
-                        } else {
-                          setStatusFilter(statusFilter.filter(s => s !== estado));
-                        }
-                      }}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">{estado}</span>
-                  </label>
-                ))}
+              <div>
+                <label className="text-xs text-slate-500 mb-2 block">Estados</label>
+                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                  {ESTADO_KEYS.map((value) => {
+                    const selected = statusFilter.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          if (selected && statusFilter.length > 1) {
+                            setStatusFilter(statusFilter.filter((s) => s !== value));
+                          } else if (!selected) {
+                            setStatusFilter([...statusFilter, value]);
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-xs border ${
+                          selected
+                            ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {selected && <Check className="inline h-3 w-3 mr-1" />}
+                        {ESTADO_LABEL[value] || value}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Administradores de Consorcio</label>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {adminConsorcios.map(admin => (
-                  <label key={admin._id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={adminConsorcioFilter.includes(admin._id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setAdminConsorcioFilter([...adminConsorcioFilter, admin._id]);
-                        } else {
-                          setAdminConsorcioFilter(adminConsorcioFilter.filter(a => a !== admin._id));
-                        }
-                      }}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">{admin.nombre}</span>
-                  </label>
-                ))}
-              </div>
+              {!hideAdminFilter && (
+                <div>
+                  <label className="text-xs text-slate-500 mb-2 block">Administradores</label>
+                  <select
+                    multiple
+                    value={adminConsorcioFilter}
+                    onChange={(e) =>
+                      setAdminConsorcioFilter(
+                        Array.from(e.target.selectedOptions, (o) => o.value)
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-gray-700 text-sm py-1.5 min-h-[72px]"
+                  >
+                    {adminConsorcios.map((admin) => (
+                      <option key={admin._id} value={admin._id}>
+                        {admin.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Tarjetas de Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Tareas</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.total}</p>
-            </div>
-            <ClipboardList className="h-8 w-8 text-blue-600" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Ingresos Totales</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                ${stats.totalRevenue.toLocaleString()}
-              </p>
-            </div>
-            <DollarSign className="h-8 w-8 text-green-600" />
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Ingresos Pendientes</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                ${stats.pendingRevenue.toLocaleString()}
-              </p>
-            </div>
-            <Clock className="h-8 w-8 text-orange-600" />
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {kpis.map((kpi) => {
+            const Icon = kpi.icon;
+            return (
+              <button
+                key={kpi.title}
+                type="button"
+                onClick={() => openTasks(kpi.title, kpi.list)}
+                className="text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-4 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-slate-500">{kpi.title}</span>
+                  <div className={`${kpi.color} rounded-lg p-2`}>
+                    <Icon className="h-4 w-4 text-white" />
+                  </div>
+                </div>
+                <span className="text-lg font-bold text-slate-900 dark:text-white tabular-nums truncate block">
+                  {kpi.value}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Tareas Pagadas</p>
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">{stats.pagado}</p>
-            </div>
-            <CheckCircle className="h-8 w-8 text-emerald-600" />
-          </div>
-        </div>
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ChartCard
+            title="Tareas por mes"
+            icon={<Calendar className="h-4 w-4 text-blue-500" />}
+          >
+            <SimpleCategoryChart
+              items={summary.byMes}
+              color="#3b82f6"
+              onBarClick={(label) =>
+                openTasks(
+                  `Mes: ${label}`,
+                  filteredTasks.filter((t) => {
+                    const raw = t.fechaEjecucion || t.fechaCreacion;
+                    if (!raw) return false;
+                    const d = new Date(raw);
+                    if (isNaN(d.getTime())) return false;
+                    const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    return mes === label;
+                  })
+                )
+              }
+            />
+          </ChartCard>
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4">Distribución por Estado</h3>
-          {renderStatusChart()}
+          <ChartCard
+            title="Embudo por estado"
+            icon={<CheckCircle className="h-4 w-4 text-emerald-500" />}
+          >
+            <SimpleCategoryChart
+              items={summary.byEstado.map((e) => ({ label: e.label, count: e.count }))}
+              color="#10b981"
+              onBarClick={(label) => {
+                const key = Object.entries(ESTADO_LABEL).find(([, v]) => v === label)?.[0];
+                openTasks(
+                  `Estado: ${label}`,
+                  filteredTasks.filter((t) => (key ? t.estado === key : false))
+                );
+              }}
+            />
+          </ChartCard>
+
+          {!hideAdminFilter && (
+            <ChartCard
+              title="Volumen por administrador"
+              icon={<Building className="h-4 w-4 text-violet-500" />}
+            >
+              <SimpleCategoryChart
+                items={summary.adminVolume}
+                color="#8b5cf6"
+                onBarClick={(label) =>
+                  openTasks(
+                    `Admin: ${label}`,
+                    filteredTasks.filter((t) => adminNameOf(t) === label)
+                  )
+                }
+              />
+            </ChartCard>
+          )}
+
+          <ChartCard
+            title="Ingresos pagados por administrador"
+            icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
+          >
+            <SimpleCategoryChart
+              items={summary.byAdmin.map((a) => ({
+                label: a.label,
+                count: Math.round(a.revenue),
+              }))}
+              color="#059669"
+              datasetLabel="Ingresos"
+              formatValue={formatMoney}
+              onBarClick={(label) =>
+                openTasks(
+                  `Pagado · ${label}`,
+                  filteredTasks.filter(
+                    (t) => t.estado === 'PAGADO' && adminNameOf(t) === label
+                  )
+                )
+              }
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Monto por estado"
+            icon={<CreditCard className="h-4 w-4 text-indigo-500" />}
+          >
+            <SimpleCategoryChart
+              items={summary.revenueByEstado}
+              color="#6366f1"
+              datasetLabel="Monto"
+              formatValue={formatMoney}
+              onBarClick={(label) => {
+                const key = Object.entries(ESTADO_LABEL).find(([, v]) => v === label)?.[0];
+                openTasks(
+                  `Monto · ${label}`,
+                  filteredTasks.filter((t) => (key ? t.estado === key : false))
+                );
+              }}
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Top clientes"
+            icon={<Tag className="h-4 w-4 text-teal-500" />}
+          >
+            <SimpleCategoryChart
+              items={summary.topClientes}
+              color="#14b8a6"
+              onBarClick={(label) =>
+                openTasks(
+                  `Cliente: ${label}`,
+                  filteredTasks.filter(
+                    (t) => ((t.cliente || '').trim() || 'Sin cliente') === label
+                  )
+                )
+              }
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Carga por técnico"
+            icon={<Users className="h-4 w-4 text-orange-500" />}
+          >
+            <SimpleCategoryChart
+              items={summary.byTecnico}
+              color="#f97316"
+              onBarClick={(label) =>
+                openTasks(
+                  `Técnico: ${label}`,
+                  filteredTasks.filter((t) => {
+                    const tecnicos = Array.isArray(t.tecnicos) ? t.tecnicos : [];
+                    if (tecnicos.length === 0) return label === 'Sin técnico';
+                    return tecnicos.some((tec) => (tec?.nombre || 'Sin nombre') === label);
+                  })
+                )
+              }
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Franjas horarias"
+            icon={<Clock className="h-4 w-4 text-amber-500" />}
+          >
+            <SimpleCategoryChart
+              items={summary.byFranja}
+              color="#f59e0b"
+              onBarClick={(label) =>
+                openTasks(
+                  `Franja: ${label}`,
+                  filteredTasks.filter(
+                    (t) => ((t.franja_horaria || '').trim() || 'Sin franja') === label
+                  )
+                )
+              }
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Documentación"
+            icon={<Image className="h-4 w-4 text-sky-500" />}
+          >
+            <SimpleCategoryChart
+              items={summary.docsBreakdown}
+              color="#0ea5e9"
+              onBarClick={(label) => {
+                if (label === 'Con fotos') {
+                  openTasks(label, filteredTasks.filter((t) => t.fotos && t.fotos.length > 0));
+                } else if (label === 'Sin fotos') {
+                  openTasks(label, filteredTasks.filter((t) => !t.fotos || t.fotos.length === 0));
+                } else if (label === 'Con comprobante') {
+                  openTasks(label, filteredTasks.filter((t) => !!t.comprobantePago));
+                } else {
+                  openTasks(label, filteredTasks.filter((t) => !t.comprobantePago));
+                }
+              }}
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Aging y alertas"
+            icon={<Briefcase className="h-4 w-4 text-rose-500" />}
+          >
+            <SimpleCategoryChart
+              items={[
+                {
+                  label: 'Pendiente pago',
+                  count: filteredTasks.filter((t) => t.estado === 'PENDIENTE_PAGO').length,
+                },
+                {
+                  label: 'Facturado',
+                  count: filteredTasks.filter((t) => t.estado === 'FACTURADO').length,
+                },
+                { label: 'Canceladas', count: summary.canceladas },
+                { label: 'Sin admin', count: summary.sinAdmin },
+              ].filter((x) => x.count > 0)}
+              color="#f43f5e"
+              onBarClick={(label) => {
+                if (label === 'Pendiente pago') {
+                  openTasks(label, filteredTasks.filter((t) => t.estado === 'PENDIENTE_PAGO'));
+                } else if (label === 'Facturado') {
+                  openTasks(label, filteredTasks.filter((t) => t.estado === 'FACTURADO'));
+                } else if (label === 'Canceladas') {
+                  openTasks(label, filteredTasks.filter((t) => t.estado === 'cancelada'));
+                } else {
+                  openTasks(
+                    label,
+                    filteredTasks.filter(
+                      (t) => !t.administradorConsorcio || !(t.administradorConsorcio as any)._id
+                    )
+                  );
+                }
+              }}
+            />
+          </ChartCard>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4">Estadísticas de Archivos</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Image className="h-5 w-5 text-blue-600" />
-                <span className="text-sm">Con Fotos</span>
-              </div>
-              <span className="font-semibold">{stats.withPhotos}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-green-600" />
-                <span className="text-sm">Con Comprobante</span>
-              </div>
-              <span className="font-semibold">{stats.withComprobante}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabla de Tareas Recientes */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold mb-4">Tareas Recientes</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b dark:border-gray-700">
-                <th className="text-left py-2">Número</th>
-                <th className="text-left py-2">Título</th>
-                <th className="text-left py-2">Cliente</th>
-                <th className="text-left py-2">Estado</th>
-                <th className="text-left py-2">Precio</th>
-                <th className="text-left py-2">Administrador</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTasks.slice(0, 10).map(task => (
-                <tr key={task._id} className="border-b dark:border-gray-700">
-                  <td className="py-2">{task.numero}</td>
-                  <td className="py-2">{task.titulo}</td>
-                  <td className="py-2">{task.cliente}</td>
-                  <td className="py-2">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      task.estado === 'PAGADO' ? 'bg-emerald-100 text-emerald-800' :
-                      task.estado === 'FACTURADO' ? 'bg-indigo-100 text-indigo-800' :
-                      task.estado === 'PENDIENTE_PAGO' ? 'bg-orange-100 text-orange-800' :
-                      task.estado === 'completada' ? 'bg-green-100 text-green-800' :
-                      task.estado === 'en_progreso' ? 'bg-orange-100 text-orange-800' :
-                      task.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-800' :
-                      task.estado === 'confirmado' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {task.estado}
-                    </span>
-                  </td>
-                  <td className="py-2">${task.precio}</td>
-                  <td className="py-2">{task.administradorConsorcio?.nombre || 'Sin asignar'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {detail && (
+          <ConsorcioDrilldownPanel drilldown={detail} onClose={() => setDetail(null)} />
+        )}
       </div>
     </div>
   );

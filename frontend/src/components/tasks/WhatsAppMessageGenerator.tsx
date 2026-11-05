@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppSelector } from '../../store';
 import type { Task, User } from '../../types';
 import { CheckSquare, Square, Send } from 'lucide-react';
+import { isAdminRole } from '../../utils/roles';
 
 interface WhatsAppMessageGeneratorProps {
   tasks: Task[];
@@ -119,13 +120,13 @@ const WhatsAppMessageGenerator: React.FC<WhatsAppMessageGeneratorProps> = ({ tas
         <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center justify-between">
           <div className="flex items-center">
             <Send className="h-5 w-5 mr-2" />
-            {user?.rol === 'admin' ? 'Enviar tareas por WhatsApp' : 'Mis Tareas Pendientes'}
+            {isAdminRole(user) ? 'Enviar tareas por WhatsApp' : 'Mis Tareas Pendientes'}
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400">
-            {selectedTasks.length} {user?.rol === 'admin' ? 'seleccionadas' : 'tareas seleccionadas'}
+            {selectedTasks.length} {isAdminRole(user) ? 'seleccionadas' : 'tareas seleccionadas'}
           </div>
         </h3>
-        {user?.rol !== 'admin' && (
+        {!isAdminRole(user) && (
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Envía un recordatorio de tus tareas a tu WhatsApp
           </p>

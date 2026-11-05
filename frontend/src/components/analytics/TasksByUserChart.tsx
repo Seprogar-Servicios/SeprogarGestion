@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,68 +10,85 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import type { Task } from '../../types';
+import type { ChartDrilldown } from './ChartDrilldownPanel';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 interface TasksByUserChartProps {
   tasks: Task[];
   users: any[];
+  onSegmentClick?: (drilldown: ChartDrilldown) => void;
 }
 
 const truncateLabel = (label: string, max = 18) =>
   label.length > max ? `${label.slice(0, max - 1)}…` : label;
 
-const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => {
-  const userMap = users.reduce((acc, user) => {
-    acc[user._id] = user;
-    return acc;
-  }, {} as Record<string, any>);
+const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users, onSegmentClick }) => {
+  const { topUserIds, fullLabels, labels, data, tasksByUserId } = useMemo(() => {
+    const userMap = users.reduce((acc, user) => {
+      acc[user._id] = user;
+      return acc;
+    }, {} as Record<string, any>);
 
-  const tasksByUser = tasks.reduce((acc, task) => {
-    const addTecnico = (tecnico: any) => {
-      if (!tecnico) return false;
-      const userId = typeof tecnico === 'string' ? tecnico : tecnico._id ? tecnico._id : null;
-      if (userId) {
-        acc[userId] = (acc[userId] || 0) + 1;
-        return true;
+    const tasksByUserId: Record<string, Task[]> = {};
+
+    const pushTask = (userId: string, task: Task) => {
+      if (!tasksByUserId[userId]) tasksByUserId[userId] = [];
+      if (!tasksByUserId[userId].some((t) => t._id === task._id)) {
+        tasksByUserId[userId].push(task);
       }
-      return false;
     };
 
-    let taskAssigned = false;
+    tasks.forEach((task) => {
+      let assigned = false;
+      if (task.tecnicos && task.tecnicos.length > 0) {
+        task.tecnicos.forEach((tecnico: any) => {
+          const userId = typeof tecnico === 'string' ? tecnico : tecnico?._id;
+          if (userId) {
+            pushTask(userId, task);
+            assigned = true;
+          }
+        });
+      }
+      if (!assigned && (task as any).tecnicoAsignado) {
+        const t = (task as any).tecnicoAsignado;
+        const userId = typeof t === 'string' ? t : t?._id;
+        if (userId) {
+          pushTask(userId, task);
+          assigned = true;
+        }
+      }
+      if (!assigned) pushTask('unassigned', task);
+    });
 
-    if (task.tecnicos && task.tecnicos.length > 0) {
-      task.tecnicos.forEach((tecnico) => {
-        if (addTecnico(tecnico)) taskAssigned = true;
-      });
+    if (tasksByUserId.unassigned?.length) {
+      userMap.unassigned = { _id: 'unassigned', nombre: 'Sin asignar', apellido: '' };
     }
 
-    if (!taskAssigned && task.tecnicoAsignado) {
-      addTecnico(task.tecnicoAsignado);
-    }
+    const counts: Record<string, number> = {};
+    Object.keys(tasksByUserId).forEach((id) => {
+      counts[id] = tasksByUserId[id].length;
+    });
 
-    if (!taskAssigned && (!task.tecnicos || task.tecnicos.length === 0) && !task.tecnicoAsignado) {
-      acc.unassigned = (acc.unassigned || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, number>);
+    const sortedUserIds = Object.keys(counts)
+      .filter((id) => counts[id] > 0)
+      .sort((a, b) => counts[b] - counts[a]);
+    const topUserIds = sortedUserIds.slice(0, 10);
 
-  if (tasksByUser.unassigned) {
-    userMap.unassigned = { _id: 'unassigned', nombre: 'Sin asignar', apellido: '' };
-  }
+    const fullLabels = topUserIds.map((userId) => {
+      const user = userMap[userId];
+      if (!user) return 'Usuario desconocido';
+      return user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre;
+    });
 
-  const sortedUserIds = Object.keys(tasksByUser)
-    .filter((userId) => tasksByUser[userId] > 0)
-    .sort((a, b) => tasksByUser[b] - tasksByUser[a]);
-  const topUserIds = sortedUserIds.slice(0, 10);
-
-  const fullLabels = topUserIds.map((userId) => {
-    const user = userMap[userId];
-    if (!user) return 'Usuario Desconocido';
-    return user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre;
-  });
-  const labels = fullLabels.map((label) => truncateLabel(label));
-  const data = topUserIds.map((userId) => tasksByUser[userId]);
+    return {
+      topUserIds,
+      fullLabels,
+      labels: fullLabels.map((l) => truncateLabel(l)),
+      data: topUserIds.map((id) => counts[id]),
+      tasksByUserId,
+    };
+  }, [tasks, users]);
 
   const chartData = {
     labels,
@@ -84,6 +101,7 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
         borderWidth: 1,
         borderRadius: 6,
         barThickness: 18,
+        hoverBackgroundColor: 'rgba(0, 164, 235, 0.85)',
       },
     ],
   };
@@ -92,16 +110,24 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
     indexAxis: 'y' as const,
     responsive: true,
     maintainAspectRatio: false,
-    layout: {
-      padding: { top: 4, right: 12, bottom: 4, left: 4 },
+    layout: { padding: { top: 4, right: 12, bottom: 4, left: 4 } },
+    onHover: (event: any, elements: unknown[]) => {
+      const target = event?.native?.target as HTMLElement | undefined;
+      if (target) target.style.cursor = elements?.length ? 'pointer' : 'default';
+    },
+    onClick: (_: unknown, elements: { index: number }[]) => {
+      if (!onSegmentClick || !elements?.length) return;
+      const index = elements[0].index;
+      const userId = topUserIds[index];
+      onSegmentClick({
+        title: fullLabels[index] || 'Técnico',
+        subtitle: 'Carga de tareas · clic en la barra',
+        tasks: tasksByUserId[userId] || [],
+      });
     },
     plugins: {
-      legend: {
-        display: false,
-      },
-      title: {
-        display: false,
-      },
+      legend: { display: false },
+      title: { display: false },
       tooltip: {
         callbacks: {
           title: (tooltipItems: any[]) => {
@@ -112,42 +138,31 @@ const TasksByUserChart: React.FC<TasksByUserChartProps> = ({ tasks, users }) => 
             const value = context.raw;
             return `${value} tarea${value !== 1 ? 's' : ''}`;
           },
+          afterBody: () => ['', 'Clic para ver detalle'],
         },
       },
     },
     scales: {
       x: {
         beginAtZero: true,
-        grid: {
-          color: 'rgba(148, 163, 184, 0.25)',
-        },
-        ticks: {
-          precision: 0,
-          maxTicksLimit: 8,
-        },
+        grid: { color: 'rgba(148, 163, 184, 0.25)' },
+        ticks: { precision: 0, maxTicksLimit: 8 },
       },
       y: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          autoSkip: false,
-          font: { size: 11 },
-        },
+        grid: { display: false },
+        ticks: { autoSkip: false, font: { size: 11 } },
       },
     },
   };
 
-  const chartHeight = Math.max(260, topUserIds.length * 36 + 48);
-
   return (
-    <div className="w-full overflow-hidden">
+    <div className="w-full h-full overflow-hidden">
       {labels.length > 0 ? (
-        <div className="w-full" style={{ height: chartHeight }}>
-          <Bar data={chartData} options={options} />
+        <div className="w-full h-full">
+          <Bar data={chartData} options={options as any} />
         </div>
       ) : (
-        <div className="flex justify-center items-center h-64 text-slate-500 dark:text-slate-400">
+        <div className="flex justify-center items-center h-full text-slate-500 dark:text-slate-400 text-sm">
           No hay datos suficientes para mostrar
         </div>
       )}

@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  rol: { type: String, enum: ['admin', 'usuario', 'adminConsorcio'], required: true },
+  rol: { type: String, enum: ['super_admin', 'admin', 'usuario', 'adminConsorcio'], required: true },
   especialidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Especialidad', default: null },
   aprobado: { type: Boolean, default: false },
   notificationToken: { type: String, default: null },
@@ -35,7 +35,11 @@ userSchema.virtual('esAdminConsorcio').get(function() {
 });
 
 userSchema.virtual('esAdmin').get(function() {
-  return this.rol === 'admin';
+  return this.rol === 'admin' || this.rol === 'super_admin';
+});
+
+userSchema.virtual('esSuperAdmin').get(function() {
+  return this.rol === 'super_admin';
 });
 
 userSchema.virtual('esTecnico').get(function() {

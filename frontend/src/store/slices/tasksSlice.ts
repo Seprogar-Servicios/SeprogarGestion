@@ -221,6 +221,23 @@ export const updateTask = createAsyncThunk(
           typeof t === 'string' ? t : t._id
         );
       }
+
+      // Si pasa a "en progreso", intentar GPS del dispositivo
+      if (taskData.estado === 'en progreso' && !taskData.ubicacionMapa) {
+        try {
+          const { getCurrentPosition } = await import('../../utils/geolocation');
+          const coords = await getCurrentPosition(6000);
+          if (coords) {
+            taskData.ubicacionMapa = {
+              lat: coords.lat,
+              lng: coords.lng,
+              fuente: 'gps',
+            };
+          }
+        } catch {
+          // sin GPS: el backend geocodifica dirección del técnico/tarea
+        }
+      }
       
       const response = await api.put<ApiResponse<Task>>(`/tareas/${id}`, taskData);
       return response.data.data;
@@ -415,41 +432,7 @@ const tasksSlice = createSlice({
       })
       .addCase(fetchCalendarTasks.fulfilled, (state, action) => {
         state.loading = false;
-        
-        // Identificar tareas del worker por origen o por formato de fecha
-        const workerTasks = state.tasks.filter(task => {
-          // Si tiene origen explícito 'whatsapp'
-          if (task.origen === 'whatsapp') return true;
-          
-          // Si no tiene origen pero tiene formato de fecha YYYY-MM-DD (típico del worker)
-          if (task.fechaEjecucion && 
-              typeof task.fechaEjecucion === 'string' && 
-              /^\d{4}-\d{2}-\d{2}$/.test(task.fechaEjecucion)) {
-            return true;
-          }
-          
-          return false;
-        });
-        
-        // Obtener las nuevas tareas que no son del worker
-        const newNonWorkerTasks = action.payload.filter(task => {
-          // Si tiene origen explícito diferente a 'whatsapp'
-          if (task.origen && task.origen !== 'whatsapp') return true;
-          
-          // Si no tiene origen pero tampoco tiene el formato de fecha típico del worker
-          if (!task.origen && 
-              (!task.fechaEjecucion || 
-               typeof task.fechaEjecucion !== 'string' || 
-               !/^\d{4}-\d{2}-\d{2}$/.test(task.fechaEjecucion))) {
-            return true;
-          }
-          
-          // Si la tarea ya existe en workerTasks, no la incluimos aquí
-          return !workerTasks.some(wTask => wTask._id === task._id);
-        });
-        
-        // Combinar las tareas del worker existentes con las nuevas tareas no-worker
-        state.tasks = [...workerTasks, ...newNonWorkerTasks];
+        state.tasks = action.payload;
       })
       .addCase(fetchCalendarTasks.rejected, (state, action) => {
         state.loading = false;

@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 const Subscription = require('../models/Subscription');
 const { sendNotification } = require('../utils/push');
 const { normalizeAddress } = require('../utils/addressNormalizer');
+const { geocodeAddress } = require('../utils/geocode');
+const { isPrivilegedAdmin } = require('../utils/roles');
 
 /**
  * @swagger
@@ -277,28 +279,133 @@ exports.getTareaById = async (req, res) => {
   }
 };
 
-// Actualizar tarea (solo creador o admin)
+// Actualizar tarea (admin, creador o técnico asignado)
 exports.updateTarea = async (req, res) => {
   const { error } = tareaSchema.validate(req.body);
   if (error) return res.status(400).json({ message: error.details[0].message });
   try {
     const tarea = await Tarea.findById(req.params.id);
     if (!tarea) return res.status(404).json({ message: 'Tarea no encontrada' });
-    if (req.user.rol !== 'admin' && !tarea.creadoPor.equals(req.user._id)) {
+
+    const isAdmin = isPrivilegedAdmin(req.user);
+    const isCreator = tarea.creadoPor && tarea.creadoPor.equals(req.user._id);
+    const isAssigned = Array.isArray(tarea.tecnicos) && tarea.tecnicos.some((t) => t.equals(req.user._id));
+
+    if (!isAdmin && !isCreator && !isAssigned) {
       return res.status(403).json({ message: 'No autorizado' });
     }
-    
-    // Normalizar la dirección si está presente en la actualización
+
     let datosActualizados = { ...req.body };
+
+    // Técnico asignado: solo puede cambiar estado y ubicación en vivo
+    if (!isAdmin && !isCreator && isAssigned) {
+      datosActualizados = {
+        numero: tarea.numero,
+        titulo: tarea.titulo,
+        descripcion: tarea.descripcion,
+        estado: req.body.estado ?? tarea.estado,
+        tecnicos: tarea.tecnicos.map((t) => t.toString()),
+        fechaEjecucion: tarea.fechaEjecucion,
+        franja_horaria: tarea.franja_horaria,
+        cliente: tarea.cliente,
+        numeroTitular: tarea.numeroTitular,
+        direccion: tarea.direccion,
+        origen: tarea.origen,
+        ...(req.body.ubicacionMapa ? { ubicacionMapa: req.body.ubicacionMapa } : {}),
+      };
+    }
+
     if (datosActualizados.direccion) {
       datosActualizados.direccion = normalizeAddress(datosActualizados.direccion);
     }
-    
+
+    const estadoAnterior = tarea.estado;
+    const estadoNuevo = datosActualizados.estado || estadoAnterior;
+
+    // Entrar a "en progreso": fijar ubicación en el mapa
+    if (estadoNuevo === 'en progreso' && estadoAnterior !== 'en progreso') {
+      const gps = datosActualizados.ubicacionMapa;
+      if (gps && typeof gps.lat === 'number' && typeof gps.lng === 'number') {
+        datosActualizados.ubicacionMapa = {
+          lat: gps.lat,
+          lng: gps.lng,
+          fuente: gps.fuente || 'gps',
+          actualizadoAt: new Date(),
+        };
+      } else {
+        // Preferir dirección del técnico asignado; si no, dirección de la tarea
+        let coords = null;
+        let fuente = 'direccion';
+        const tecnicoIds = (datosActualizados.tecnicos || tarea.tecnicos || []).map((t) =>
+          typeof t === 'string' ? t : t.toString()
+        );
+        if (tecnicoIds.length > 0) {
+          const tecnico = await Usuario.findById(tecnicoIds[0]).select('direccion');
+          if (tecnico?.direccion) {
+            coords = await geocodeAddress(tecnico.direccion);
+            if (coords) fuente = 'tecnico';
+          }
+        }
+        if (!coords) {
+          const dirTarea = datosActualizados.direccion || tarea.direccion;
+          coords = await geocodeAddress(dirTarea);
+          fuente = 'direccion';
+        }
+        if (coords) {
+          datosActualizados.ubicacionMapa = {
+            lat: coords.lat,
+            lng: coords.lng,
+            fuente,
+            actualizadoAt: new Date(),
+          };
+        } else {
+          delete datosActualizados.ubicacionMapa;
+        }
+      }
+    }
+
+    // Salir de "en progreso": quitar pin del mapa
+    if (estadoAnterior === 'en progreso' && estadoNuevo !== 'en progreso') {
+      datosActualizados.ubicacionMapa = null;
+    }
+
     Object.assign(tarea, datosActualizados, { fechaModificacion: new Date() });
+    if (datosActualizados.ubicacionMapa === null) {
+      tarea.ubicacionMapa = undefined;
+      tarea.markModified('ubicacionMapa');
+    }
     await tarea.save();
-    res.json({ success: true, data: tarea, message: 'Tarea actualizada' });
+
+    const populated = await Tarea.findById(tarea._id)
+      .populate('tecnicos', 'nombre telefono direccion')
+      .populate('creadoPor', 'nombre');
+
+    res.json({ success: true, data: populated, message: 'Tarea actualizada' });
   } catch (err) {
     res.status(500).json({ message: 'Error al actualizar tarea', error: err.message });
+  }
+};
+
+// Tareas en progreso con ubicación para el mapa en vivo (solo admin)
+exports.getMapaVivo = async (req, res) => {
+  try {
+    if (!isPrivilegedAdmin(req.user)) {
+      return res.status(403).json({ success: false, message: 'Solo administradores' });
+    }
+
+    const tareas = await Tarea.find({
+      estado: 'en progreso',
+      'ubicacionMapa.lat': { $exists: true, $ne: null },
+      'ubicacionMapa.lng': { $exists: true, $ne: null },
+    })
+      .select('numero titulo estado cliente direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos')
+      .populate('tecnicos', 'nombre telefono direccion')
+      .sort({ 'ubicacionMapa.actualizadoAt': -1 });
+
+    res.json({ success: true, data: tareas });
+  } catch (err) {
+    console.error('Error en mapa vivo:', err);
+    res.status(500).json({ success: false, message: 'Error al obtener mapa en vivo', error: err.message });
   }
 };
 
@@ -307,7 +414,7 @@ exports.deleteTarea = async (req, res) => {
   try {
     const tarea = await Tarea.findById(req.params.id);
     if (!tarea) return res.status(404).json({ message: 'Tarea no encontrada' });
-    if (req.user.rol !== 'admin' && !tarea.creadoPor.equals(req.user._id)) {
+    if (!isPrivilegedAdmin(req.user) && !tarea.creadoPor.equals(req.user._id)) {
       return res.status(403).json({ message: 'No autorizado' });
     }
     await tarea.deleteOne();
@@ -340,7 +447,7 @@ exports.deleteMultipleTareas = async (req, res) => {
     }
     
     // Verificar permisos para cada tarea
-    if (req.user.rol !== 'admin') {
+    if (!isPrivilegedAdmin(req.user)) {
       const unauthorized = tareas.some(tarea => 
         !tarea.creadoPor.equals(req.user._id)
       );
@@ -404,7 +511,7 @@ exports.getTareasCalendario = async (req, res) => {
     }
     
     // Filtro por usuario (si no es admin, solo ve sus tareas)
-    if (req.user.rol !== 'admin') {
+    if (!isPrivilegedAdmin(req.user)) {
       // Buscar tareas donde el usuario es técnico asignado
       filtro.$or = [
         { tecnicos: req.user._id },
@@ -449,7 +556,7 @@ exports.getTareasCalendario = async (req, res) => {
     console.log('Filtro aplicado:', JSON.stringify(filtro));
     
     const tareas = await Tarea.find(filtro)
-      .select('titulo estado fechaEjecucion tecnicos cliente descripcion numero')
+      .select('titulo estado fechaEjecucion franja_horaria tecnicos cliente descripcion numero direccion numeroTitular')
       .populate('tecnicos', 'nombre telefono')
       .populate('creadoPor', 'nombre')
       .sort({ fechaEjecucion: 1 });

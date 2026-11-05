@@ -30,6 +30,7 @@ import ObservationsList from '../observations/ObservationsList';
 import TaskMaterials from './TaskMaterials';
 import TaskLiquidacion from './TaskLiquidacion';
 import type { RootState } from '../../store';
+import { isAdminRole } from '../../utils/roles';
 
 type RouteParams = {
   id: string;
@@ -368,7 +369,7 @@ const TaskDetails: React.FC = () => {
               Volver
             </button>
             
-            {user?.rol === 'admin' && (
+            {isAdminRole(user) && (
               <>
                 <button
                   onClick={() => setShowEditModal(true)}
@@ -432,7 +433,7 @@ const TaskDetails: React.FC = () => {
               <Package className="h-4 w-4 mr-2" />
               Materiales
             </button>
-            {user?.rol === 'admin' && (
+            {isAdminRole(user) && (
               <button
                 onClick={() => setActiveTab('liquidacion')}
                 className={`flex items-center px-1 py-4 border-b-2 font-medium text-sm transition-colors ${

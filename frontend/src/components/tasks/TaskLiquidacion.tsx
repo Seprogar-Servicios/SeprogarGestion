@@ -3,6 +3,7 @@ import api from '../../config/api';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import { DollarSign, Edit, Save, X } from 'lucide-react';
 import type { TareaLiquidacion } from '../../types';
+import { isAdminRole } from '../../utils/roles';
 
 interface TaskLiquidacionProps {
   taskId: string;
@@ -10,6 +11,7 @@ interface TaskLiquidacionProps {
 }
 
 const TaskLiquidacion: React.FC<TaskLiquidacionProps> = ({ taskId, userRole }) => {
+  const canEdit = isAdminRole(userRole);
   const [liquidacion, setLiquidacion] = useState<TareaLiquidacion | null>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -117,7 +119,7 @@ const TaskLiquidacion: React.FC<TaskLiquidacionProps> = ({ taskId, userRole }) =
           <DollarSign className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
           Liquidación de la Tarea
         </h3>
-        {userRole === 'admin' && !editing && (
+        {canEdit && !editing && (
           <button
             onClick={() => setEditing(true)}
             className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"

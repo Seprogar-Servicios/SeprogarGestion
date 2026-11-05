@@ -4,7 +4,7 @@ const userRegisterSchema = Joi.object({
   nombre: Joi.string().required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
-  rol: Joi.string().valid('admin', 'usuario', 'adminConsorcio').required(),
+  rol: Joi.string().valid('super_admin', 'admin', 'usuario', 'adminConsorcio').required(),
   especialidad: Joi.string().optional().allow(null, ''),
   telefono: Joi.string().optional().allow(null, ''),
   direccion: Joi.string().optional().allow(null, ''),
@@ -16,7 +16,7 @@ const userUpdateSchema = Joi.object({
   email: Joi.string().email().optional(),
   password: Joi.string().min(6).optional(),
   confirmPassword: Joi.string().min(6).optional(),
-  rol: Joi.string().valid('admin', 'usuario', 'adminConsorcio').optional(),
+  rol: Joi.string().valid('super_admin', 'admin', 'usuario', 'adminConsorcio').optional(),
   especialidad: Joi.string().optional().allow(null, ''),
   aprobado: Joi.boolean().optional(),
   telefono: Joi.string().optional().allow(null, ''),
@@ -62,6 +62,12 @@ const tareaSchema = Joi.object({
   grupoOrigen: Joi.string().allow('').optional(),
   mensajeOriginal: Joi.string().allow('').optional(),
   fechaRecepcion: Joi.date().optional(),
+  ubicacionMapa: Joi.object({
+    lat: Joi.number().min(-90).max(90).required(),
+    lng: Joi.number().min(-180).max(180).required(),
+    fuente: Joi.string().valid('gps', 'direccion', 'tecnico').optional(),
+    actualizadoAt: Joi.date().optional(),
+  }).optional().allow(null),
 }).unknown(false); // No permitir campos adicionales
 
 const reciboSchema = Joi.object({

@@ -4,7 +4,7 @@ export interface User {
   nombre: string;
   apellido?: string;
   email: string;
-  rol: 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
+  rol: 'super_admin' | 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
   especialidad?: string;
   aprobado: boolean;
   telefono?: string;
@@ -45,6 +45,12 @@ export interface Task {
   direccion?: string;
   origen?: 'manual' | 'whatsapp' | string;
   observaciones?: Observation[];
+  ubicacionMapa?: {
+    lat: number;
+    lng: number;
+    fuente?: 'gps' | 'direccion' | 'tecnico' | null;
+    actualizadoAt?: string;
+  } | null;
 }
 
 // Material types
@@ -107,7 +113,7 @@ export interface RegisterData {
   nombre: string;
   email: string;
   password: string;
-  rol: 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
+  rol: 'super_admin' | 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
   especialidad?: string;
   telefono?: string;
 }

@@ -24,11 +24,12 @@ import { showSuccess, showError, showInfo } from '../../utils/toastUtils';
 import EmptyCrudState from '../common/EmptyCrudState';
 import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
+import { isAdminRole, isSuperAdmin, roleLabel, MAX_SUPER_ADMINS } from '../../utils/roles';
 
 const UserManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
   
-  if (user?.rol !== 'admin') {
+  if (!isAdminRole(user)) {
     return (
       <div className="p-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-red-500 p-6">
@@ -48,9 +49,17 @@ const UserManagement: React.FC = () => {
   const dispatch = useAppDispatch();
   const { users, pendingUsers, loading } = useAppSelector((state) => state.users);
   const { especialidades } = useAppSelector((state) => state.especialidades);
+  const viewerIsSuper = isSuperAdmin(user);
+  const superAdminCount = users.filter((u) => u.rol === 'super_admin').length;
+  const canAddSuperAdmin = viewerIsSuper && superAdminCount < MAX_SUPER_ADMINS;
+
+  const canManageUser = (target: User) => {
+    if (isSuperAdmin(target) && !viewerIsSuper) return false;
+    return true;
+  };
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'usuario' | 'adminConsorcio'>('all');
+  const [filterRole, setFilterRole] = useState<'all' | 'super_admin' | 'admin' | 'usuario' | 'adminConsorcio'>('all');
   const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved');
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -64,7 +73,7 @@ const UserManagement: React.FC = () => {
     email: string;
     telefono: string;
     direccion?: string;
-    rol: 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
+    rol: 'super_admin' | 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
     password?: string;
     confirmPassword?: string;
     porcentajeTecnico?: number;
@@ -89,13 +98,13 @@ const UserManagement: React.FC = () => {
     direccion: '',
     password: '',
     confirmPassword: '',
-    rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
+    rol: 'usuario' as 'super_admin' | 'admin' | 'usuario' | 'adminConsorcio',
     especialidad: '',
     porcentajeTecnico: 0
   });
 
   useEffect(() => {
-    if (user?.rol === 'admin') {
+    if (isAdminRole(user)) {
       dispatch(fetchUsers());
       dispatch(fetchPendingUsers());
       dispatch(fetchEspecialidades());
@@ -247,17 +256,21 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const openEditModal = (user: User) => {
-    setEditingUser(user);
+  const openEditModal = (target: User) => {
+    if (!canManageUser(target)) {
+      showError('No podés modificar un Super Admin');
+      return;
+    }
+    setEditingUser(target);
     setFormData({
-      nombre: user.nombre,
-      email: user.email,
-      telefono: user.telefono || '',
-      direccion: user.direccion || '',
-      rol: user.rol as 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio',
+      nombre: target.nombre,
+      email: target.email,
+      telefono: target.telefono || '',
+      direccion: target.direccion || '',
+      rol: target.rol as FormData['rol'],
       password: '',
       confirmPassword: '',
-      porcentajeTecnico: user.porcentajeTecnico || 0
+      porcentajeTecnico: target.porcentajeTecnico || 0
     });
     setShowEditModal(true);
   };
@@ -450,6 +463,7 @@ const UserManagement: React.FC = () => {
             >
               <option value="all">Todos los roles</option>
               <option value="adminConsorcio">Admin. Consorcio</option>
+              {viewerIsSuper && <option value="super_admin">Super Admins</option>}
               <option value="admin">Administradores</option>
               <option value="usuario">Usuarios</option>
             </select>
@@ -570,7 +584,9 @@ const UserManagement: React.FC = () => {
               {filteredUsers.map((user) => (
                 <div key={user._id} className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 transform">
                   <div className={`px-4 py-3 border-b ${
-                    user.rol === 'admin' 
+                    user.rol === 'super_admin'
+                      ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/30'
+                      : user.rol === 'admin' 
                       ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-900/30' 
                       : user.rol === 'adminConsorcio'
                       ? 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30'
@@ -578,23 +594,19 @@ const UserManagement: React.FC = () => {
                   }`}>
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-medium">
-                        {user.rol === 'admin' ? 'Administrador' : user.rol === 'adminConsorcio' ? 'Admin. Consorcio' : 'Técnico'}
+                        {roleLabel(user.rol)}
                       </h3>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.rol === 'admin'
+                        user.rol === 'super_admin'
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                          : user.rol === 'admin'
                           ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
                           : user.rol === 'adminConsorcio'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
                           : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                       }`}>
-                        {user.rol === 'admin' ? (
-                          <Shield className="h-3 w-3 mr-1" />
-                        ) : user.rol === 'adminConsorcio' ? (
-                          <Shield className="h-3 w-3 mr-1" />
-                        ) : (
-                          <UserIcon className="h-3 w-3 mr-1" />
-                        )}
-                        {user.rol === 'admin' ? 'Admin' : user.rol === 'adminConsorcio' ? 'Admin. Cons.' : 'Técnico'}
+                        <Shield className="h-3 w-3 mr-1" />
+                        {roleLabel(user.rol)}
                       </span>
                     </div>
                   </div>
@@ -602,18 +614,18 @@ const UserManagement: React.FC = () => {
                     <div className="flex items-start">
                       <div className="flex-shrink-0">
                         <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                          user.rol === 'admin'
+                          user.rol === 'super_admin'
+                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                            : user.rol === 'admin'
                             ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
                             : user.rol === 'adminConsorcio'
                             ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
                             : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                         }`}>
-                          {user.rol === 'admin' ? (
-                            <Shield className="h-6 w-6" />
-                          ) : user.rol === 'adminConsorcio' ? (
-                            <Shield className="h-6 w-6" />
-                          ) : (
+                          {user.rol === 'usuario' ? (
                             <UserIcon className="h-6 w-6" />
+                          ) : (
+                            <Shield className="h-6 w-6" />
                           )}
                         </div>
                       </div>
@@ -635,30 +647,38 @@ const UserManagement: React.FC = () => {
                             Registrado: {new Date(user.createdAt).toLocaleDateString()}
                           </span>
                           <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => {
-                                setResetPasswordUserId(user._id);
-                                setShowResetPasswordModal(true);
-                              }}
-                              className="p-2 text-gray-400 hover:text-orange-500 transition-colors duration-200 cursor-pointer"
-                              title="Blanquear contraseña"
-                            >
-                              <Key className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => openEditModal(user)}
-                              className="p-2 text-gray-400 hover:text-blue-500 transition-colors duration-200 cursor-pointer"
-                              title="Editar usuario"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(user._id, user.nombre)}
-                              className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200 cursor-pointer"
-                              title="Eliminar usuario"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            {canManageUser(user) ? (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setResetPasswordUserId(user._id);
+                                    setShowResetPasswordModal(true);
+                                  }}
+                                  className="p-2 text-gray-400 hover:text-orange-500 transition-colors duration-200 cursor-pointer"
+                                  title="Blanquear contraseña"
+                                >
+                                  <Key className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => openEditModal(user)}
+                                  className="p-2 text-gray-400 hover:text-blue-500 transition-colors duration-200 cursor-pointer"
+                                  title="Editar usuario"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(user._id, user.nombre)}
+                                  className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200 cursor-pointer"
+                                  title="Eliminar usuario"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-xs text-purple-600 dark:text-purple-300 font-medium">
+                                Protegido
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -927,6 +947,14 @@ const UserManagement: React.FC = () => {
                       <option value="usuario">Técnico</option>
                       <option value="admin">Administrador</option>
                       <option value="adminConsorcio">Administrador de Consorcio</option>
+                      {viewerIsSuper && (
+                        <option
+                          value="super_admin"
+                          disabled={!canAddSuperAdmin && formData.rol !== 'super_admin'}
+                        >
+                          Super Admin {canAddSuperAdmin || formData.rol === 'super_admin' ? '' : `(máx. ${MAX_SUPER_ADMINS})`}
+                        </option>
+                      )}
                     </select>
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1246,12 +1274,15 @@ const UserManagement: React.FC = () => {
                       <div className="relative">
                         <select
                           value={createFormData.rol}
-                          onChange={(e) => setCreateFormData({ ...createFormData, rol: e.target.value as 'admin' | 'usuario' | 'adminConsorcio' })}
+                          onChange={(e) => setCreateFormData({ ...createFormData, rol: e.target.value as 'super_admin' | 'admin' | 'usuario' | 'adminConsorcio' })}
                           className="appearance-none block w-full pl-3 pr-10 py-3 text-base border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                         >
                           <option value="usuario">Tecnico</option>
                           <option value="admin">Administrador</option>
                           <option value="adminConsorcio">Admin. de Consorcio</option>
+                          {viewerIsSuper && canAddSuperAdmin && (
+                            <option value="super_admin">Super Admin</option>
+                          )}
                         </select>
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
                           <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">

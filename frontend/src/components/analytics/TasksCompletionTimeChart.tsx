@@ -91,6 +91,7 @@ const TasksCompletionTimeChart: React.FC<TasksCompletionTimeChartProps> = ({ tas
   
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top' as const,
@@ -116,11 +117,11 @@ const TasksCompletionTimeChart: React.FC<TasksCompletionTimeChartProps> = ({ tas
   };
   
   return (
-    <div>
+    <div className="h-full w-full">
       {labels.length > 0 ? (
         <Line data={chartData} options={options} />
       ) : (
-        <div className="flex justify-center items-center h-64 text-gray-500 dark:text-gray-400">
+        <div className="flex justify-center items-center h-full text-gray-500 dark:text-gray-400 text-sm">
           No hay suficientes tareas completadas para mostrar estadísticas
         </div>
       )}

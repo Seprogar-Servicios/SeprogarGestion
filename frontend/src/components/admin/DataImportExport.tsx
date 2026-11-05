@@ -4,6 +4,7 @@ import { Download, FileText, CheckCircle, AlertCircle, Info, Upload, X, Loader2 
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import AdminPageHeader from '../common/AdminPageHeader';
+import { isAdminRole } from '../../utils/roles';
 
 interface ImportStats {
   especialidades: number;
@@ -26,7 +27,7 @@ const DataImportExport: React.FC = () => {
   const [importStats, setImportStats] = useState<ImportStats | null>(null);
 
   // Verificar si el usuario es administrador
-  if (user?.rol !== 'admin') {
+  if (!isAdminRole(user)) {
     return (
       <div className="p-4 bg-white rounded-lg shadow">
         <div className="text-red-600 flex items-center">

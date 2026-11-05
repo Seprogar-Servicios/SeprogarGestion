@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { SEPI_OPEN } from '../utils/sepiEvents';
 import { helpMessage, parseSepiMessage } from './chatbot/sepiNlu';
+import { isAdminRole } from '../utils/roles';
 
 interface Message {
   type: 'user' | 'bot';
@@ -80,7 +81,7 @@ const ChatBot = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAppSelector((state) => state.auth);
 
-  const isAdmin = user?.rol === 'admin';
+  const isAdmin = isAdminRole(user);
   const isUsuario = user?.rol === 'usuario';
   const isAdminConsorcio = user?.rol === 'adminConsorcio';
 

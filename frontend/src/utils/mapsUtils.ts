@@ -154,3 +154,18 @@ export const formatDireccionToMapsUrl = (direccion: string): string => {
   
   return `https://maps.google.com/?q=${encodedDireccion},Buenos+Aires`;
 };
+
+/**
+ * URL de Google Maps embebible en un iframe (sin API key).
+ */
+export const formatDireccionToMapsEmbedUrl = (direccion: string): string => {
+  if (!direccion || direccion.trim() === '') {
+    return '';
+  }
+
+  const openUrl = formatDireccionToMapsUrl(direccion);
+  if (!openUrl) return '';
+
+  const query = openUrl.split('?q=')[1] || encodeURIComponent(normalizeAddress(direccion));
+  return `https://www.google.com/maps?q=${query}&output=embed`;
+};

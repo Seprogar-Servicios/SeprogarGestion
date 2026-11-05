@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppSelector } from '../../store';
 import type { TaskFilters, User } from '../../types';
+import { isAdminRole } from '../../utils/roles';
 
 interface TasksFilterProps {
   filters: TaskFilters;
@@ -68,7 +69,7 @@ const TasksFilter: React.FC<TasksFilterProps> = ({ filters, onFiltersChange }) =
   };
 
   const { user } = useAppSelector((state) => state.auth);
-  const isAdmin = user && user.rol === 'admin';
+  const isAdmin = isAdminRole(user);
 
   return (
     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">

@@ -16,6 +16,7 @@ import DataImportExport from './components/admin/DataImportExport';
 import MaterialManagement from './components/admin/MaterialManagement';
 import CategoriaMaterialManagement from './components/admin/CategoriaMaterialManagement';
 import Liquidaciones from './components/admin/Liquidaciones';
+import LiveMap from './components/admin/LiveMap';
 import MotivoPagoManagement from './components/admin/MotivoPagoManagement';
 import PagoManualManagement from './components/admin/PagoManualManagement';
 import ProfilePage from './components/user/ProfilePage';
@@ -123,6 +124,11 @@ const AppRoutes = () => {
         <Route path="/admin/liquidaciones" element={
           <ProtectedRoute requiredRole="admin">
             <Liquidaciones />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/mapa-vivo" element={
+          <ProtectedRoute requiredRole="admin">
+            <LiveMap />
           </ProtectedRoute>
         } />
 

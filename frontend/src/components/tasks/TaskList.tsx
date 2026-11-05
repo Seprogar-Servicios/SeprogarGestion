@@ -13,6 +13,7 @@ import { downloadICSFile } from '../../utils/calendarUtils';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AdminPageHeader from '../common/AdminPageHeader';
+import { isAdminRole } from '../../utils/roles';
 
 // Las clases de botones se definen directamente en los componentes
 
@@ -141,7 +142,7 @@ const TaskList: React.FC = () => {
       const initialFilters: TaskFilters = {};
       
       // If user is not admin, filter only their tasks
-      if (user && user.rol !== 'admin') {
+      if (user && !isAdminRole(user)) {
         initialFilters.tecnico = user._id;
       }
       
@@ -151,7 +152,7 @@ const TaskList: React.FC = () => {
     }
     
     // Load users if admin
-    if (user && user.rol === 'admin') {
+    if (isAdminRole(user)) {
       dispatch(fetchUsers());
     }
   }, [dispatch, user, initialFiltersLoaded]);
@@ -162,7 +163,7 @@ const TaskList: React.FC = () => {
       const taskFilters = { ...filters };
       
       // Ensure non-admin users can only see their tasks
-      if (user && user.rol !== 'admin') {
+      if (user && !isAdminRole(user)) {
         taskFilters.tecnico = user._id;
       }
       
@@ -737,7 +738,7 @@ const TaskList: React.FC = () => {
       />
 
       {/* Upcoming Tasks Filter - Only for Admin */}
-      {user?.rol === 'admin' && (
+      {isAdminRole(user) && (
         <UpcomingTasksFilter
           filters={filters}
           onFiltersChange={handleFiltersChange}
@@ -940,14 +941,14 @@ const TaskList: React.FC = () => {
               </h3>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-              {user?.rol === 'admin'
+              {isAdminRole(user)
                 ? 'Envía un recordatorio de sus tareas al técnico por WhatsApp. Solo puedes seleccionar un técnico a la vez.'
                 : 'Envía un recordatorio de tus tareas a tu WhatsApp o descárgalas como eventos para tu calendario.'}
             </p>
           
             <div>
               <div className="space-y-4 py-2">
-                {user?.rol === 'admin' ? (
+                {isAdminRole(user) ? (
                   // Panel para administradores
                   Object.keys(groupedTasks).length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1233,7 +1234,7 @@ const TaskList: React.FC = () => {
                     </div>
                     
                     {/* Right side - Action buttons */}
-                    {user?.rol === 'admin' && (
+                    {isAdminRole(user) && (
                       <div className="flex items-start space-x-2 ml-4 pt-9 flex-shrink-0">
                         <button
                           onClick={(e) => {

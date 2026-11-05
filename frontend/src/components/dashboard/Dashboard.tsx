@@ -6,6 +6,7 @@ import { fetchUsers } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
 import type { TaskFilters } from '../../types';
+import { isAdminRole } from '../../utils/roles';
 import { 
   Calendar, 
   CheckCircle, 
@@ -61,7 +62,7 @@ const Dashboard: React.FC = () => {
 
   // Función para obtener tareas de consorcio
   const fetchTareasConsorcio = async () => {
-    if (user?.rol !== 'admin') {
+    if (!isAdminRole(user)) {
       return;
     }
     
@@ -89,7 +90,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchTasks(currentFilters));
-    if (user?.rol === 'admin') {
+    if (isAdminRole(user)) {
       dispatch(fetchUsers());
       dispatch(fetchEspecialidades());
       fetchTareasConsorcio();
@@ -190,7 +191,7 @@ const Dashboard: React.FC = () => {
     showDescription: true
   });
 
-  if (user?.rol === 'admin') {
+  if (isAdminRole(user)) {
     stats.push(
       {
         name: 'Usuarios',
@@ -284,7 +285,7 @@ const Dashboard: React.FC = () => {
             Resumen operativo de Seprogar
           </p>
         </div>
-        {user?.rol === 'admin' && (
+        {isAdminRole(user) && (
           <Link
             to="/tasks"
             className="inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/25 transition-colors"
@@ -295,7 +296,7 @@ const Dashboard: React.FC = () => {
         )}
       </div>
 
-      {user?.rol === 'admin' && (
+      {isAdminRole(user) && (
         <UpcomingTasksFilter
           filters={currentFilters}
           onFiltersChange={handleFiltersChange}
@@ -313,7 +314,7 @@ const Dashboard: React.FC = () => {
             stat.name === 'Especialidades' ||
             stat.name === 'Tareas de Consorcio' ||
             stat.name === 'Pendientes de Confirmación' ||
-            (user?.rol === 'admin' &&
+            (isAdminRole(user) &&
               (stat.name === 'Completadas' ||
                 stat.name === 'En Progreso' ||
                 stat.name === 'Pendientes' ||
@@ -349,7 +350,7 @@ const Dashboard: React.FC = () => {
                 ) {
                   navigate('/admin/tareas-consorcio');
                 } else if (
-                  user?.rol === 'admin' &&
+                  isAdminRole(user) &&
                   (stat.name === 'Completadas' ||
                     stat.name === 'En Progreso' ||
                     stat.name === 'Pendientes' ||
@@ -496,17 +497,17 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-orange-500" />
               <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-                {user?.rol === 'admin' ? 'Acciones rápidas' : 'Mis tareas'}
+                {isAdminRole(user) ? 'Acciones rápidas' : 'Mis tareas'}
               </h2>
             </div>
-            {user?.rol !== 'admin' && (
+            {!isAdminRole(user) && (
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
                 {myTasks.length}
               </span>
             )}
           </div>
           <div className="p-4">
-            {user?.rol === 'admin' ? (
+            {isAdminRole(user) ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   {

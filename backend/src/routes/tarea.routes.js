@@ -10,6 +10,7 @@ router.use(authenticateToken);
 router.post('/', tareaCtrl.createTarea);
 router.get('/', tareaCtrl.getTareas);
 router.get('/calendario', tareaCtrl.getTareasCalendario);
+router.get('/mapa-vivo', tareaCtrl.getMapaVivo);
 router.get('/:id', tareaCtrl.getTareaById);
 router.put('/:id', tareaCtrl.updateTarea);
 router.delete('/:id', tareaCtrl.deleteTarea);

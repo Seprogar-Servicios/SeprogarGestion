@@ -122,7 +122,11 @@ const ProfilePage: React.FC = () => {
                       Rol
                     </dt>
                     <dd className="mt-1 text-base font-medium text-slate-900 dark:text-white">
-                      {user.rol === 'admin' ? (
+                      {user.rol === 'super_admin' ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                          Super Admin
+                        </span>
+                      ) : user.rol === 'admin' ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300">
                           Administrador
                         </span>

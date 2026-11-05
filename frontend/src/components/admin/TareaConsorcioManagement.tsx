@@ -6,6 +6,7 @@ import type { TareaConsorcio } from '../../types';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AdminPageHeader from '../common/AdminPageHeader';
+import { isAdminRole } from '../../utils/roles';
 
 // Componente LazyImage optimizado con Intersection Observer
 const LazyImage = memo(({ 
@@ -615,7 +616,7 @@ const TareaConsorcioManagement: React.FC = () => {
   useEffect(() => {
     fetchTasks();
     // Cargar usuarios para poder mostrar nombres de técnicos
-    if (user?.rol === 'admin' || user?.rol === 'adminConsorcio') {
+    if (isAdminRole(user) || user?.rol === 'adminConsorcio') {
       dispatch(fetchUsers());
     }
   }, [currentPage, estadoFilter, adminConsorcioFilter, searchTerm, dispatch, user?.rol]);
@@ -645,8 +646,8 @@ const TareaConsorcioManagement: React.FC = () => {
     PAGADO: 'Pagado'
   };
 
-  // Verificar permisos
-  if (!user || !['admin', 'adminConsorcio'].includes(user.rol)) {
+  // Verificar permisos (admin / super_admin / adminConsorcio)
+  if (!user || !(isAdminRole(user) || user.rol === 'adminConsorcio')) {
     return (
       <div className="p-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-t-4 border-red-500 p-6">
@@ -701,7 +702,7 @@ const TareaConsorcioManagement: React.FC = () => {
             </select>
           </div>
 
-          {user?.rol === 'admin' && (
+          {isAdminRole(user) && (
             <div className="flex-1 min-w-48">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Administrador de Consorcio
@@ -829,7 +830,7 @@ const TareaConsorcioManagement: React.FC = () => {
                             Asignar
                           </button>
                         )}
-                        {user?.rol === 'admin' && !['completada', 'PENDIENTE_PAGO', 'FACTURADO', 'PAGADO'].includes(task.estado) && (
+                        {isAdminRole(user) && !['completada', 'PENDIENTE_PAGO', 'FACTURADO', 'PAGADO'].includes(task.estado) && (
                           <button
                             onClick={() => handleDeleteTask(task)}
                             className="inline-flex items-center px-3 py-1 text-xs font-medium text-red-700 bg-red-100 border border-red-300 rounded-md hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-600 dark:hover:bg-red-900/50"
@@ -1017,7 +1018,7 @@ const TareaConsorcioManagement: React.FC = () => {
                   </div>
                 </div>
 
-                {user?.rol === 'admin' && (
+                {isAdminRole(user) && (
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Administrador de Consorcio
@@ -1269,7 +1270,7 @@ const TareaConsorcioManagement: React.FC = () => {
                   </div>
                 </div>
 
-                {user?.rol === 'admin' && (
+                {isAdminRole(user) && (
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Administrador de Consorcio
@@ -1281,7 +1282,7 @@ const TareaConsorcioManagement: React.FC = () => {
                   </div>
                 )}
 
-                {user?.rol === 'admin' && (
+                {isAdminRole(user) && (
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Estado de la Tarea
