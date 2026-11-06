@@ -44,6 +44,17 @@ const tareaSchema = new mongoose.Schema({
   franja_horaria: { type: String, default: '' },
   creadoPor: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario' },
   cliente: { type: String, default: '' },
+  /**
+   * Cuenta comercial normalizada (opcional).
+   * No afecta tareas existentes; Analytics también infiere desde `cliente`.
+   */
+  cuentaCliente: {
+    type: String,
+    enum: ['', 'IKE', 'VAITTY', 'MDO', 'Particular', 'Consorcio', 'Otro'],
+    default: '',
+  },
+  /** Se setea al pasar a completada; opcional en históricos */
+  fechaCompletado: { type: Date, default: null },
   numeroTitular: { type: String, default: '' },
   direccion: { type: String, default: '' },
   // Ubicación en mapa mientras la tarea está "en progreso"

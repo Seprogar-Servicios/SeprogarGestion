@@ -8,6 +8,7 @@ const userRegisterSchema = Joi.object({
   especialidad: Joi.string().optional().allow(null, ''),
   telefono: Joi.string().optional().allow(null, ''),
   direccion: Joi.string().optional().allow(null, ''),
+  localidad: Joi.string().optional().allow(null, ''),
   porcentajeTecnico: Joi.number().min(0).max(1).optional().default(0),
 });
 
@@ -21,6 +22,7 @@ const userUpdateSchema = Joi.object({
   aprobado: Joi.boolean().optional(),
   telefono: Joi.string().optional().allow(null, ''),
   direccion: Joi.string().optional().allow(null, ''),
+  localidad: Joi.string().optional().allow(null, ''),
   porcentajeTecnico: Joi.number().min(0).max(1).optional(),
 });
 
@@ -56,6 +58,11 @@ const tareaSchema = Joi.object({
   ).optional(),
   franja_horaria: Joi.string().allow('').optional(),
   cliente: Joi.string().allow('').optional(),
+  cuentaCliente: Joi.string()
+    .valid('', 'IKE', 'VAITTY', 'MDO', 'Particular', 'Consorcio', 'Otro')
+    .optional()
+    .allow(null, ''),
+  fechaCompletado: Joi.date().optional().allow(null),
   numeroTitular: Joi.string().allow('').optional(),
   direccion: Joi.string().allow('').optional(),
   origen: Joi.string().valid('whatsapp', 'sistema', 'web').default('sistema'),

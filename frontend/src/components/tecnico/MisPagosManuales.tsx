@@ -4,7 +4,9 @@ import { fetchMisPagosManuales } from '../../store/slices/pagoManualSlice';
 import { DollarSign, Search, AlertCircle, Calendar, Tag, ListTodo } from 'lucide-react';
 import AdminPageHeader from '../common/AdminPageHeader';
 
-const MisPagosManuales: React.FC = () => {
+type Props = { embedded?: boolean };
+
+const MisPagosManuales: React.FC<Props> = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
   const { pagos, loading, error } = useAppSelector((state) => state.pagoManual);
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,12 +49,14 @@ const MisPagosManuales: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="Pagos o adicionales"
-        description="Consultá los pagos manuales que te cargó el administrador. El comprobante formal se firma en Mis Recibos."
-        eyebrow="Técnico"
-        icon={<DollarSign className="h-5 w-5" />}
-      />
+      {!embedded && (
+        <AdminPageHeader
+          title="Pagos o adicionales"
+          description="Consultá los pagos manuales que te cargó el administrador. El comprobante formal se firma en Mis Recibos."
+          eyebrow="Técnico"
+          icon={<DollarSign className="h-5 w-5" />}
+        />
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="relative max-w-md">

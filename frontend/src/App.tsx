@@ -13,28 +13,23 @@ import UserManagement from './components/admin/UserManagement';
 import SpecialtyManagement from './components/admin/SpecialtyManagement';
 import TareaConsorcioManagement from './components/admin/TareaConsorcioManagement';
 import DataImportExport from './components/admin/DataImportExport';
-import MaterialManagement from './components/admin/MaterialManagement';
-import CategoriaMaterialManagement from './components/admin/CategoriaMaterialManagement';
 import Liquidaciones from './components/admin/Liquidaciones';
 import LiveMap from './components/admin/LiveMap';
-import MotivoPagoManagement from './components/admin/MotivoPagoManagement';
-import PagoManualManagement from './components/admin/PagoManualManagement';
+import ReclamosManagement from './components/admin/ReclamosManagement';
+import CatalogoHub from './components/admin/CatalogoHub';
+import PagosHub from './components/admin/PagosHub';
 import ProfilePage from './components/user/ProfilePage';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Analytics from './components/analytics/Analytics';
-import ConsorcioAnalytics from './components/analytics/ConsorcioAnalytics';
 import RecibosAdmin from './components/recibos/admin/RecibosAdmin';
-import MisRecibos from './components/recibos/tecnico/MisRecibos';
 import TecnicoTareasConsorcio from './components/tecnico/TareasConsorcio';
 import TecnicoDashboard from './components/tecnico/Dashboard';
-import TecnicoLiquidaciones from './components/user/TecnicoLiquidaciones';
-import MisPagosManuales from './components/tecnico/MisPagosManuales';
+import MisFinanzasHub from './components/tecnico/MisFinanzasHub';
 // Importar componentes de AdminConsorcio
 import AdminConsorcioDashboard from './components/adminConsorcio/Dashboard';
 import AdminConsorcioTareasManagement from './components/adminConsorcio/TareasManagement';
 import AdminConsorcioCalendar from './components/adminConsorcio/Calendar';
-import AdminConsorcioProfile from './components/adminConsorcio/Profile';
 import AdminConsorcioAnalytics from './components/adminConsorcio/Analytics';
 import Legales from './components/Legales';
 import './App.css';
@@ -61,7 +56,7 @@ const AppRoutes = () => {
         <Route path="calendar" element={<TaskCalendar />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="legales" element={<Legales />} />
-        <Route path="mis-recibos" element={<MisRecibos />} />
+        <Route path="mis-recibos" element={<Navigate to="/tecnico/finanzas?tab=recibos" replace />} />
         <Route path="tecnico/tareas-consorcio" element={
           <ProtectedRoute requiredRole="usuario">
             <TecnicoTareasConsorcio />
@@ -72,24 +67,17 @@ const AppRoutes = () => {
             <TecnicoDashboard />
           </ProtectedRoute>
         } />
-        <Route path="tecnico/liquidaciones" element={
+        <Route path="tecnico/finanzas" element={
           <ProtectedRoute requiredRole="usuario">
-            <TecnicoLiquidaciones />
+            <MisFinanzasHub />
           </ProtectedRoute>
         } />
-        <Route path="tecnico/pagos" element={
-          <ProtectedRoute requiredRole="usuario">
-            <MisPagosManuales />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/motivos-pago" element={
-          <ProtectedRoute requiredRole="admin">
-            <MotivoPagoManagement />
-          </ProtectedRoute>
-        } />
+        <Route path="tecnico/liquidaciones" element={<Navigate to="/tecnico/finanzas" replace />} />
+        <Route path="tecnico/pagos" element={<Navigate to="/tecnico/finanzas?tab=pagos" replace />} />
+        <Route path="/admin/motivos-pago" element={<Navigate to="/admin/pagos-manuales?tab=motivos" replace />} />
         <Route path="/admin/pagos-manuales" element={
           <ProtectedRoute requiredRole="admin">
-            <PagoManualManagement />
+            <PagosHub />
           </ProtectedRoute>
         } />
         <Route path="/admin/users" element={<UserManagement />} />
@@ -106,21 +94,25 @@ const AppRoutes = () => {
             <Analytics />
           </ProtectedRoute>
         } />
-        <Route path="/admin/analytics-consorcio" element={
+        <Route path="/admin/reclamos" element={
           <ProtectedRoute requiredRole="admin">
-            <ConsorcioAnalytics />
+            <ReclamosManagement />
           </ProtectedRoute>
         } />
-        <Route path="/admin/materiales" element={
+        <Route
+          path="/admin/analytics-consorcio"
+          element={<Navigate to="/admin/analytics?tab=consorcio" replace />}
+        />
+        <Route path="/admin/catalogo" element={
           <ProtectedRoute requiredRole="admin">
-            <MaterialManagement />
+            <CatalogoHub />
           </ProtectedRoute>
         } />
-        <Route path="/admin/categorias-materiales" element={
-          <ProtectedRoute requiredRole="admin">
-            <CategoriaMaterialManagement />
-          </ProtectedRoute>
-        } />
+        <Route path="/admin/materiales" element={<Navigate to="/admin/catalogo" replace />} />
+        <Route
+          path="/admin/categorias-materiales"
+          element={<Navigate to="/admin/catalogo?tab=categorias" replace />}
+        />
         <Route path="/admin/liquidaciones" element={
           <ProtectedRoute requiredRole="admin">
             <Liquidaciones />
@@ -153,30 +145,7 @@ const AppRoutes = () => {
             <AdminConsorcioAnalytics />
           </ProtectedRoute>
         } />
-        <Route path="/adminConsorcio/profile" element={
-          <ProtectedRoute requiredRole="adminConsorcio">
-            <AdminConsorcioProfile />
-          </ProtectedRoute>
-        } />
-        
-        {/* <Route path="/admin/materials" element={<MaterialManagement />} /> */}
-        
-        {/* Admin only routes - temporarily commented out */}
-        {/* <Route path="users" element={
-          <ProtectedRoute requiredRole="admin">
-            <UserManagement />
-          </ProtectedRoute>
-        } />
-        <Route path="materials" element={
-          <ProtectedRoute requiredRole="admin">
-            <MaterialManagement />
-          </ProtectedRoute>
-        } />
-        <Route path="specialties" element={
-          <ProtectedRoute requiredRole="admin">
-            <SpecialtyManagement />
-          </ProtectedRoute>
-        } /> */}
+        <Route path="/adminConsorcio/profile" element={<Navigate to="/profile" replace />} />
       </Route>
 
       {/* Catch all route */}

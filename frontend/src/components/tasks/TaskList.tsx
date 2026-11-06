@@ -13,6 +13,8 @@ import { downloadICSFile } from '../../utils/calendarUtils';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AdminPageHeader from '../common/AdminPageHeader';
+import AddressAutocomplete from '../common/AddressAutocomplete';
+import TecnicoRecommendSelect from './TecnicoRecommendSelect';
 import { isAdminRole } from '../../utils/roles';
 
 // Las clases de botones se definen directamente en los componentes
@@ -123,6 +125,7 @@ const TaskList: React.FC = () => {
     tecnicos: [] as string[],
     estado: 'pendiente' as 'pendiente' | 'en progreso' | 'completada' | 'cancelada'
   });
+  const [ubicacionCoords, setUbicacionCoords] = useState<{ lat: number; lng: number } | null>(null);
   
   // Función para actualizar la franja horaria cuando cambian las horas
   const actualizarFranjaHoraria = (inicio: string, fin: string) => {
@@ -191,7 +194,16 @@ const TaskList: React.FC = () => {
       
       const taskData = {
         ...restFormData,
-        franja_horaria
+        franja_horaria,
+        ...(ubicacionCoords
+          ? {
+              ubicacionMapa: {
+                lat: ubicacionCoords.lat,
+                lng: ubicacionCoords.lng,
+                fuente: 'direccion' as const,
+              },
+            }
+          : {}),
       };
       
       await dispatch(createTask(taskData as any)).unwrap();
@@ -216,7 +228,16 @@ const TaskList: React.FC = () => {
       const { horaInicio, horaFin, ...restFormData } = formData;
       const taskData = {
         ...restFormData,
-        franja_horaria
+        franja_horaria,
+        ...(ubicacionCoords
+          ? {
+              ubicacionMapa: {
+                lat: ubicacionCoords.lat,
+                lng: ubicacionCoords.lng,
+                fuente: 'direccion' as const,
+              },
+            }
+          : {}),
       };
       
       await dispatch(updateTask({ id: editingTask._id, data: taskData as any })).unwrap();
@@ -316,6 +337,7 @@ const TaskList: React.FC = () => {
       tecnicos: [],
       estado: 'pendiente'
     });
+    setUbicacionCoords(null);
   };
 
   const openEditModal = (task: Task) => {
@@ -344,6 +366,11 @@ const TaskList: React.FC = () => {
       tecnicos: task.tecnicos ? task.tecnicos.map(t => t._id) : [],
       estado: task.estado as 'pendiente' | 'en progreso' | 'completada'
     });
+    setUbicacionCoords(
+      task.ubicacionMapa?.lat != null && task.ubicacionMapa?.lng != null
+        ? { lat: task.ubicacionMapa.lat, lng: task.ubicacionMapa.lng }
+        : null
+    );
     setShowCreateModal(true);
   };
 
@@ -1441,23 +1468,19 @@ const TaskList: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Dirección
-                  </label>
-                  <div className="relative rounded-lg shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <input
-                      type="text"
-                      value={formData.direccion}
-                      onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                      className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Dirección completa"
-                    />
-                  </div>
-                </div>
+                <AddressAutocomplete
+                  label="Dirección"
+                  value={formData.direccion}
+                  onChange={(direccion) => {
+                    setFormData({ ...formData, direccion });
+                    setUbicacionCoords(null);
+                  }}
+                  onSelect={(s) => {
+                    setFormData((prev) => ({ ...prev, direccion: s.label }));
+                    setUbicacionCoords({ lat: s.lat, lng: s.lng });
+                  }}
+                  inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
+                />
 
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1557,32 +1580,14 @@ const TaskList: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Técnicos Asignados
                   </label>
-                  <div className="relative">
-                    <div className="absolute top-3 left-3 flex items-start pointer-events-none">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                    <select
-                      multiple
-                      value={formData.tecnicos}
-                      onChange={(e) => {
-                        const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-                        setFormData({ ...formData, tecnicos: selectedOptions });
-                      }}
-                      className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors"
-                      size={4}
-                    >
-                      {users?.filter(u => u.rol === 'usuario').map((usuario) => (
-                        <option key={usuario._id} value={usuario._id}>
-                          {usuario.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 ml-1">
-                    Mantén presionado Ctrl (Cmd en Mac) para seleccionar múltiples técnicos
-                  </p>
+                  <TecnicoRecommendSelect
+                    users={users || []}
+                    value={formData.tecnicos}
+                    onChange={(tecnicos) => setFormData({ ...formData, tecnicos })}
+                    taskLat={ubicacionCoords?.lat}
+                    taskLng={ubicacionCoords?.lng}
+                    taskDireccion={formData.direccion}
+                  />
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-5">

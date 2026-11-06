@@ -25,6 +25,7 @@ import EmptyCrudState from '../common/EmptyCrudState';
 import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import { isAdminRole, isSuperAdmin, roleLabel, MAX_SUPER_ADMINS } from '../../utils/roles';
+import AddressAutocomplete from '../common/AddressAutocomplete';
 
 const UserManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -73,6 +74,7 @@ const UserManagement: React.FC = () => {
     email: string;
     telefono: string;
     direccion?: string;
+    localidad?: string;
     rol: 'super_admin' | 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
     password?: string;
     confirmPassword?: string;
@@ -84,6 +86,7 @@ const UserManagement: React.FC = () => {
     email: '',
     telefono: '',
     direccion: '',
+    localidad: '',
     rol: 'usuario',
     password: '',
     confirmPassword: '',
@@ -96,6 +99,7 @@ const UserManagement: React.FC = () => {
     email: '',
     telefono: '',
     direccion: '',
+    localidad: '',
     password: '',
     confirmPassword: '',
     rol: 'usuario' as 'super_admin' | 'admin' | 'usuario' | 'adminConsorcio',
@@ -239,6 +243,7 @@ const UserManagement: React.FC = () => {
         email: createFormData.email,
         telefono: createFormData.telefono,
         direccion: createFormData.direccion || undefined,
+        localidad: createFormData.localidad || undefined,
         password: createFormData.password,
         rol: createFormData.rol,
         especialidad: createFormData.especialidad || undefined,
@@ -267,6 +272,7 @@ const UserManagement: React.FC = () => {
       email: target.email,
       telefono: target.telefono || '',
       direccion: target.direccion || '',
+      localidad: target.localidad || '',
       rol: target.rol as FormData['rol'],
       password: '',
       confirmPassword: '',
@@ -909,26 +915,29 @@ const UserManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Dirección
-                  </label>
-                  <div className="relative rounded-lg shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </div>
+                {(formData.rol === 'usuario' || formData.rol === 'tecnico') ? (
+                  <AddressAutocomplete
+                    label="Localidad (base del técnico)"
+                    mode="localidad"
+                    value={formData.localidad || ''}
+                    onChange={(localidad) => setFormData({ ...formData, localidad })}
+                    onSelect={(s) => setFormData({ ...formData, localidad: s.label })}
+                    inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
+                  />
+                ) : (
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Dirección
+                    </label>
                     <input
                       type="text"
                       value={formData.direccion || ''}
                       onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                      className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Dirección del usuario"
                     />
                   </div>
-                </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1187,26 +1196,29 @@ const UserManagement: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Dirección
-                  </label>
-                  <div className="relative rounded-lg shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </div>
+                {(createFormData.rol === 'usuario') ? (
+                  <AddressAutocomplete
+                    label="Localidad (base del técnico)"
+                    mode="localidad"
+                    value={createFormData.localidad}
+                    onChange={(localidad) => setCreateFormData({ ...createFormData, localidad })}
+                    onSelect={(s) => setCreateFormData({ ...createFormData, localidad: s.label })}
+                    inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
+                  />
+                ) : (
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Dirección
+                    </label>
                     <input
                       type="text"
                       value={createFormData.direccion}
                       onChange={(e) => setCreateFormData({ ...createFormData, direccion: e.target.value })}
-                      className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                      className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
                       placeholder="Dirección del usuario"
                     />
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

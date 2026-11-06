@@ -8,7 +8,9 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import AdminPageHeader from '../../common/AdminPageHeader';
 
-const MisRecibos: React.FC = () => {
+type Props = { embedded?: boolean };
+
+const MisRecibos: React.FC<Props> = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
   const { recibos, loading, error } = useAppSelector((state) => state.recibos);
   const [selectedRecibo, setSelectedRecibo] = useState<Recibo | null>(null);
@@ -59,12 +61,14 @@ const MisRecibos: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="Mis Recibos de Sueldo"
-        description="Visualizá y gestioná tus recibos de sueldo"
-        eyebrow="Técnico"
-        icon={<FileText className="h-5 w-5" />}
-      />
+      {!embedded && (
+        <AdminPageHeader
+          title="Mis Recibos de Sueldo"
+          description="Visualizá y gestioná tus recibos de sueldo"
+          eyebrow="Técnico"
+          icon={<FileText className="h-5 w-5" />}
+        />
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="relative max-w-md">

@@ -21,7 +21,9 @@ import EmptyCrudState from '../common/EmptyCrudState';
 import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
 
-const MaterialManagement: React.FC = () => {
+type Props = { embedded?: boolean };
+
+const MaterialManagement: React.FC<Props> = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
   const { materials = [], loading } = useAppSelector((state) => state.materials);
   const { categorias } = useAppSelector((state) => state.categoriaMaterial);
@@ -385,14 +387,7 @@ const MaterialManagement: React.FC = () => {
     material.codigo?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        title="Gestión de Materiales"
-        description="Administra el inventario de materiales del sistema"
-        eyebrow="Administración"
-        icon={<Package className="h-5 w-5" />}
-        actions={
+  const headerActions = (
           <>
             <button
               onClick={handleDownloadTemplate}
@@ -436,8 +431,21 @@ const MaterialManagement: React.FC = () => {
               Nuevo Material
             </button>
           </>
-        }
-      />
+  );
+
+  return (
+    <div className="space-y-6">
+      {!embedded ? (
+        <AdminPageHeader
+          title="Gestión de Materiales"
+          description="Administra el inventario de materiales del sistema"
+          eyebrow="Administración"
+          icon={<Package className="h-5 w-5" />}
+          actions={headerActions}
+        />
+      ) : (
+        <div className="flex flex-wrap justify-end gap-2">{headerActions}</div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-none p-6">
         <div className="flex flex-col md:flex-row gap-4 items-end">

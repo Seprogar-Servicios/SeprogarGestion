@@ -19,9 +19,7 @@ import {
   Building,
   Shield,
   Package,
-  FolderOpen,
   DollarSign,
-  Tag,
   Wallet,
   MapPin,
   ChevronDown,
@@ -29,6 +27,7 @@ import {
   PinOff,
   Sun,
   Moon,
+  AlertTriangle,
 } from 'lucide-react';
 import { isAdminRole, roleLabel } from '../../utils/roles';
 import { useTheme } from '../../hooks/useTheme';
@@ -157,7 +156,9 @@ const Layout: React.FC = () => {
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Tareas', href: '/tasks', icon: Calendar },
     { name: 'Calendario', href: '/calendar', icon: Calendar },
-    ...(user?.rol === 'usuario' ? [{ name: 'Mis Recibos', href: '/mis-recibos', icon: FileText }] : []),
+    ...(user?.rol === 'usuario'
+      ? [{ name: 'Mis finanzas', href: '/tecnico/finanzas', icon: DollarSign }]
+      : []),
     { name: 'Legales', href: '/legales', icon: Shield },
     { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
   ];
@@ -167,20 +168,18 @@ const Layout: React.FC = () => {
     { name: 'Análisis', href: '/adminConsorcio/analytics', icon: BarChart },
     { name: 'Calendario', href: '/adminConsorcio/calendario', icon: Calendar },
     { name: 'Legales', href: '/legales', icon: Shield },
-    { name: 'Mi Perfil', href: '/adminConsorcio/profile', icon: UserCircle },
+    { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
     { name: 'Tareas de Consorcio', href: '/adminConsorcio/tareas', icon: Building },
   ];
 
   const tecnicoNavigation = [
     { name: 'Dashboard', href: '/tecnico/dashboard', icon: Home },
     { name: 'Calendario', href: '/calendar', icon: Calendar },
-    { name: 'Legales', href: '/legales', icon: Shield },
-    { name: 'Liquidaciones', href: '/tecnico/liquidaciones', icon: DollarSign },
-    { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
-    { name: 'Mis Recibos', href: '/mis-recibos', icon: FileText },
-    { name: 'Pagos o adicionales', href: '/tecnico/pagos', icon: Wallet },
-    { name: 'Tareas de Consorcio', href: '/tecnico/tareas-consorcio', icon: Building },
     { name: 'Tareas Normales', href: '/tasks', icon: Calendar },
+    { name: 'Tareas de Consorcio', href: '/tecnico/tareas-consorcio', icon: Building },
+    { name: 'Mis finanzas', href: '/tecnico/finanzas', icon: DollarSign },
+    { name: 'Legales', href: '/legales', icon: Shield },
+    { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
   ];
 
   const adminNavGroups: NavGroup[] = useMemo(
@@ -201,15 +200,14 @@ const Layout: React.FC = () => {
         label: 'Análisis',
         items: [
           { name: 'Análisis', href: '/admin/analytics', icon: BarChart },
-          { name: 'Análisis de Consorcio', href: '/admin/analytics-consorcio', icon: BarChart },
+          { name: 'Reclamos', href: '/admin/reclamos', icon: AlertTriangle },
         ],
       },
       {
         id: 'catalogo',
         label: 'Catálogo',
         items: [
-          { name: 'Materiales', href: '/admin/materiales', icon: Package },
-          { name: 'Categorías de Materiales', href: '/admin/categorias-materiales', icon: FolderOpen },
+          { name: 'Catálogo', href: '/admin/catalogo', icon: Package },
           { name: 'Especialidades', href: '/admin/specialties', icon: Briefcase },
         ],
       },
@@ -220,7 +218,6 @@ const Layout: React.FC = () => {
           { name: 'Liquidaciones', href: '/admin/liquidaciones', icon: DollarSign },
           { name: 'Recibos', href: '/admin/recibos', icon: FileText },
           { name: 'Pagos manuales', href: '/admin/pagos-manuales', icon: Wallet },
-          { name: 'Motivos de pago', href: '/admin/motivos-pago', icon: Tag },
         ],
       },
       {

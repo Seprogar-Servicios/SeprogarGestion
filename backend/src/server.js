@@ -115,9 +115,11 @@ app.get('/api/ip', (req, res) => {
 // Rutas principales
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/usuarios', require('./routes/user.routes'));
+app.use('/api/geo', require('./routes/geo.routes'));
 app.use('/api/tareas', require('./routes/tarea.routes'));
 app.use('/api/tareas-consorcio', require('./routes/tareaConsorcio.routes'));
 app.use('/api/observaciones', require('./routes/observacion.routes'));
+app.use('/api/reclamos', require('./routes/reclamo.routes'));
 app.use('/api/recibos', require('./routes/recibo.routes'));
 
 // Rutas para el worker de WhatsApp (autenticación por API_KEY)

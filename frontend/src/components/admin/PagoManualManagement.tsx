@@ -40,7 +40,9 @@ const emptyForm = {
   observaciones: '',
 };
 
-const PagoManualManagement: React.FC = () => {
+type Props = { embedded?: boolean };
+
+const PagoManualManagement: React.FC<Props> = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
   const { pagos, loading } = useAppSelector((state) => state.pagoManual);
   const { motivos } = useAppSelector((state) => state.motivoPago);
@@ -254,24 +256,30 @@ const PagoManualManagement: React.FC = () => {
     );
   });
 
+  const createBtn = (
+    <button
+      data-sepi-target="pagos-create"
+      onClick={openCreate}
+      className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+    >
+      <Plus className="h-4 w-4 mr-2" />
+      Nuevo pago
+    </button>
+  );
+
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="Pagos manuales"
-        description="Cargá adelantos u otros pagos. Generá el PDF y subilo luego en Recibos."
-        eyebrow="Administración"
-        icon={<DollarSign className="h-5 w-5" />}
-        actions={
-          <button
-            data-sepi-target="pagos-create"
-            onClick={openCreate}
-            className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo pago
-          </button>
-        }
-      />
+      {!embedded ? (
+        <AdminPageHeader
+          title="Pagos manuales"
+          description="Cargá adelantos u otros pagos. Generá el PDF y subilo luego en Recibos."
+          eyebrow="Administración"
+          icon={<DollarSign className="h-5 w-5" />}
+          actions={createBtn}
+        />
+      ) : (
+        <div className="flex justify-end">{createBtn}</div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-none p-6">
         <div className="relative max-w-md">

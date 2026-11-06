@@ -4,6 +4,7 @@ import { useAppDispatch } from '../../store';
 import { createTask, fetchCalendarTasks } from '../../store/slices/tasksSlice';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
+import AddressAutocomplete from '../common/AddressAutocomplete';
 
 export interface QuickCreateDefaults {
   fechaEjecucion: string; // YYYY-MM-DD
@@ -38,6 +39,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
     horaFin: defaults.horaFin || '10:00',
     allDay: !!defaults.allDay,
   });
+  const [ubicacionCoords, setUbicacionCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +65,15 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           franja_horaria,
           estado: 'pendiente',
           tecnicos: [],
+          ...(ubicacionCoords
+            ? {
+                ubicacionMapa: {
+                  lat: ubicacionCoords.lat,
+                  lng: ubicacionCoords.lng,
+                  fuente: 'direccion',
+                },
+              }
+            : {}),
         } as any)
       ).unwrap();
 
@@ -209,19 +220,18 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Dirección
-            </label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                value={form.direccion}
-                onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-                className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
-              />
-            </div>
-          </div>
+          <AddressAutocomplete
+            label="Dirección"
+            value={form.direccion}
+            onChange={(direccion) => {
+              setForm({ ...form, direccion });
+              setUbicacionCoords(null);
+            }}
+            onSelect={(s) => {
+              setForm((prev) => ({ ...prev, direccion: s.label }));
+              setUbicacionCoords({ lat: s.lat, lng: s.lng });
+            }}
+          />
 
           <div className="flex justify-end gap-2 pt-2">
             <button

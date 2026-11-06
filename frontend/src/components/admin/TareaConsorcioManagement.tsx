@@ -6,6 +6,7 @@ import type { TareaConsorcio } from '../../types';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AdminPageHeader from '../common/AdminPageHeader';
+import AddressAutocomplete from '../common/AddressAutocomplete';
 import { isAdminRole } from '../../utils/roles';
 
 // Componente LazyImage optimizado con Intersection Observer
@@ -972,19 +973,13 @@ const TareaConsorcioManagement: React.FC = () => {
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Dirección *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.direccion}
-                      onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="Dirección del cliente"
-                    />
-                  </div>
+                  <AddressAutocomplete
+                    label="Dirección *"
+                    value={formData.direccion}
+                    onChange={(direccion) => setFormData({ ...formData, direccion })}
+                    onSelect={(s) => setFormData({ ...formData, direccion: s.label })}
+                    placeholder="Dirección del cliente"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1224,19 +1219,13 @@ const TareaConsorcioManagement: React.FC = () => {
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Dirección *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.direccion}
-                      onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="Dirección del cliente"
-                    />
-                  </div>
+                  <AddressAutocomplete
+                    label="Dirección *"
+                    value={formData.direccion}
+                    onChange={(direccion) => setFormData({ ...formData, direccion })}
+                    onSelect={(s) => setFormData({ ...formData, direccion: s.label })}
+                    placeholder="Dirección del cliente"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

@@ -75,6 +75,45 @@ const createTechIcon = (nombre: string, color: string) => {
   });
 };
 
+/** Pin numerado para orden de ruta del día */
+const createOrdenIcon = (orden: number | undefined, color: string, titulo: string) => {
+  const badge = orden != null ? String(orden) : '·';
+  const label = escapeHtml(titulo.length > 18 ? `${titulo.slice(0, 16)}…` : titulo);
+  return new L.DivIcon({
+    className: 'live-map-orden-marker',
+    html: `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+        <div style="
+          background:${color};
+          color:#fff;
+          min-width:36px;height:36px;
+          border-radius:9999px;
+          border:3px solid #fff;
+          box-shadow:0 2px 10px rgba(0,0,0,.35);
+          display:flex;align-items:center;justify-content:center;
+          font-size:14px;font-weight:800;
+          font-family:system-ui,sans-serif;
+        ">${escapeHtml(badge)}</div>
+        <div style="
+          background:rgba(17,24,39,.92);
+          color:#fff;
+          font-size:11px;font-weight:600;
+          padding:2px 8px;
+          border-radius:9999px;
+          white-space:nowrap;
+          max-width:140px;
+          overflow:hidden;text-overflow:ellipsis;
+          box-shadow:0 1px 4px rgba(0,0,0,.25);
+          font-family:system-ui,sans-serif;
+        ">${label}</div>
+      </div>
+    `,
+    iconSize: [140, 54],
+    iconAnchor: [70, 40],
+    popupAnchor: [0, -40],
+  });
+};
+
 /** Ajusta el zoom solo la primera vez (o al forzar). Respeta pan/zoom del usuario. */
 const FitBounds: React.FC<{
   positions: [number, number][];
@@ -127,6 +166,8 @@ const FitBounds: React.FC<{
 
 const POLL_MS = 20000;
 
+type MapMode = 'tecnicos' | 'tareas';
+
 type LivePin = {
   key: string;
   task: Task;
@@ -135,6 +176,25 @@ type LivePin = {
   color: string;
   lat: number;
   lng: number;
+  ordenRuta?: number;
+};
+
+type RutaSegmento = {
+  franja: string;
+  items: Array<{
+    orden: number;
+    kmFromPrev: number | null;
+    tarea: Task;
+  }>;
+};
+
+const todayYmd = () => {
+  const d = new Date();
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-');
 };
 
 const techNameFrom = (t: AppUser | string) =>
@@ -145,26 +205,59 @@ const techPhoneFrom = (t: AppUser | string) =>
 
 const LiveMap: React.FC = () => {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<MapMode>('tecnicos');
+  const [fecha, setFecha] = useState(todayYmd());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [forceFitToken, setForceFitToken] = useState(0);
   const [selectedPinKey, setSelectedPinKey] = useState<string | null>(null);
+  const [ruta, setRuta] = useState<RutaSegmento[] | null>(null);
+  const [rutaLoading, setRutaLoading] = useState(false);
 
-  const loadMap = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const res = await api.get<{ success: boolean; data: Task[] }>('/tareas/mapa-vivo');
-      setTasks(res.data.data || []);
-      setError(null);
-      setLastUpdate(new Date());
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al cargar el mapa en vivo');
-    } finally {
-      if (!silent) setLoading(false);
+  const loadMap = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        if (mode === 'tecnicos') {
+          const res = await api.get<{ success: boolean; data: Task[] }>('/tareas/mapa-vivo');
+          setTasks(res.data.data || []);
+        } else {
+          const res = await api.get<{ success: boolean; data: Task[] }>('/tareas/mapa-dia', {
+            params: { fecha },
+          });
+          setTasks(res.data.data || []);
+        }
+        setError(null);
+        setLastUpdate(new Date());
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Error al cargar el mapa');
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [mode, fecha]
+  );
+
+  const loadRuta = useCallback(async () => {
+    if (mode !== 'tareas') {
+      setRuta(null);
+      return;
     }
-  }, []);
+    setRutaLoading(true);
+    try {
+      const res = await api.get<{
+        success: boolean;
+        data: { segmentos: RutaSegmento[] };
+      }>('/tareas/ruta-sugerida', { params: { fecha } });
+      setRuta(res.data.data?.segmentos || []);
+    } catch {
+      setRuta(null);
+    } finally {
+      setRutaLoading(false);
+    }
+  }, [mode, fecha]);
 
   useEffect(() => {
     loadMap();
@@ -172,7 +265,22 @@ const LiveMap: React.FC = () => {
     return () => window.clearInterval(id);
   }, [loadMap]);
 
-  // Un pin por técnico asignado (si hay varios en la misma tarea, uno cada uno)
+  useEffect(() => {
+    loadRuta();
+  }, [loadRuta]);
+
+  const ordenByTaskId = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!ruta) return map;
+    for (const seg of ruta) {
+      for (const item of seg.items) {
+        if (item.tarea?._id) map.set(item.tarea._id, item.orden);
+      }
+    }
+    return map;
+  }, [ruta]);
+
+  // Técnicos: un pin por técnico en tarea en progreso. Tareas: un pin por tarea del día.
   const pins: LivePin[] = useMemo(() => {
     const result: LivePin[] = [];
     let colorIdx = 0;
@@ -180,6 +288,21 @@ const LiveMap: React.FC = () => {
 
     for (const task of tasks) {
       if (task.ubicacionMapa?.lat == null || task.ubicacionMapa?.lng == null) continue;
+
+      if (mode === 'tareas') {
+        result.push({
+          key: task._id,
+          task,
+          tecnicoNombre: task.numero ? `#${task.numero}` : task.titulo,
+          color: TECH_COLORS[colorIdx % TECH_COLORS.length],
+          lat: task.ubicacionMapa.lat,
+          lng: task.ubicacionMapa.lng,
+          ordenRuta: ordenByTaskId.get(task._id),
+        });
+        colorIdx += 1;
+        continue;
+      }
+
       const tecnicos = Array.isArray(task.tecnicos) ? task.tecnicos : [];
       const list = tecnicos.length > 0 ? tecnicos : ['Sin técnico'];
 
@@ -201,8 +324,12 @@ const LiveMap: React.FC = () => {
         });
       }
     }
+
+    if (mode === 'tareas') {
+      result.sort((a, b) => (a.ordenRuta ?? 999) - (b.ordenRuta ?? 999));
+    }
     return result;
-  }, [tasks]);
+  }, [tasks, mode, ordenByTaskId]);
 
   const positions = useMemo(
     () => pins.map((p) => [p.lat, p.lng] as [number, number]),
@@ -217,13 +344,20 @@ const LiveMap: React.FC = () => {
   const iconCache = useMemo(() => {
     const map = new Map<string, L.DivIcon>();
     for (const pin of pins) {
-      const cacheKey = `${pin.tecnicoNombre}|${pin.color}`;
-      if (!map.has(cacheKey)) {
-        map.set(cacheKey, createTechIcon(pin.tecnicoNombre, pin.color));
+      if (mode === 'tareas') {
+        const cacheKey = `orden|${pin.ordenRuta ?? 'x'}|${pin.color}|${pin.task.titulo}`;
+        if (!map.has(cacheKey)) {
+          map.set(cacheKey, createOrdenIcon(pin.ordenRuta, pin.color, pin.task.titulo));
+        }
+      } else {
+        const cacheKey = `${pin.tecnicoNombre}|${pin.color}`;
+        if (!map.has(cacheKey)) {
+          map.set(cacheKey, createTechIcon(pin.tecnicoNombre, pin.color));
+        }
       }
     }
     return map;
-  }, [pins]);
+  }, [pins, mode]);
 
   const defaultCenter: [number, number] = [-34.6037, -58.3816];
 
@@ -244,23 +378,29 @@ const LiveMap: React.FC = () => {
     <div className="space-y-4 h-full flex flex-col animate-fadeIn" style={{ minHeight: '85vh' }}>
       <AdminPageHeader
         title="Mapa en vivo"
-        description="Dónde está cada técnico mientras tiene una tarea en progreso."
+        description={
+          mode === 'tecnicos'
+            ? 'Técnicos con tarea en progreso.'
+            : 'Tareas del día por dirección, con ruta sugerida.'
+        }
         eyebrow="Operaciones"
         icon={<User className="h-5 w-5" />}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <button
               type="button"
               onClick={() => setForceFitToken((n) => n + 1)}
               className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-              title="Volver a encuadrar todos los técnicos"
             >
               <MapPin className="h-4 w-4 mr-2" />
               Centrar
             </button>
             <button
               type="button"
-              onClick={() => loadMap()}
+              onClick={() => {
+                loadMap();
+                loadRuta();
+              }}
               className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -270,17 +410,52 @@ const LiveMap: React.FC = () => {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-gray-300 px-1">
-        <span className="inline-flex items-center gap-1.5 font-medium text-blue-700 dark:text-blue-300">
+      <div className="flex flex-wrap items-center gap-3 px-1">
+        <div className="flex gap-1 p-1 rounded-xl bg-slate-200/70 dark:bg-slate-800">
+          <button
+            type="button"
+            onClick={() => setMode('tecnicos')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+              mode === 'tecnicos'
+                ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            Técnicos
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('tareas')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+              mode === 'tareas'
+                ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            Tareas del día
+          </button>
+        </div>
+
+        {mode === 'tareas' && (
+          <input
+            type="date"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            className="rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-gray-700 text-sm py-1.5 px-2"
+          />
+        )}
+
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 dark:text-blue-300">
           <Navigation className="h-4 w-4" />
-          {pins.length} técnico{pins.length === 1 ? '' : 's'} en campo
+          {mode === 'tecnicos'
+            ? `${pins.length} técnico${pins.length === 1 ? '' : 's'} en campo`
+            : `${pins.length} tarea${pins.length === 1 ? '' : 's'} con ubicación`}
         </span>
         {lastUpdate && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
             Actualizado {lastUpdate.toLocaleTimeString('es-AR')}
           </span>
         )}
-        <span className="text-xs text-gray-400">Auto-refresh cada {POLL_MS / 1000}s</span>
       </div>
 
       {error && (
@@ -307,9 +482,15 @@ const LiveMap: React.FC = () => {
               forceFitToken={forceFitToken}
             />
             {pins.map((pin) => {
+              const iconKey =
+                mode === 'tareas'
+                  ? `orden|${pin.ordenRuta ?? 'x'}|${pin.color}|${pin.task.titulo}`
+                  : `${pin.tecnicoNombre}|${pin.color}`;
               const icon =
-                iconCache.get(`${pin.tecnicoNombre}|${pin.color}`) ||
-                createTechIcon(pin.tecnicoNombre, pin.color);
+                iconCache.get(iconKey) ||
+                (mode === 'tareas'
+                  ? createOrdenIcon(pin.ordenRuta, pin.color, pin.task.titulo)
+                  : createTechIcon(pin.tecnicoNombre, pin.color));
 
               return (
                 <Marker
@@ -327,13 +508,21 @@ const LiveMap: React.FC = () => {
                           className="h-10 w-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                           style={{ background: pin.color }}
                         >
-                          {initials(pin.tecnicoNombre)}
+                          {mode === 'tareas' && pin.ordenRuta != null
+                            ? pin.ordenRuta
+                            : initials(pin.tecnicoNombre)}
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-gray-900 text-base leading-tight truncate">
-                            {pin.tecnicoNombre}
+                            {mode === 'tareas' ? pin.task.titulo : pin.tecnicoNombre}
                           </p>
-                          <p className="text-[11px] text-emerald-700 font-medium">En campo · activo</p>
+                          <p className="text-[11px] text-emerald-700 font-medium">
+                            {mode === 'tecnicos'
+                              ? 'En campo · activo'
+                              : pin.ordenRuta != null
+                                ? `Orden de ruta #${pin.ordenRuta}`
+                                : pin.task.estado}
+                          </p>
                         </div>
                       </div>
 
@@ -386,24 +575,80 @@ const LiveMap: React.FC = () => {
           {!loading && pins.length === 0 && (
             <div className="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none z-[1000]">
               <div className="pointer-events-auto rounded-full bg-white/95 dark:bg-gray-800/95 shadow-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-700 dark:text-gray-200">
-                No hay técnicos en campo ahora
+                {mode === 'tecnicos'
+                  ? 'No hay técnicos en campo ahora'
+                  : 'No hay tareas con ubicación para esta fecha'}
               </div>
             </div>
           )}
         </div>
 
-        <aside className="w-full lg:w-80 shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 overflow-y-auto max-h-[560px] lg:max-h-none">
+        <aside className="w-full lg:w-80 shrink-0 bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 overflow-y-auto max-h-[560px] lg:max-h-none space-y-4">
+          {mode === 'tareas' && (
+            <div className="rounded-xl border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/60 dark:bg-indigo-950/20 p-3">
+              <h3 className="text-sm font-semibold text-indigo-900 dark:text-indigo-200 mb-1">
+                Ruta sugerida
+              </h3>
+              <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/80 mb-2">
+                Orden por franja horaria y cercanía entre tareas
+              </p>
+              {rutaLoading ? (
+                <p className="text-xs text-slate-500">Calculando…</p>
+              ) : !ruta || ruta.length === 0 ? (
+                <p className="text-xs text-slate-500">Sin datos suficientes para armar ruta</p>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {ruta.map((seg) => (
+                    <div key={seg.franja}>
+                      <p className="text-[10px] font-semibold uppercase text-indigo-600 dark:text-indigo-400">
+                        {seg.franja}
+                      </p>
+                      <ol className="mt-1 space-y-1">
+                        {seg.items.map((item) => (
+                          <li
+                            key={item.tarea?._id || item.orden}
+                            className="text-xs text-slate-700 dark:text-slate-200 flex gap-1.5"
+                          >
+                            <span className="font-bold text-indigo-600 tabular-nums w-5">
+                              {item.orden}.
+                            </span>
+                            <span className="min-w-0 truncate">
+                              {item.tarea?.numero ? `#${item.tarea.numero} · ` : ''}
+                              {item.tarea?.titulo}
+                              {item.kmFromPrev != null && (
+                                <span className="text-slate-400"> · {item.kmFromPrev} km</span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-            Técnicos en campo
+            {mode === 'tecnicos' ? 'Técnicos en campo' : 'Tareas del día'}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            Nombre y ubicación primero; la tarea es secundaria.
+            {mode === 'tecnicos'
+              ? 'Nombre y ubicación primero; la tarea es secundaria.'
+              : 'Pines por dirección geocodificada. El número indica orden de ruta.'}
           </p>
           {loading && pins.length === 0 ? (
             <p className="text-sm text-gray-500">Cargando…</p>
           ) : pins.length === 0 ? (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Cuando un técnico tenga una tarea <strong>en progreso</strong>, aparecerá acá.
+              {mode === 'tecnicos' ? (
+                <>
+                  Cuando un técnico tenga una tarea <strong>en progreso</strong>, aparecerá acá.
+                </>
+              ) : (
+                <>No hay tareas con coordenadas para esta fecha.</>
+              )}
             </p>
           ) : (
             <ul className="space-y-3">
@@ -427,15 +672,19 @@ const LiveMap: React.FC = () => {
                         className="h-11 w-11 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow"
                         style={{ background: pin.color }}
                       >
-                        {initials(pin.tecnicoNombre)}
+                        {mode === 'tareas' && pin.ordenRuta != null
+                          ? pin.ordenRuta
+                          : initials(pin.tecnicoNombre)}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                          {pin.tecnicoNombre}
+                          {mode === 'tareas' && pin.ordenRuta != null
+                            ? `${pin.ordenRuta}. ${pin.task.titulo}`
+                            : pin.tecnicoNombre}
                         </p>
                         <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          En campo
+                          {mode === 'tecnicos' ? 'En campo' : pin.task.estado}
                         </p>
                       </div>
                     </div>
@@ -489,6 +738,7 @@ const LiveMap: React.FC = () => {
               })}
             </ul>
           )}
+          </div>
         </aside>
       </div>
     </div>

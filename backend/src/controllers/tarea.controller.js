@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const Subscription = require('../models/Subscription');
 const { sendNotification } = require('../utils/push');
 const { normalizeAddress } = require('../utils/addressNormalizer');
-const { geocodeAddress } = require('../utils/geocode');
+const { geocodeAddress, haversineKm, nearestNeighborOrder } = require('../utils/geocode');
 const { isPrivilegedAdmin } = require('../utils/roles');
 
 /**
@@ -115,6 +115,31 @@ exports.createTarea = async (req, res) => {
     if (datosAjustados.direccion) {
       datosAjustados.direccion = normalizeAddress(datosAjustados.direccion);
     }
+
+    // Ubicación: coords del autocomplete o geocode de la dirección
+    const incomingMap = datosAjustados.ubicacionMapa;
+    if (
+      incomingMap &&
+      typeof incomingMap.lat === 'number' &&
+      typeof incomingMap.lng === 'number'
+    ) {
+      datosAjustados.ubicacionMapa = {
+        lat: incomingMap.lat,
+        lng: incomingMap.lng,
+        fuente: incomingMap.fuente || 'direccion',
+        actualizadoAt: new Date(),
+      };
+    } else if (datosAjustados.direccion) {
+      const coords = await geocodeAddress(datosAjustados.direccion);
+      if (coords) {
+        datosAjustados.ubicacionMapa = {
+          lat: coords.lat,
+          lng: coords.lng,
+          fuente: 'direccion',
+          actualizadoAt: new Date(),
+        };
+      }
+    }
     
     const tarea = new Tarea({
       ...datosAjustados,
@@ -211,7 +236,14 @@ exports.getTareas = async (req, res) => {
   try {
     const { usuario, estado, fechaDesde, fechaHasta, cliente, useCreatedAt, numero, limit } = req.query;
     const filtro = {};
-    if (usuario) filtro.tecnicos = usuario;
+
+    // No admin: solo tareas propias (asignadas). Impide IDOR vía ?usuario=
+    if (!isPrivilegedAdmin(req.user)) {
+      filtro.tecnicos = req.user._id;
+    } else if (usuario) {
+      filtro.tecnicos = usuario;
+    }
+
     if (estado) filtro.estado = estado;
     if (cliente) filtro.cliente = { $regex: cliente, $options: 'i' };
     if (numero) filtro.numero = { $regex: String(numero).trim(), $options: 'i' };
@@ -273,6 +305,24 @@ exports.getTareaById = async (req, res) => {
       .populate('tecnicos', 'nombre email telefono')
       .populate('creadoPor', 'nombre email');
     if (!tarea) return res.status(404).json({ message: 'Tarea no encontrada' });
+
+    const isAdmin = isPrivilegedAdmin(req.user);
+    const isCreator =
+      tarea.creadoPor &&
+      (tarea.creadoPor._id
+        ? tarea.creadoPor._id.equals(req.user._id)
+        : tarea.creadoPor.equals?.(req.user._id));
+    const isAssigned =
+      Array.isArray(tarea.tecnicos) &&
+      tarea.tecnicos.some((t) => {
+        const id = t && t._id ? t._id : t;
+        return id && id.equals?.(req.user._id);
+      });
+
+    if (!isAdmin && !isCreator && !isAssigned) {
+      return res.status(403).json({ message: 'No autorizado' });
+    }
+
     res.json({ success: true, data: tarea });
   } catch (err) {
     res.status(500).json({ message: 'Error al obtener tarea', error: err.message });
@@ -319,6 +369,33 @@ exports.updateTarea = async (req, res) => {
       datosActualizados.direccion = normalizeAddress(datosActualizados.direccion);
     }
 
+    // Si el front mandó coords del autocomplete, persistirlas
+    if (
+      datosActualizados.ubicacionMapa &&
+      typeof datosActualizados.ubicacionMapa.lat === 'number' &&
+      typeof datosActualizados.ubicacionMapa.lng === 'number'
+    ) {
+      datosActualizados.ubicacionMapa = {
+        lat: datosActualizados.ubicacionMapa.lat,
+        lng: datosActualizados.ubicacionMapa.lng,
+        fuente: datosActualizados.ubicacionMapa.fuente || 'direccion',
+        actualizadoAt: new Date(),
+      };
+    } else if (
+      datosActualizados.direccion &&
+      datosActualizados.direccion !== tarea.direccion
+    ) {
+      const coordsDir = await geocodeAddress(datosActualizados.direccion);
+      if (coordsDir) {
+        datosActualizados.ubicacionMapa = {
+          lat: coordsDir.lat,
+          lng: coordsDir.lng,
+          fuente: 'direccion',
+          actualizadoAt: new Date(),
+        };
+      }
+    }
+
     const estadoAnterior = tarea.estado;
     const estadoNuevo = datosActualizados.estado || estadoAnterior;
 
@@ -333,16 +410,21 @@ exports.updateTarea = async (req, res) => {
           actualizadoAt: new Date(),
         };
       } else {
-        // Preferir dirección del técnico asignado; si no, dirección de la tarea
+        // Preferir base del técnico; si no, dirección de la tarea
         let coords = null;
         let fuente = 'direccion';
         const tecnicoIds = (datosActualizados.tecnicos || tarea.tecnicos || []).map((t) =>
           typeof t === 'string' ? t : t.toString()
         );
         if (tecnicoIds.length > 0) {
-          const tecnico = await Usuario.findById(tecnicoIds[0]).select('direccion');
-          if (tecnico?.direccion) {
-            coords = await geocodeAddress(tecnico.direccion);
+          const tecnico = await Usuario.findById(tecnicoIds[0]).select(
+            'direccion localidad ubicacionBase'
+          );
+          if (tecnico?.ubicacionBase?.lat != null && tecnico?.ubicacionBase?.lng != null) {
+            coords = { lat: tecnico.ubicacionBase.lat, lng: tecnico.ubicacionBase.lng };
+            fuente = 'tecnico';
+          } else if (tecnico?.localidad || tecnico?.direccion) {
+            coords = await geocodeAddress(tecnico.localidad || tecnico.direccion);
             if (coords) fuente = 'tecnico';
           }
         }
@@ -367,6 +449,13 @@ exports.updateTarea = async (req, res) => {
     // Salir de "en progreso": quitar pin del mapa
     if (estadoAnterior === 'en progreso' && estadoNuevo !== 'en progreso') {
       datosActualizados.ubicacionMapa = null;
+    }
+
+    // Completada: registrar fechaCompletado solo si aún no existe (no pisa históricos)
+    if (estadoNuevo === 'completada' && estadoAnterior !== 'completada') {
+      if (!tarea.fechaCompletado && !datosActualizados.fechaCompletado) {
+        datosActualizados.fechaCompletado = new Date();
+      }
     }
 
     Object.assign(tarea, datosActualizados, { fechaModificacion: new Date() });
@@ -406,6 +495,187 @@ exports.getMapaVivo = async (req, res) => {
   } catch (err) {
     console.error('Error en mapa vivo:', err);
     res.status(500).json({ success: false, message: 'Error al obtener mapa en vivo', error: err.message });
+  }
+};
+
+/**
+ * Recomienda técnicos por especialidad + cercanía a lat/lng (o dirección geocodificada).
+ * Query/body: lat, lng | direccion, especialidadId?
+ */
+exports.recomendarTecnicos = async (req, res) => {
+  try {
+    let lat = req.query.lat != null ? Number(req.query.lat) : Number(req.body?.lat);
+    let lng = req.query.lng != null ? Number(req.query.lng) : Number(req.body?.lng);
+    const direccion = String(req.query.direccion || req.body?.direccion || '').trim();
+    const especialidadId = String(req.query.especialidadId || req.body?.especialidadId || '').trim();
+
+    if ((Number.isNaN(lat) || Number.isNaN(lng)) && direccion) {
+      const coords = await geocodeAddress(direccion);
+      if (coords) {
+        lat = coords.lat;
+        lng = coords.lng;
+      }
+    }
+
+    const filtro = { rol: { $in: ['usuario', 'tecnico'] }, aprobado: true };
+    if (especialidadId) filtro.especialidad = especialidadId;
+
+    const tecnicos = await Usuario.find(filtro)
+      .select('nombre email telefono especialidad localidad ubicacionBase direccion')
+      .populate('especialidad', 'nombre');
+
+    const origen = !Number.isNaN(lat) && !Number.isNaN(lng) ? { lat, lng } : null;
+
+    const ranked = tecnicos
+      .map((t) => {
+        const base =
+          t.ubicacionBase?.lat != null && t.ubicacionBase?.lng != null
+            ? { lat: t.ubicacionBase.lat, lng: t.ubicacionBase.lng }
+            : null;
+        const distanciaKm = origen && base ? haversineKm(origen, base) : null;
+        return {
+          _id: t._id,
+          nombre: t.nombre,
+          email: t.email,
+          telefono: t.telefono,
+          especialidad: t.especialidad,
+          localidad: t.localidad || null,
+          tieneUbicacion: !!base,
+          distanciaKm: distanciaKm != null ? Math.round(distanciaKm * 10) / 10 : null,
+        };
+      })
+      .sort((a, b) => {
+        // Con distancia primero; sin distancia al final
+        if (a.distanciaKm == null && b.distanciaKm == null) return a.nombre.localeCompare(b.nombre);
+        if (a.distanciaKm == null) return 1;
+        if (b.distanciaKm == null) return -1;
+        return a.distanciaKm - b.distanciaKm;
+      });
+
+    res.json({
+      success: true,
+      data: {
+        origen: origen,
+        tecnicos: ranked,
+      },
+    });
+  } catch (err) {
+    console.error('Error recomendarTecnicos:', err);
+    res.status(500).json({ success: false, message: 'Error al recomendar técnicos', error: err.message });
+  }
+};
+
+/**
+ * Ruta sugerida para un día: ordena tareas con coords por franja y cercanía.
+ * Query: fecha=YYYY-MM-DD, tecnicoId? (opcional, filtra tareas de ese técnico)
+ */
+exports.rutaSugerida = async (req, res) => {
+  try {
+    const fecha = String(req.query.fecha || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      return res.status(400).json({ success: false, message: 'fecha requerida (YYYY-MM-dd)' });
+    }
+
+    const filtro = {
+      fechaEjecucion: fecha,
+      estado: { $nin: ['cancelada'] },
+      'ubicacionMapa.lat': { $exists: true, $ne: null },
+      'ubicacionMapa.lng': { $exists: true, $ne: null },
+    };
+
+    const tecnicoId = String(req.query.tecnicoId || '').trim();
+    if (tecnicoId) filtro.tecnicos = tecnicoId;
+
+    if (!isPrivilegedAdmin(req.user) && !tecnicoId) {
+      filtro.tecnicos = req.user._id;
+    }
+
+    const tareas = await Tarea.find(filtro)
+      .select('numero titulo estado cliente direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos')
+      .populate('tecnicos', 'nombre')
+      .lean();
+
+    // Agrupar por franja; dentro de cada franja nearest-neighbor
+    const byFranja = new Map();
+    for (const t of tareas) {
+      const key = (t.franja_horaria || '').trim() || 'Sin franja';
+      if (!byFranja.has(key)) byFranja.set(key, []);
+      byFranja.get(key).push(t);
+    }
+
+    const franjasOrdenadas = [...byFranja.keys()].sort((a, b) => {
+      const parseStart = (f) => {
+        const m = String(f).match(/(\d{1,2}):(\d{2})/);
+        return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 9999;
+      };
+      return parseStart(a) - parseStart(b);
+    });
+
+    const segmentos = [];
+    let ordenGlobal = 1;
+    for (const franja of franjasOrdenadas) {
+      const group = byFranja.get(franja);
+      const points = group.map((t) => ({
+        id: String(t._id),
+        lat: t.ubicacionMapa.lat,
+        lng: t.ubicacionMapa.lng,
+        tarea: t,
+      }));
+      const ordered = nearestNeighborOrder(points);
+      const items = ordered.map((p, idx) => ({
+        orden: ordenGlobal++,
+        ordenEnFranja: idx + 1,
+        kmFromPrev: p.kmFromPrev ?? null,
+        tarea: p.tarea || group.find((t) => String(t._id) === p.id),
+      }));
+      segmentos.push({ franja, items });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        fecha,
+        total: tareas.length,
+        segmentos,
+      },
+    });
+  } catch (err) {
+    console.error('Error rutaSugerida:', err);
+    res.status(500).json({ success: false, message: 'Error al calcular ruta', error: err.message });
+  }
+};
+
+/**
+ * Mapa de tareas por día (todas con ubicación, no solo en progreso).
+ * Query: fecha=YYYY-MM-DD
+ */
+exports.getMapaPorDia = async (req, res) => {
+  try {
+    const fecha = String(req.query.fecha || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      return res.status(400).json({ success: false, message: 'fecha requerida (YYYY-MM-DD)' });
+    }
+
+    const filtro = {
+      fechaEjecucion: fecha,
+      estado: { $nin: ['cancelada'] },
+      'ubicacionMapa.lat': { $exists: true, $ne: null },
+      'ubicacionMapa.lng': { $exists: true, $ne: null },
+    };
+
+    if (!isPrivilegedAdmin(req.user)) {
+      filtro.tecnicos = req.user._id;
+    }
+
+    const tareas = await Tarea.find(filtro)
+      .select('numero titulo estado cliente direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos')
+      .populate('tecnicos', 'nombre telefono localidad ubicacionBase')
+      .sort({ franja_horaria: 1, numero: 1 });
+
+    res.json({ success: true, data: tareas });
+  } catch (err) {
+    console.error('Error mapa por día:', err);
+    res.status(500).json({ success: false, message: 'Error al obtener mapa del día', error: err.message });
   }
 };
 

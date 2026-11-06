@@ -5,7 +5,9 @@ import { fetchLiquidacionesByTecnico } from '../../store/slices/tareaLiquidacion
 import api from '../../config/api';
 import AdminPageHeader from '../common/AdminPageHeader';
 
-const TecnicoLiquidaciones: React.FC = () => {
+type Props = { embedded?: boolean };
+
+const TecnicoLiquidaciones: React.FC<Props> = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { liquidaciones = [] } = useAppSelector((state) => state.tareaLiquidacion);
@@ -75,23 +77,29 @@ const TecnicoLiquidaciones: React.FC = () => {
     }
   };
 
+  const exportBtn = (
+    <button
+      onClick={handleExportExcel}
+      className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-orange-500 hover:bg-orange-600"
+    >
+      <Download className="h-4 w-4 mr-2" />
+      Exportar PDF
+    </button>
+  );
+
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="Mis Liquidaciones"
-        description="Pagos por tarea"
-        eyebrow="Técnico"
-        icon={<DollarSign className="h-5 w-5" />}
-        actions={
-          <button
-            onClick={handleExportExcel}
-            className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-orange-500 hover:bg-orange-600"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Exportar PDF
-          </button>
-        }
-      />
+      {!embedded ? (
+        <AdminPageHeader
+          title="Mis Liquidaciones"
+          description="Pagos por tarea"
+          eyebrow="Técnico"
+          icon={<DollarSign className="h-5 w-5" />}
+          actions={exportBtn}
+        />
+      ) : (
+        <div className="flex justify-end">{exportBtn}</div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
         <div className="flex items-end gap-4 max-w-md">

@@ -29,6 +29,8 @@ import {
 import ObservationsList from '../observations/ObservationsList';
 import TaskMaterials from './TaskMaterials';
 import TaskLiquidacion from './TaskLiquidacion';
+import AddressAutocomplete from '../common/AddressAutocomplete';
+import TecnicoRecommendSelect from './TecnicoRecommendSelect';
 import type { RootState } from '../../store';
 import { isAdminRole } from '../../utils/roles';
 
@@ -55,6 +57,7 @@ const TaskDetails: React.FC = () => {
     titulo: '',
     descripcion: '',
     cliente: '',
+    cuentaCliente: '' as '' | 'IKE' | 'VAITTY' | 'MDO' | 'Particular' | 'Consorcio' | 'Otro',
     numeroTitular: '',
     direccion: '',
     fechaEjecucion: '',
@@ -63,7 +66,8 @@ const TaskDetails: React.FC = () => {
     franja_horaria: '',
     tecnicos: [] as UserType[],
     estado: 'pendiente' as 'pendiente' | 'en progreso' | 'completada' | 'cancelada',
-    origen: 'manual' as 'manual' | 'whatsapp' | string
+    origen: 'manual' as 'manual' | 'whatsapp' | string,
+    ubicacionMapa: null as null | { lat: number; lng: number; fuente?: string },
   });
 
   useEffect(() => {
@@ -100,6 +104,7 @@ const TaskDetails: React.FC = () => {
         titulo: currentTask.titulo || '',
         descripcion: currentTask.descripcion || '',
         cliente: currentTask.cliente || '',
+        cuentaCliente: currentTask.cuentaCliente || '',
         numeroTitular: currentTask.numeroTitular || '',
         direccion: currentTask.direccion || '',
         fechaEjecucion,
@@ -110,7 +115,15 @@ const TaskDetails: React.FC = () => {
           ? currentTask.tecnicos.filter((t): t is UserType => t !== null && typeof t === 'object' && '_id' in t)
           : [],
         estado: currentTask.estado || 'pendiente',
-        origen: currentTask.origen || 'manual'
+        origen: currentTask.origen || 'manual',
+        ubicacionMapa:
+          currentTask.ubicacionMapa?.lat != null && currentTask.ubicacionMapa?.lng != null
+            ? {
+                lat: currentTask.ubicacionMapa.lat,
+                lng: currentTask.ubicacionMapa.lng,
+                fuente: currentTask.ubicacionMapa.fuente || 'direccion',
+              }
+            : null,
       }));
     }
   }, [currentTask]);
@@ -136,6 +149,7 @@ const TaskDetails: React.FC = () => {
         numero: formData.numero,
         titulo: formData.titulo,
         cliente: formData.cliente,
+        ...(formData.cuentaCliente ? { cuentaCliente: formData.cuentaCliente } : { cuentaCliente: '' }),
         descripcion: formData.descripcion,
         direccion: formData.direccion,
         numeroTitular: formData.numeroTitular,
@@ -143,6 +157,15 @@ const TaskDetails: React.FC = () => {
         franja_horaria: franjaHoraria,
         estado: formData.estado,
         tecnicos: tecnicosIds, // Use the array of IDs instead of objects
+        ...(formData.ubicacionMapa
+          ? {
+              ubicacionMapa: {
+                lat: formData.ubicacionMapa.lat,
+                lng: formData.ubicacionMapa.lng,
+                fuente: 'direccion' as const,
+              },
+            }
+          : {}),
       };
       
       await dispatch(updateTask({ 
@@ -722,6 +745,27 @@ const TaskDetails: React.FC = () => {
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Cuenta comercial <span className="text-slate-400 font-normal">(opcional)</span>
+                    </label>
+                    <select
+                      value={formData.cuentaCliente || ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, cuentaCliente: e.target.value as any })
+                      }
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Sin clasificar / inferir del nombre</option>
+                      <option value="IKE">IKE</option>
+                      <option value="VAITTY">VAITTY</option>
+                      <option value="MDO">MDO</option>
+                      <option value="Particular">Particular</option>
+                      <option value="Consorcio">Consorcio</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
                   
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -787,42 +831,51 @@ const TaskDetails: React.FC = () => {
                     </select>
                   </div>
                   
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="space-y-1 sm:col-span-2">
+                    <AddressAutocomplete
+                      label="Dirección"
+                      value={formData.direccion || ''}
+                      onChange={(direccion) =>
+                        setFormData({
+                          ...formData,
+                          direccion,
+                          ubicacionMapa: null,
+                        })
+                      }
+                      onSelect={(s) =>
+                        setFormData({
+                          ...formData,
+                          direccion: s.label,
+                          ubicacionMapa: {
+                            lat: s.lat,
+                            lng: s.lng,
+                            fuente: 'direccion',
+                          },
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Técnicos Asignados
                     </label>
-                    <select
-                      multiple
-                      value={Array.isArray(formData.tecnicos) ? formData.tecnicos.map(t => typeof t === 'string' ? t : t._id) : []}
-                      onChange={(e) => {
-                        const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-                        const selectedUsers = selectedOptions
-                          .map(id => users.find(u => u._id === id))
-                          .filter((user): user is UserType => user !== undefined);
-                        setFormData(prev => ({
-                          ...prev,
-                          tecnicos: selectedUsers
-                        }));
+                    <TecnicoRecommendSelect
+                      users={users}
+                      value={
+                        Array.isArray(formData.tecnicos)
+                          ? formData.tecnicos.map((t) => (typeof t === 'string' ? t : t._id))
+                          : []
+                      }
+                      onChange={(ids) => {
+                        const selectedUsers = ids
+                          .map((id) => users.find((u) => u._id === id))
+                          .filter((u): u is UserType => u !== undefined);
+                        setFormData((prev) => ({ ...prev, tecnicos: selectedUsers }));
                       }}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent h-[42px] min-h-[42px]"
-                    >
-                      {users.filter((user: UserType) => user.rol === 'usuario').map((user: UserType) => (
-                        <option key={user._id} value={user._id}>
-                          {user.nombre} {user.apellido || ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Dirección
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.direccion || ''}
-                      onChange={(e) => setFormData({...formData, direccion: e.target.value})}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      taskLat={formData.ubicacionMapa?.lat}
+                      taskLng={formData.ubicacionMapa?.lng}
+                      taskDireccion={formData.direccion}
                     />
                   </div>
                   

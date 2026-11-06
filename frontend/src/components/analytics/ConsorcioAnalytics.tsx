@@ -72,12 +72,15 @@ interface Props {
   hideAdminFilter?: boolean;
   title?: string;
   description?: string;
+  /** Sin header propio (cuando se embebe en hub de Análisis) */
+  embedded?: boolean;
 }
 
 const ConsorcioAnalytics: React.FC<Props> = ({
   hideAdminFilter = false,
   title = 'Análisis de Consorcio',
   description = 'Embudo operativo, cobranza e ingresos por administrador',
+  embedded = false,
 }) => {
   const dispatch = useAppDispatch();
   const { users } = useAppSelector((state) => state.users);
@@ -238,24 +241,34 @@ const ConsorcioAnalytics: React.FC<Props> = ({
     },
   ];
 
+  const filtersButton = (
+    <button
+      type="button"
+      onClick={() => setShowFilters(!showFilters)}
+      className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+    >
+      <Filter className="h-4 w-4 mr-2" />
+      Filtros
+    </button>
+  );
+
   return (
-    <div className="pb-6 animate-fadeIn">
+    <div className={embedded ? 'animate-fadeIn' : 'pb-6 animate-fadeIn'}>
       <div className="space-y-4">
-        <AdminPageHeader
-          title={title}
-          description={description}
-          eyebrow="Análisis"
-          icon={<Building className="h-5 w-5" />}
-          actions={
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
-            </button>
-          }
-        />
+        {!embedded ? (
+          <AdminPageHeader
+            title={title}
+            description={description}
+            eyebrow="Análisis"
+            icon={<Building className="h-5 w-5" />}
+            actions={filtersButton}
+          />
+        ) : (
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>
+            {filtersButton}
+          </div>
+        )}
 
         {showFilters && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">

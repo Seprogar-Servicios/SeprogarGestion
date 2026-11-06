@@ -1,18 +1,51 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store';
-import { User, Mail, Phone, Shield, BadgeCheck, Calendar } from 'lucide-react';
-import { fetchCurrentUser } from '../../store/slices/authSlice';
+import { User, Mail, Phone, Shield, BadgeCheck, Calendar, MapPin, Save, Loader2 } from 'lucide-react';
+import { fetchCurrentUser, setUser } from '../../store/slices/authSlice';
 import ChangePassword from './ChangePassword';
 import AdminPageHeader from '../common/AdminPageHeader';
+import AddressAutocomplete from '../common/AddressAutocomplete';
+import api from '../../config/api';
+import { showError, showSuccess } from '../../utils/toastUtils';
+import type { User as AppUser } from '../../types';
 
 const ProfilePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user, loading } = useAppSelector((state) => state.auth);
+  const [localidad, setLocalidad] = useState('');
+  const [savingLocalidad, setSavingLocalidad] = useState(false);
 
   useEffect(() => {
-    // Fetch the latest user data when the component mounts
     dispatch(fetchCurrentUser());
   }, [dispatch]);
+
+  useEffect(() => {
+    setLocalidad(user?.localidad || '');
+  }, [user?.localidad]);
+
+  // Backend usa `usuario` para técnicos de campo; `tecnico` solo por compatibilidad de tipos
+  const canEditLocalidad = user?.rol === 'usuario' || user?.rol === 'tecnico';
+
+  const saveLocalidad = async () => {
+    if (!user) return;
+    setSavingLocalidad(true);
+    try {
+      const res = await api.put<{ success: boolean; data: AppUser; message?: string }>(
+        '/usuarios/profile',
+        { localidad: localidad.trim() || null }
+      );
+      if (res.data.data) {
+        dispatch(setUser(res.data.data));
+      } else {
+        await dispatch(fetchCurrentUser());
+      }
+      showSuccess('Localidad actualizada');
+    } catch (err: any) {
+      showError(err.response?.data?.message || 'No se pudo guardar la localidad');
+    } finally {
+      setSavingLocalidad(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -40,7 +73,6 @@ const ProfilePage: React.FC = () => {
       />
 
       <div className={user?.rol === 'usuario' ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}>
-        {/* Información del usuario */}
         <div className={user?.rol === 'tecnico' ? '' : 'md:col-span-1'}>
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="px-6 py-6 bg-blue-50/80 dark:bg-blue-900/20 border-b border-slate-200 dark:border-slate-700">
@@ -138,6 +170,60 @@ const ProfilePage: React.FC = () => {
                     </dd>
                   </div>
                 </div>
+
+                {canEditLocalidad ? (
+                  <div className="px-6 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                    <div className="flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                        <MapPin className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                          Localidad base
+                        </p>
+                        <AddressAutocomplete
+                          mode="localidad"
+                          value={localidad}
+                          onChange={setLocalidad}
+                          onSelect={(s) => setLocalidad(s.label)}
+                          placeholder="Barrio o partido donde operás"
+                        />
+                        <button
+                          type="button"
+                          onClick={saveLocalidad}
+                          disabled={savingLocalidad || localidad === (user.localidad || '')}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {savingLocalidad ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                          Guardar localidad
+                        </button>
+                        <p className="text-[11px] text-slate-400">
+                          Se usa para recomendar técnicos cercanos al asignar tareas.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : user.localidad ? (
+                  <div className="px-6 py-4 flex items-center transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                    <dt className="w-10 flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <MapPin className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                    </dt>
+                    <div className="ml-4 flex-1">
+                      <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                        Localidad
+                      </dt>
+                      <dd className="mt-1 text-base font-medium text-slate-900 dark:text-white">
+                        {user.localidad}
+                      </dd>
+                    </div>
+                  </div>
+                ) : null}
 
                 {user.createdAt && (
                   <div className="px-6 py-4 flex items-center transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60">

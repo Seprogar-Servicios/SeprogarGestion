@@ -3,6 +3,15 @@ const bcrypt = require('bcryptjs');
 const { userRegisterSchema, userUpdateSchema } = require('../utils/validators');
 const Joi = require('joi');
 const { isSuperAdmin, isPrivilegedAdmin, MAX_SUPER_ADMINS } = require('../utils/roles');
+const { geocodeAddress } = require('../utils/geocode');
+
+const resolveUbicacionBase = async (localidad, direccionLegacy) => {
+  const query = (localidad || direccionLegacy || '').trim();
+  if (!query) return null;
+  const coords = await geocodeAddress(query);
+  if (!coords) return null;
+  return { lat: coords.lat, lng: coords.lng, actualizadoAt: new Date() };
+};
 
 const countSuperAdmins = async (excludeId = null) => {
   const filter = { rol: 'super_admin' };
@@ -79,7 +88,12 @@ exports.createUser = async (req, res) => {
     const exists = await Usuario.findOne({ email: req.body.email });
     if (exists) return res.status(409).json({ message: 'Email ya registrado' });
     const hash = await bcrypt.hash(req.body.password, 10);
-    const usuario = new Usuario({ ...req.body, password: hash, aprobado: true });
+    const payload = { ...req.body, password: hash, aprobado: true };
+    if (payload.localidad || payload.direccion) {
+      const base = await resolveUbicacionBase(payload.localidad, payload.direccion);
+      if (base) payload.ubicacionBase = base;
+    }
+    const usuario = new Usuario(payload);
     await usuario.save();
     res.status(201).json({
       success: true,
@@ -151,6 +165,25 @@ exports.updateUser = async (req, res) => {
     const updatePayload = { ...req.body };
     if (updatePayload.password) {
       updatePayload.password = await bcrypt.hash(updatePayload.password, 10);
+    }
+
+    const localidadChanged =
+      Object.prototype.hasOwnProperty.call(updatePayload, 'localidad') &&
+      updatePayload.localidad !== target.localidad;
+    const direccionChanged =
+      Object.prototype.hasOwnProperty.call(updatePayload, 'direccion') &&
+      updatePayload.direccion !== target.direccion;
+
+    if (localidadChanged || (direccionChanged && !updatePayload.localidad && !target.localidad)) {
+      const base = await resolveUbicacionBase(
+        updatePayload.localidad ?? target.localidad,
+        updatePayload.direccion ?? target.direccion
+      );
+      if (base) {
+        updatePayload.ubicacionBase = base;
+      } else if (localidadChanged && !String(updatePayload.localidad || '').trim()) {
+        updatePayload.ubicacionBase = undefined;
+      }
     }
 
     const usuario = await Usuario.findByIdAndUpdate(req.params.id, updatePayload, { new: true });
@@ -303,7 +336,20 @@ exports.getCurrentUser = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { error } = userUpdateSchema.validate(req.body);
+    // Solo campos de perfil; rol/aprobado/porcentaje jamás vía este endpoint
+    const profileSchema = Joi.object({
+      nombre: Joi.string().optional(),
+      email: Joi.string().email().optional(),
+      password: Joi.string().min(6).optional(),
+      telefono: Joi.string().optional().allow(null, ''),
+      direccion: Joi.string().optional().allow(null, ''),
+      localidad: Joi.string().optional().allow(null, ''),
+    });
+
+    const { error, value } = profileSchema.validate(req.body, {
+      stripUnknown: true,
+      abortEarly: true,
+    });
     if (error) {
       return res.status(400).json({
         success: false,
@@ -312,22 +358,46 @@ exports.updateProfile = async (req, res) => {
     }
 
     const userId = req.user.id || req.user._id;
-    const { password, rol, aprobado, ...rest } = req.body;
-
-    // Nadie puede cambiarse el rol ni aprobación desde el perfil
-    const updateData = { ...rest };
-    if (password) {
-      updateData.password = await bcrypt.hash(password, 10);
+    const updateData = {};
+    if (value.nombre !== undefined) updateData.nombre = value.nombre;
+    if (value.email !== undefined) updateData.email = value.email;
+    if (value.telefono !== undefined) updateData.telefono = value.telefono;
+    if (value.direccion !== undefined) updateData.direccion = value.direccion;
+    if (value.localidad !== undefined) updateData.localidad = value.localidad;
+    if (value.password) {
+      updateData.password = await bcrypt.hash(value.password, 10);
     }
 
-    const usuario = await Usuario.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');
-
-    if (!usuario) {
+    const current = await Usuario.findById(userId);
+    if (!current) {
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado',
       });
     }
+
+    const localidadChanged =
+      Object.prototype.hasOwnProperty.call(updateData, 'localidad') &&
+      updateData.localidad !== current.localidad;
+    const direccionChanged =
+      Object.prototype.hasOwnProperty.call(updateData, 'direccion') &&
+      updateData.direccion !== current.direccion;
+
+    if (localidadChanged || (direccionChanged && !updateData.localidad && !current.localidad)) {
+      const base = await resolveUbicacionBase(
+        updateData.localidad ?? current.localidad,
+        updateData.direccion ?? current.direccion
+      );
+      if (base) {
+        updateData.ubicacionBase = base;
+      } else if (localidadChanged && !String(updateData.localidad || '').trim()) {
+        updateData.ubicacionBase = null;
+      }
+    }
+
+    const usuario = await Usuario.findByIdAndUpdate(userId, updateData, { new: true }).select(
+      '-password'
+    );
 
     res.json({
       success: true,

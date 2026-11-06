@@ -11,6 +11,8 @@ import TasksByUserChart from './TasksByUserChart';
 import TasksCompletionTimeChart from './TasksCompletionTimeChart';
 import SimpleCategoryChart from './SimpleCategoryChart';
 import FinancialAnalyticsPanel from './FinancialAnalyticsPanel';
+import QualityAnalyticsPanel from './QualityAnalyticsPanel';
+import ConsorcioAnalytics from './ConsorcioAnalytics';
 import ChartDrilldownPanel, { type ChartDrilldown } from './ChartDrilldownPanel';
 import {
   BarChart3,
@@ -30,18 +32,33 @@ import {
   Users as UsersIcon,
   Briefcase,
   Tag,
+  ShieldAlert,
+  Building,
 } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 import AdminPageHeader from '../common/AdminPageHeader';
 import { isAdminRole } from '../../utils/roles';
 import {
   buildFinancialSummary,
+  buildMonthlyCloseSummary,
   buildOperationalSummary,
+  buildQualitySummary,
   filterTasksForAnalytics,
+  inDateRange,
 } from '../../utils/analyticsHelpers';
-import type { Task } from '../../types';
+import type { Reclamo, Task } from '../../types';
+import api from '../../config/api';
 
-type TabId = 'operativo' | 'financiero';
+type TabId = 'operativo' | 'financiero' | 'cierre' | 'consorcio';
+
+const TAB_FROM_QUERY: Record<string, TabId> = {
+  operativo: 'operativo',
+  financiero: 'financiero',
+  cierre: 'cierre',
+  calidad: 'cierre',
+  consorcio: 'consorcio',
+};
 
 const ChartCard: React.FC<{
   title: string;
@@ -59,6 +76,7 @@ const ChartCard: React.FC<{
 
 const Analytics: React.FC = () => {
   const dispatch = useAppDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { tasks, loading: tasksLoading } = useAppSelector((state) => state.tasks);
   const { users, loading: usersLoading } = useAppSelector((state) => state.users);
   const { liquidaciones } = useAppSelector((state) => state.tareaLiquidacion);
@@ -68,8 +86,23 @@ const Analytics: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [tab, setTab] = useState<TabId>('operativo');
+  const initialTab = TAB_FROM_QUERY[searchParams.get('tab') || ''] || 'operativo';
+  const [tab, setTab] = useState<TabId>(initialTab);
   const [detail, setDetail] = useState<ChartDrilldown | null>(null);
+  const [reclamos, setReclamos] = useState<Reclamo[]>([]);
+
+  useEffect(() => {
+    const q = searchParams.get('tab') || '';
+    if (TAB_FROM_QUERY[q] && TAB_FROM_QUERY[q] !== tab) {
+      setTab(TAB_FROM_QUERY[q]);
+    }
+  }, [searchParams]);
+
+  const selectTab = (id: TabId) => {
+    setTab(id);
+    setDetail(null);
+    setSearchParams(id === 'operativo' ? {} : { tab: id }, { replace: true });
+  };
 
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
     start: format(subMonths(new Date(), 12), 'yyyy-MM-dd'),
@@ -95,6 +128,12 @@ const Analytics: React.FC = () => {
             dispatch(fetchPagosManuales()),
             dispatch(fetchRecibos()),
           ]);
+          try {
+            const res = await api.get<{ success: boolean; data: Reclamo[] }>('/reclamos');
+            setReclamos(res.data.data || []);
+          } catch {
+            setReclamos([]);
+          }
         }
       } catch (error) {
         console.error('Error al cargar los datos:', error);
@@ -135,6 +174,35 @@ const Analytics: React.FC = () => {
         dateRange
       ),
     [liquidaciones, pagos, recibos, dateRange]
+  );
+
+  const reclamosFiltrados = useMemo(
+    () =>
+      reclamos.filter((r) => {
+        const d = r.fechaReclamo ? new Date(r.fechaReclamo) : null;
+        return inDateRange(d && !isNaN(d.getTime()) ? d : null, dateRange.start, dateRange.end);
+      }),
+    [reclamos, dateRange]
+  );
+
+  const monthlyClose = useMemo(
+    () =>
+      buildMonthlyCloseSummary(
+        filteredTasks,
+        Array.isArray(users) ? users : [],
+        Array.isArray(liquidaciones) ? liquidaciones : []
+      ),
+    [filteredTasks, users, liquidaciones]
+  );
+
+  const quality = useMemo(
+    () =>
+      buildQualitySummary(
+        filteredTasks,
+        Array.isArray(users) ? users : [],
+        reclamosFiltrados
+      ),
+    [filteredTasks, users, reclamosFiltrados]
   );
 
   const resetFilters = () => {
@@ -205,34 +273,35 @@ const Analytics: React.FC = () => {
       <div className="space-y-4">
         <AdminPageHeader
           title="Panel de Análisis"
-          description="Operativo y financiero para decisiones de jefatura"
+          description="Operativo, financiero, consorcio y cierre de calidad"
           eyebrow="Análisis"
           icon={<BarChart3 className="h-5 w-5" />}
           actions={
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
-            </button>
+            tab !== 'consorcio' ? (
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filtros
+              </button>
+            ) : undefined
           }
         />
 
-        <div className="flex gap-1 p-1 rounded-xl bg-slate-200/70 dark:bg-slate-800 w-fit">
+        <div className="flex gap-1 p-1 rounded-xl bg-slate-200/70 dark:bg-slate-800 w-fit flex-wrap">
           {(
             [
               ['operativo', 'Operativo', Activity],
               ['financiero', 'Financiero', Wallet],
+              ['consorcio', 'Consorcio', Building],
+              ['cierre', 'Cierre / Calidad', ShieldAlert],
             ] as const
           ).map(([id, label, Icon]) => (
             <button
               key={id}
               type="button"
-              onClick={() => {
-                setTab(id);
-                setDetail(null);
-              }}
+              onClick={() => selectTab(id)}
               className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium ${
                 tab === id
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
@@ -245,7 +314,7 @@ const Analytics: React.FC = () => {
           ))}
         </div>
 
-        {showFilters && (
+        {showFilters && tab !== 'consorcio' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Filtros</span>
@@ -487,6 +556,12 @@ const Analytics: React.FC = () => {
         )}
 
         {tab === 'financiero' && <FinancialAnalyticsPanel summary={finance} />}
+
+        {tab === 'consorcio' && <ConsorcioAnalytics embedded />}
+
+        {tab === 'cierre' && (
+          <QualityAnalyticsPanel close={monthlyClose} quality={quality} />
+        )}
       </div>
     </div>
   );

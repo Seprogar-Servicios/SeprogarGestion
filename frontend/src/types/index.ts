@@ -9,6 +9,13 @@ export interface User {
   aprobado: boolean;
   telefono?: string;
   direccion?: string;
+  /** Localidad / barrio base del técnico */
+  localidad?: string;
+  ubicacionBase?: {
+    lat: number;
+    lng: number;
+    actualizadoAt?: string;
+  } | null;
   porcentajeTecnico?: number;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +48,9 @@ export interface Task {
   franja_horaria?: string;
   creadoPor: User;
   cliente?: string;
+  /** Cuenta comercial opcional (IKE, VAITTY, …). No requerida en datos viejos. */
+  cuentaCliente?: '' | 'IKE' | 'VAITTY' | 'MDO' | 'Particular' | 'Consorcio' | 'Otro';
+  fechaCompletado?: string | null;
   numeroTitular?: string;
   direccion?: string;
   origen?: 'manual' | 'whatsapp' | string;
@@ -51,6 +61,34 @@ export interface Task {
     fuente?: 'gps' | 'direccion' | 'tecnico' | null;
     actualizadoAt?: string;
   } | null;
+}
+
+export type CuentaCliente = 'IKE' | 'VAITTY' | 'MDO' | 'Particular' | 'Consorcio' | 'Otro';
+
+export type ReclamoMotivo =
+  | 'mala_atencion'
+  | 'trabajo_incompleto'
+  | 'problema_tecnico'
+  | 'demora'
+  | 'otro';
+
+export type ReclamoEstado = 'abierto' | 'resuelto' | 'reabierto';
+
+export interface Reclamo {
+  _id: string;
+  tarea?: Task | string | null;
+  cliente?: string;
+  cuentaCliente?: '' | CuentaCliente;
+  tecnicos?: User[];
+  motivo: ReclamoMotivo;
+  estado: ReclamoEstado;
+  descripcion?: string;
+  fechaReclamo: string;
+  fechaResolucion?: string | null;
+  creadoPor?: User;
+  resueltoPor?: User | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Material types

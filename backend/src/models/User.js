@@ -10,6 +10,14 @@ const userSchema = new mongoose.Schema({
   notificationToken: { type: String, default: null },
   telefono: { type: String, default: null },
   direccion: { type: String, default: null },
+  /** Localidad / barrio base del técnico (para recomendaciones de cercanía) */
+  localidad: { type: String, default: null },
+  /** Punto geocodificado a partir de localidad (o dirección legacy) */
+  ubicacionBase: {
+    lat: { type: Number },
+    lng: { type: Number },
+    actualizadoAt: { type: Date },
+  },
   porcentajeTecnico: {
     type: Number,
     default: 0.7,
