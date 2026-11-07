@@ -16,10 +16,12 @@ const initialState: UsersState = {
   error: null,
 };
 
+type FetchUsersArg = { force?: boolean } | void;
+
 // Async thunks
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
-  async (_, { rejectWithValue }) => {
+  async (_arg: FetchUsersArg, { rejectWithValue }) => {
     try {
       const response = await api.get<ApiResponse<User[]>>('/usuarios');
       return response.data.data;
@@ -30,6 +32,17 @@ export const fetchUsers = createAsyncThunk(
       }
       return rejectWithValue(error.response?.data?.message || 'Error al cargar usuarios');
     }
+  },
+  {
+    // Evita martillar /usuarios desde cada pantalla/modal
+    condition: (arg, { getState }) => {
+      const force = arg && typeof arg === 'object' ? Boolean(arg.force) : false;
+      if (force) return true;
+      const { users, loading } = (getState() as { users: UsersState }).users;
+      if (loading) return false;
+      if (Array.isArray(users) && users.length > 0) return false;
+      return true;
+    },
   }
 );
 

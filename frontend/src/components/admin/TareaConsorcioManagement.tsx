@@ -616,11 +616,14 @@ const TareaConsorcioManagement: React.FC = () => {
 
   useEffect(() => {
     fetchTasks();
-    // Cargar usuarios para poder mostrar nombres de técnicos
+  }, [currentPage, estadoFilter, adminConsorcioFilter, searchTerm]);
+
+  useEffect(() => {
+    // Cargar usuarios una sola vez (fetchUsers dedupea si ya hay data)
     if (isAdminRole(user) || user?.rol === 'adminConsorcio') {
       dispatch(fetchUsers());
     }
-  }, [currentPage, estadoFilter, adminConsorcioFilter, searchTerm, dispatch, user?.rol]);
+  }, [dispatch, user?.rol]);
 
   // Estados y colores
   const estadoColors: Record<string, string> = {

@@ -157,7 +157,7 @@ const TaskList: React.FC = () => {
     if (isAdminRole(user)) {
       dispatch(fetchUsers());
     }
-  }, [dispatch, user, initialFiltersLoaded]);
+  }, [dispatch, user?._id, user?.rol, initialFiltersLoaded]);
   
   // Handle filter changes
   useEffect(() => {

@@ -185,7 +185,7 @@ const UserManagement: React.FC = () => {
       }));
       
       if (updateUser.fulfilled.match(resultAction)) {
-        await dispatch(fetchUsers());
+        await dispatch(fetchUsers({ force: true }));
         setShowEditModal(false);
         setEditingUser(null);
         resetForm();
@@ -251,7 +251,7 @@ const UserManagement: React.FC = () => {
       };
       
       await dispatch(createUser(userToCreate)).unwrap();
-      await dispatch(fetchUsers());
+      await dispatch(fetchUsers({ force: true }));
       setShowCreateModal(false);
       resetCreateForm();
       showSuccess('Usuario creado correctamente');
@@ -319,7 +319,7 @@ const UserManagement: React.FC = () => {
                   const resultAction = await dispatch(deleteUser(userId));
                   if (deleteUser.fulfilled.match(resultAction)) {
                     showSuccess('Usuario eliminado correctamente');
-                    await dispatch(fetchUsers());
+                    await dispatch(fetchUsers({ force: true }));
                   } else if (resultAction.payload) {
                     showError(`Error al eliminar: ${resultAction.payload}`);
                   }

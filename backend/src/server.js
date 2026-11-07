@@ -79,23 +79,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configuración de rate limiting
+// Rate limiting (en desarrollo se omite: el SPA dispara muchas lecturas al navegar)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 300, // límite de 300 peticiones por ventana por IP
-  message: 'Demasiadas peticiones desde esta IP, por favor inténtalo de nuevo en 15 minutos',
-  standardHeaders: true, // Devuelve información del límite en las cabeceras
-  legacyHeaders: false, // Desactiva los headers antiguos
+  max: 2000, // admin SPA + mapa/polls; geo tiene límite propio
+  message: {
+    success: false,
+    message: 'Demasiadas peticiones desde esta IP, por favor inténtalo de nuevo en 15 minutos',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
   skip: (req) => {
-    // No aplicar límite a rutas específicas que podrían necesitar más peticiones
-    const skipPaths = ['/api/tareas/crear-masivo', '/api/tareas/actualizar-masivo'];
-    return skipPaths.some(path => req.path.startsWith(path));
-  }
+    if (process.env.NODE_ENV !== 'production') return true;
+    const skipPaths = ['/api/health', '/api/tareas/crear-masivo', '/api/tareas/actualizar-masivo'];
+    return skipPaths.some((path) => req.path.startsWith(path));
+  },
 });
 
-// Aplicar rate limiting a todas las rutas API
-const apiLimiter = limiter;
-app.use(apiLimiter);
+app.use('/api', limiter);
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI, {

@@ -98,6 +98,8 @@ const ConsorcioAnalytics: React.FC<Props> = ({
   const [adminConsorcioFilter, setAdminConsorcioFilter] = useState<string[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadData = async () => {
       setIsLoading(true);
       try {
@@ -108,6 +110,7 @@ const ConsorcioAnalytics: React.FC<Props> = ({
         const response = await api.get('/tareas-consorcio', {
           params: { limit: 2000, page: 1 },
         });
+        if (cancelled) return;
         const payload = response.data;
         const list: TareaConsorcio[] = Array.isArray(payload?.tareas)
           ? payload.tareas
@@ -118,14 +121,19 @@ const ConsorcioAnalytics: React.FC<Props> = ({
               : [];
         setTareas(list);
       } catch (error) {
-        console.error('Error al cargar los datos:', error);
-        setTareas([]);
+        if (!cancelled) {
+          console.error('Error al cargar los datos:', error);
+          setTareas([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     loadData();
+    return () => {
+      cancelled = true;
+    };
   }, [dispatch, user?.rol, hideAdminFilter]);
 
   const filteredTasks = useMemo(() => {
