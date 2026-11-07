@@ -16,31 +16,42 @@ const agenda = require('./jobs/agenda');
 // Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Configuración de CORS para desarrollo
+// CORS: orígenes fijos + CORS_ORIGINS; en no-producción también localhost/127.0.0.1 (cualquier puerto)
+const isDev = process.env.NODE_ENV !== 'production';
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:4000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'https://seprogar-gestion.vercel.app',
+  ...(process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : []),
+];
+
 const corsOptions = {
   origin: function (origin, callback) {
-    // Permitir solicitudes sin 'origin' (como aplicaciones móviles o curl)
+    // Sin Origin (curl, Postman, same-origin proxy de Vite)
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:3000',  // Frontend en desarrollo (React)
-      'http://localhost:5173',  // Frontend en desarrollo (Vite)
-      'http://localhost:4000',  // Backend (si se accede directamente)
-      'https://seprogar-gestion.vercel.app',  // Producción frontend
-      ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [])
-    ];
-    
-    if (allowedOrigins.includes(origin) || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+
+    const isLocalDev =
+      isDev &&
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+
+    if (allowedOrigins.includes(origin) || isLocalDev) {
+      return callback(null, true);
     }
+
+    console.warn(`CORS bloqueado para origen: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  optionsSuccessStatus: 200, // Algunos navegadores (IE11, varios SmartTVs) fallan con 204
+  optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Range', 'X-Total-Count']
+  exposedHeaders: ['Content-Range', 'X-Total-Count'],
 };
 
 app.use(cors(corsOptions));

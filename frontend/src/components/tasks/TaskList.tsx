@@ -14,7 +14,6 @@ import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AdminPageHeader from '../common/AdminPageHeader';
 import AddressAutocomplete from '../common/AddressAutocomplete';
-import TecnicoRecommendSelect from './TecnicoRecommendSelect';
 import { isAdminRole } from '../../utils/roles';
 
 // Las clases de botones se definen directamente en los componentes
@@ -1580,14 +1579,29 @@ const TaskList: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Técnicos Asignados
                   </label>
-                  <TecnicoRecommendSelect
-                    users={users || []}
+                  <select
+                    multiple
                     value={formData.tecnicos}
-                    onChange={(tecnicos) => setFormData({ ...formData, tecnicos })}
-                    taskLat={ubicacionCoords?.lat}
-                    taskLng={ubicacionCoords?.lng}
-                    taskDireccion={formData.direccion}
-                  />
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        tecnicos: Array.from(e.target.selectedOptions, (o) => o.value),
+                      })
+                    }
+                    className="block w-full py-2 px-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[96px]"
+                  >
+                    {(users || [])
+                      .filter((u) => u.rol === 'usuario' || u.rol === 'tecnico')
+                      .map((u) => (
+                        <option key={u._id} value={u._id}>
+                          {u.nombre}
+                          {u.localidad ? ` · ${u.localidad}` : ''}
+                        </option>
+                      ))}
+                  </select>
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    Ctrl/Cmd + clic para selección múltiple
+                  </p>
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-5">

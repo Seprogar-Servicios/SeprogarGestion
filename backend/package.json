@@ -8,6 +8,7 @@
     "start": "node scripts/initAdmin.js && node src/server.js",
     "build": "echo \"Build completed\"",
     "dev": "nodemon src/server.js",
+    "seed:demo": "node scripts/seedDemoData.js",
     "lint": "eslint .",
     "swagger-autogen": "node src/swagger/swagger.js"
   },

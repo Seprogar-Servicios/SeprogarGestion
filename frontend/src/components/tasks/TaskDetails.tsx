@@ -30,7 +30,6 @@ import ObservationsList from '../observations/ObservationsList';
 import TaskMaterials from './TaskMaterials';
 import TaskLiquidacion from './TaskLiquidacion';
 import AddressAutocomplete from '../common/AddressAutocomplete';
-import TecnicoRecommendSelect from './TecnicoRecommendSelect';
 import type { RootState } from '../../store';
 import { isAdminRole } from '../../utils/roles';
 
@@ -860,23 +859,34 @@ const TaskDetails: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Técnicos Asignados
                     </label>
-                    <TecnicoRecommendSelect
-                      users={users}
+                    <select
+                      multiple
                       value={
                         Array.isArray(formData.tecnicos)
                           ? formData.tecnicos.map((t) => (typeof t === 'string' ? t : t._id))
                           : []
                       }
-                      onChange={(ids) => {
+                      onChange={(e) => {
+                        const ids = Array.from(e.target.selectedOptions, (o) => o.value);
                         const selectedUsers = ids
                           .map((id) => users.find((u) => u._id === id))
                           .filter((u): u is UserType => u !== undefined);
                         setFormData((prev) => ({ ...prev, tecnicos: selectedUsers }));
                       }}
-                      taskLat={formData.ubicacionMapa?.lat}
-                      taskLng={formData.ubicacionMapa?.lng}
-                      taskDireccion={formData.direccion}
-                    />
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 min-h-[96px]"
+                    >
+                      {users
+                        .filter((u) => u.rol === 'usuario' || u.rol === 'tecnico')
+                        .map((u) => (
+                          <option key={u._id} value={u._id}>
+                            {u.nombre}
+                            {u.localidad ? ` · ${u.localidad}` : ''}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="mt-1 text-[11px] text-gray-400">
+                      Ctrl/Cmd + clic para selección múltiple
+                    </p>
                   </div>
                   
                   <div className="space-y-1 sm:col-span-2">

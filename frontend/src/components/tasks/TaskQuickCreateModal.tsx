@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { X, Calendar, Clock, MapPin, User, Hash } from 'lucide-react';
-import { useAppDispatch } from '../../store';
+import React, { useEffect, useState } from 'react';
+import { X, Calendar, Clock, User, Hash } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '../../store';
 import { createTask, fetchCalendarTasks } from '../../store/slices/tasksSlice';
+import { fetchUsers } from '../../store/slices/usersSlice';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AddressAutocomplete from '../common/AddressAutocomplete';
@@ -27,6 +28,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
   calendarFilters,
 }) => {
   const dispatch = useAppDispatch();
+  const { users } = useAppSelector((s) => s.users);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     numero: '',
@@ -38,8 +40,13 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
     horaInicio: defaults.horaInicio || '09:00',
     horaFin: defaults.horaFin || '10:00',
     allDay: !!defaults.allDay,
+    tecnicos: [] as string[],
   });
   const [ubicacionCoords, setUbicacionCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +71,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           fechaEjecucion: form.fechaEjecucion,
           franja_horaria,
           estado: 'pendiente',
-          tecnicos: [],
+          tecnicos: form.tecnicos,
           ...(ubicacionCoords
             ? {
                 ubicacionMapa: {
@@ -232,6 +239,35 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
               setUbicacionCoords({ lat: s.lat, lng: s.lng });
             }}
           />
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+              Técnicos
+            </label>
+            <select
+              multiple
+              value={form.tecnicos}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  tecnicos: Array.from(e.target.selectedOptions, (o) => o.value),
+                })
+              }
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm py-1.5 min-h-[88px]"
+            >
+              {(Array.isArray(users) ? users : [])
+                .filter((u) => u.rol === 'usuario' || u.rol === 'tecnico')
+                .map((u) => (
+                  <option key={u._id} value={u._id}>
+                    {u.nombre}
+                    {u.localidad ? ` · ${u.localidad}` : ''}
+                  </option>
+                ))}
+            </select>
+            <p className="mt-1 text-[11px] text-gray-400">
+              Ctrl/Cmd + clic para selección múltiple
+            </p>
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button

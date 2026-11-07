@@ -163,43 +163,8 @@ async function suggestAddresses(query, limit = 6) {
   }
 }
 
-/**
- * Orden nearest-neighbor partiendo del punto más al oeste/norte o de un origen.
- * @param {Array<{ id: string, lat: number, lng: number }>} points
- * @param {{ lat: number, lng: number } | null} [origin]
- */
-function nearestNeighborOrder(points, origin = null) {
-  if (!Array.isArray(points) || points.length === 0) return [];
-  const remaining = [...points];
-  const ordered = [];
-
-  let current = origin;
-  if (!current) {
-    remaining.sort((a, b) => a.lng - b.lng || a.lat - b.lat);
-    current = remaining.shift();
-    ordered.push(current);
-  }
-
-  while (remaining.length > 0) {
-    let bestIdx = 0;
-    let bestDist = Infinity;
-    for (let i = 0; i < remaining.length; i++) {
-      const d = haversineKm(current, remaining[i]);
-      if (d != null && d < bestDist) {
-        bestDist = d;
-        bestIdx = i;
-      }
-    }
-    current = remaining.splice(bestIdx, 1)[0];
-    ordered.push({ ...current, kmFromPrev: bestDist === Infinity ? null : Math.round(bestDist * 10) / 10 });
-  }
-
-  return ordered;
-}
-
 module.exports = {
   geocodeAddress,
   suggestAddresses,
   haversineKm,
-  nearestNeighborOrder,
 };

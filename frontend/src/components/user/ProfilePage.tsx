@@ -202,7 +202,7 @@ const ProfilePage: React.FC = () => {
                           Guardar localidad
                         </button>
                         <p className="text-[11px] text-slate-400">
-                          Se usa para recomendar técnicos cercanos al asignar tareas.
+                          Zona / domicilio de referencia del técnico.
                         </p>
                       </div>
                     </div>
