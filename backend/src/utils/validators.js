@@ -10,6 +10,7 @@ const userRegisterSchema = Joi.object({
   direccion: Joi.string().optional().allow(null, ''),
   localidad: Joi.string().optional().allow(null, ''),
   porcentajeTecnico: Joi.number().min(0).max(1).optional().default(0),
+  color: Joi.string().pattern(/^#[0-9A-Fa-f]{6}$/).optional().allow(null, ''),
 });
 
 const userUpdateSchema = Joi.object({
@@ -24,6 +25,7 @@ const userUpdateSchema = Joi.object({
   direccion: Joi.string().optional().allow(null, ''),
   localidad: Joi.string().optional().allow(null, ''),
   porcentajeTecnico: Joi.number().min(0).max(1).optional(),
+  color: Joi.string().pattern(/^#[0-9A-Fa-f]{6}$/).optional().allow(null, ''),
 });
 
 const especialidadSchema = Joi.object({

@@ -9,6 +9,8 @@
     "build": "echo \"Build completed\"",
     "dev": "nodemon src/server.js",
     "seed:demo": "node scripts/seedDemoData.js",
+    "assign:tecnico-colors": "node scripts/assignTecnicoColors.js",
+    "assign:tecnico-colors:mongosh": "node scripts/assignTecnicoColors.js --mongosh",
     "lint": "eslint .",
     "swagger-autogen": "node src/swagger/swagger.js"
   },

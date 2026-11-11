@@ -17,6 +17,8 @@ export interface User {
     actualizadoAt?: string;
   } | null;
   porcentajeTecnico?: number;
+  /** Color único del técnico en calendario (#RRGGBB) */
+  color?: string | null;
   createdAt: string;
   updatedAt: string;
 }

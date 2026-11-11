@@ -29,13 +29,32 @@ const userSchema = new mongoose.Schema({
       },
       message: 'El porcentaje debe estar entre 0 y 1'
     }
-  }
+  },
+  /**
+   * Color único del técnico para el calendario (#RRGGBB).
+   * Solo aplica a rol usuario (técnico); sparse unique permite null en admins.
+   */
+  color: {
+    type: String,
+    default: null,
+    validate: {
+      validator(v) {
+        if (v == null || v === '') return true;
+        return /^#[0-9A-Fa-f]{6}$/.test(v);
+      },
+      message: 'color debe ser hex #RRGGBB',
+    },
+  },
 }, { timestamps: true });
 
 // Índices para mejor rendimiento
 userSchema.index({ email: 1 });
 userSchema.index({ rol: 1 });
 userSchema.index({ aprobado: 1 });
+userSchema.index(
+  { color: 1 },
+  { unique: true, sparse: true, partialFilterExpression: { color: { $type: 'string' } } }
+);
 
 // Virtuals para facilitar consultas
 userSchema.virtual('esAdminConsorcio').get(function() {

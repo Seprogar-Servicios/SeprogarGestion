@@ -26,6 +26,8 @@ import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import { isAdminRole, isSuperAdmin, roleLabel, MAX_SUPER_ADMINS } from '../../utils/roles';
 import AddressAutocomplete from '../common/AddressAutocomplete';
+import TecnicoColorPicker from './TecnicoColorPicker';
+import { nextAvailableColor } from '../../utils/tecnicoColors';
 
 const UserManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -79,7 +81,12 @@ const UserManagement: React.FC = () => {
     password?: string;
     confirmPassword?: string;
     porcentajeTecnico?: number;
+    color?: string | null;
   }
+
+  const takenColors = users
+    .filter((u) => u.rol === 'usuario' && u.color)
+    .map((u) => u.color as string);
 
   const [formData, setFormData] = useState<FormData>({
     nombre: '',
@@ -90,7 +97,8 @@ const UserManagement: React.FC = () => {
     rol: 'usuario',
     password: '',
     confirmPassword: '',
-    porcentajeTecnico: 0
+    porcentajeTecnico: 0,
+    color: null,
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -104,7 +112,8 @@ const UserManagement: React.FC = () => {
     confirmPassword: '',
     rol: 'usuario' as 'super_admin' | 'admin' | 'usuario' | 'adminConsorcio',
     especialidad: '',
-    porcentajeTecnico: 0
+    porcentajeTecnico: 0,
+    color: '' as string,
   });
 
   useEffect(() => {
@@ -207,10 +216,12 @@ const UserManagement: React.FC = () => {
       email: '',
       telefono: '',
       direccion: '',
+      localidad: '',
       rol: 'usuario',
       password: '',
       confirmPassword: '',
-      porcentajeTecnico: 0
+      porcentajeTecnico: 0,
+      color: null,
     });
   };
 
@@ -220,11 +231,13 @@ const UserManagement: React.FC = () => {
       email: '',
       telefono: '',
       direccion: '',
+      localidad: '',
       password: '',
       confirmPassword: '',
       rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
       especialidad: '',
-      porcentajeTecnico: 0
+      porcentajeTecnico: 0,
+      color: nextAvailableColor(takenColors) || '',
     });
   };
 
@@ -238,6 +251,11 @@ const UserManagement: React.FC = () => {
       }
 
       // Crear objeto con solo los campos necesarios para la API
+      if (createFormData.rol === 'usuario' && !createFormData.color) {
+        showError('Elegí un color para el técnico (se usa en el calendario)');
+        return;
+      }
+
       const userToCreate = {
         nombre: createFormData.nombre,
         email: createFormData.email,
@@ -247,7 +265,8 @@ const UserManagement: React.FC = () => {
         password: createFormData.password,
         rol: createFormData.rol,
         especialidad: createFormData.especialidad || undefined,
-        porcentajeTecnico: createFormData.rol === 'usuario' ? createFormData.porcentajeTecnico : undefined
+        porcentajeTecnico: createFormData.rol === 'usuario' ? createFormData.porcentajeTecnico : undefined,
+        color: createFormData.rol === 'usuario' ? createFormData.color : undefined,
       };
       
       await dispatch(createUser(userToCreate)).unwrap();
@@ -276,7 +295,8 @@ const UserManagement: React.FC = () => {
       rol: target.rol as FormData['rol'],
       password: '',
       confirmPassword: '',
-      porcentajeTecnico: target.porcentajeTecnico || 0
+      porcentajeTecnico: target.porcentajeTecnico || 0,
+      color: target.color || nextAvailableColor(takenColors) || '',
     });
     setShowEditModal(true);
   };
@@ -375,6 +395,7 @@ const UserManagement: React.FC = () => {
               data-sepi-target="usuarios-create"
               onClick={() => {
                 setActiveTab('approved');
+                resetCreateForm();
                 setShowCreateModal(true);
               }}
               className="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 cursor-pointer"
@@ -636,7 +657,16 @@ const UserManagement: React.FC = () => {
                         </div>
                       </div>
                       <div className="ml-4 flex-1">
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{user.nombre}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{user.nombre}</h4>
+                          {user.rol === 'usuario' && user.color && (
+                            <span
+                              className="inline-block h-3.5 w-3.5 rounded-full border border-white shadow ring-1 ring-black/10"
+                              style={{ backgroundColor: user.color }}
+                              title={`Color calendario: ${user.color}`}
+                            />
+                          )}
+                        </div>
                         <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{user.email}</p>
                         
                         {user.telefono && (
@@ -999,6 +1029,20 @@ const UserManagement: React.FC = () => {
                   </div>
                 )}
 
+                {formData.rol === 'usuario' && (
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Color en calendario
+                    </label>
+                    <TecnicoColorPicker
+                      value={formData.color}
+                      allowColor={editingUser?.color}
+                      takenColors={takenColors}
+                      onChange={(color) => setFormData({ ...formData, color })}
+                    />
+                  </div>
+                )}
+
                 {/* Campos de contraseña opcionales */}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                   <div className="mb-3">
@@ -1357,6 +1401,19 @@ const UserManagement: React.FC = () => {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {createFormData.rol === 'usuario' && (
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Color en calendario
+                      </label>
+                      <TecnicoColorPicker
+                        value={createFormData.color}
+                        takenColors={takenColors}
+                        onChange={(color) => setCreateFormData({ ...createFormData, color })}
+                      />
                     </div>
                   )}
                 </div>

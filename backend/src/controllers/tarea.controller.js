@@ -281,7 +281,7 @@ exports.getTareas = async (req, res) => {
       }
     }
     let query = Tarea.find(filtro)
-      .populate('tecnicos', 'nombre email telefono')
+      .populate('tecnicos', 'nombre email telefono color')
       .populate('creadoPor', 'nombre email')
       .sort({ fechaEjecucion: 1 });
 
@@ -302,7 +302,7 @@ exports.getTareas = async (req, res) => {
 exports.getTareaById = async (req, res) => {
   try {
     const tarea = await Tarea.findById(req.params.id)
-      .populate('tecnicos', 'nombre email telefono')
+      .populate('tecnicos', 'nombre email telefono color')
       .populate('creadoPor', 'nombre email');
     if (!tarea) return res.status(404).json({ message: 'Tarea no encontrada' });
 
@@ -646,7 +646,7 @@ exports.getTareasCalendario = async (req, res) => {
     
     const tareas = await Tarea.find(filtro)
       .select('titulo estado fechaEjecucion franja_horaria tecnicos cliente descripcion numero direccion numeroTitular')
-      .populate('tecnicos', 'nombre telefono')
+      .populate('tecnicos', 'nombre telefono color')
       .populate('creadoPor', 'nombre')
       .sort({ fechaEjecucion: 1 });
     

@@ -88,9 +88,13 @@ export const createUser = createAsyncThunk(
     nombre: string; 
     email: string; 
     telefono?: string;
+    direccion?: string;
+    localidad?: string;
     password: string; 
-    rol: 'admin' | 'usuario' | 'adminConsorcio'; 
+    rol: 'super_admin' | 'admin' | 'usuario' | 'adminConsorcio'; 
     especialidad?: string;
+    porcentajeTecnico?: number;
+    color?: string;
   }, { rejectWithValue }) => {
     try {
       const response = await api.post<ApiResponse<User>>('/usuarios', userData);

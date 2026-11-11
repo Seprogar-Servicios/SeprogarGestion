@@ -23,12 +23,28 @@ import { parseFranjaHoraria, toFechaEjecucionYmd } from '../../utils/franjaHorar
 import { useTheme } from '../../hooks/useTheme';
 import './TaskCalendar.css';
 import { isAdminRole } from '../../utils/roles';
+import { normalizeColor, textColorForBg } from '../../utils/tecnicoColors';
 
+/** Fallback si la tarea no tiene técnico con color */
 const STATUS_COLORS: Record<string, { bg: string; border: string }> = {
   pendiente: { bg: '#5f6368', border: '#5f6368' },
   'en progreso': { bg: '#f9ab00', border: '#f9ab00' },
   completada: { bg: '#1e8e3e', border: '#1e8e3e' },
   cancelada: { bg: '#d93025', border: '#d93025' },
+};
+
+const colorFromTask = (task: Task): { bg: string; border: string; text: string } => {
+  const tecnicos = Array.isArray(task.tecnicos) ? task.tecnicos : [];
+  for (const t of tecnicos) {
+    if (typeof t === 'object' && t !== null) {
+      const c = normalizeColor((t as { color?: string }).color);
+      if (c) {
+        return { bg: c, border: c, text: textColorForBg(c) };
+      }
+    }
+  }
+  const fallback = STATUS_COLORS[task.estado] || STATUS_COLORS.pendiente;
+  return { ...fallback, text: '#ffffff' };
 };
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -42,7 +58,7 @@ const taskToEvent = (task: Task): EventInput | null => {
   const ymd = toFechaEjecucionYmd(task.fechaEjecucion);
   if (!ymd) return null;
 
-  const colors = STATUS_COLORS[task.estado] || STATUS_COLORS.pendiente;
+  const colors = colorFromTask(task);
   const title = task.numero ? `#${task.numero} · ${task.titulo}` : task.titulo;
   const franja = parseFranjaHoraria(task.franja_horaria);
 
@@ -51,7 +67,7 @@ const taskToEvent = (task: Task): EventInput | null => {
     title,
     backgroundColor: colors.bg,
     borderColor: colors.border,
-    textColor: '#ffffff',
+    textColor: colors.text,
     extendedProps: { task },
   };
 

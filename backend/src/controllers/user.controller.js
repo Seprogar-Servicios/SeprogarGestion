@@ -4,6 +4,32 @@ const { userRegisterSchema, userUpdateSchema } = require('../utils/validators');
 const Joi = require('joi');
 const { isSuperAdmin, isPrivilegedAdmin, MAX_SUPER_ADMINS } = require('../utils/roles');
 const { geocodeAddress } = require('../utils/geocode');
+const { normalizeColor, nextAvailableColor } = require('../utils/tecnicoColors');
+
+const collectUsedColors = async (excludeUserId = null) => {
+  const filtro = { color: { $type: 'string', $ne: '' } };
+  if (excludeUserId) filtro._id = { $ne: excludeUserId };
+  const rows = await Usuario.find(filtro).select('color').lean();
+  return new Set(rows.map((r) => String(r.color).toUpperCase()));
+};
+
+const assertUniqueTecnicoColor = async (color, excludeUserId = null) => {
+  const normalized = normalizeColor(color);
+  if (!normalized) {
+    return { ok: false, status: 400, message: 'color inválido (usar #RRGGBB)' };
+  }
+  const filtro = { color: new RegExp(`^${normalized}$`, 'i') };
+  if (excludeUserId) filtro._id = { $ne: excludeUserId };
+  const taken = await Usuario.findOne(filtro).select('_id nombre email');
+  if (taken) {
+    return {
+      ok: false,
+      status: 409,
+      message: `Ese color ya lo usa ${taken.nombre || taken.email}`,
+    };
+  }
+  return { ok: true, color: normalized };
+};
 
 const resolveUbicacionBase = async (localidad, direccionLegacy) => {
   const query = (localidad || direccionLegacy || '').trim();
@@ -89,6 +115,26 @@ exports.createUser = async (req, res) => {
     if (exists) return res.status(409).json({ message: 'Email ya registrado' });
     const hash = await bcrypt.hash(req.body.password, 10);
     const payload = { ...req.body, password: hash, aprobado: true };
+
+    // Color único solo para técnicos (rol usuario)
+    if (requestedRol === 'usuario') {
+      const requested = normalizeColor(payload.color);
+      if (requested) {
+        const check = await assertUniqueTecnicoColor(requested);
+        if (!check.ok) return res.status(check.status).json({ message: check.message });
+        payload.color = check.color;
+      } else {
+        const used = await collectUsedColors();
+        const auto = nextAvailableColor(used);
+        if (!auto) {
+          return res.status(400).json({ message: 'No hay colores libres para asignar al técnico' });
+        }
+        payload.color = auto;
+      }
+    } else {
+      payload.color = null;
+    }
+
     if (payload.localidad || payload.direccion) {
       const base = await resolveUbicacionBase(payload.localidad, payload.direccion);
       if (base) payload.ubicacionBase = base;
@@ -101,6 +147,9 @@ exports.createUser = async (req, res) => {
       message: 'Usuario creado',
     });
   } catch (err) {
+    if (err && err.code === 11000 && String(err.message || '').includes('color')) {
+      return res.status(409).json({ message: 'Ese color ya está asignado a otro técnico' });
+    }
     res.status(500).json({ message: 'Error al crear usuario', error: err.message });
   }
 };
@@ -167,6 +216,33 @@ exports.updateUser = async (req, res) => {
       updatePayload.password = await bcrypt.hash(updatePayload.password, 10);
     }
 
+    const effectiveRol = updatePayload.rol || target.rol;
+    if (Object.prototype.hasOwnProperty.call(updatePayload, 'color') || effectiveRol === 'usuario') {
+      if (effectiveRol === 'usuario') {
+        const requested = normalizeColor(
+          Object.prototype.hasOwnProperty.call(updatePayload, 'color')
+            ? updatePayload.color
+            : target.color
+        );
+        if (requested) {
+          const check = await assertUniqueTecnicoColor(requested, target._id);
+          if (!check.ok) return res.status(check.status).json({ message: check.message });
+          updatePayload.color = check.color;
+        } else if (!target.color) {
+          const used = await collectUsedColors(target._id);
+          const auto = nextAvailableColor(used);
+          if (!auto) {
+            return res.status(400).json({ message: 'No hay colores libres para asignar al técnico' });
+          }
+          updatePayload.color = auto;
+        } else if (Object.prototype.hasOwnProperty.call(updatePayload, 'color') && !requested) {
+          return res.status(400).json({ message: 'El técnico debe tener un color válido' });
+        }
+      } else {
+        updatePayload.color = null;
+      }
+    }
+
     const localidadChanged =
       Object.prototype.hasOwnProperty.call(updatePayload, 'localidad') &&
       updatePayload.localidad !== target.localidad;
@@ -186,7 +262,15 @@ exports.updateUser = async (req, res) => {
       }
     }
 
-    const usuario = await Usuario.findByIdAndUpdate(req.params.id, updatePayload, { new: true });
+    let usuario;
+    try {
+      usuario = await Usuario.findByIdAndUpdate(req.params.id, updatePayload, { new: true });
+    } catch (err) {
+      if (err && err.code === 11000 && String(err.message || '').includes('color')) {
+        return res.status(409).json({ message: 'Ese color ya está asignado a otro técnico' });
+      }
+      throw err;
+    }
     if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado' });
     res.json({ message: 'Usuario actualizado', usuario });
   } catch (err) {
@@ -232,7 +316,14 @@ exports.approveUser = async (req, res) => {
       return res.status(canManage.status).json({ message: canManage.message });
     }
 
-    const usuario = await Usuario.findByIdAndUpdate(req.params.id, { aprobado: true }, { new: true });
+    const updates = { aprobado: true };
+    if (target.rol === 'usuario' && !normalizeColor(target.color)) {
+      const used = await collectUsedColors(target._id);
+      const auto = nextAvailableColor(used);
+      if (auto) updates.color = auto;
+    }
+
+    const usuario = await Usuario.findByIdAndUpdate(req.params.id, updates, { new: true });
     if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado' });
     res.json({ message: 'Usuario aprobado', usuario });
   } catch (err) {
