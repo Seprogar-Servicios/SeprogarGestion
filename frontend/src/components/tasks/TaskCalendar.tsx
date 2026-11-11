@@ -47,6 +47,22 @@ const colorFromTask = (task: Task): { bg: string; border: string; text: string }
   return { ...fallback, text: '#ffffff' };
 };
 
+const techNamesFromTask = (task: Task): string[] => {
+  const tecnicos = Array.isArray(task.tecnicos) ? task.tecnicos : [];
+  return tecnicos
+    .map((t) => (typeof t === 'object' && t && 'nombre' in t ? String(t.nombre || '') : ''))
+    .map((n) => n.trim())
+    .filter(Boolean);
+};
+
+/** "Pablo Ceccato" → "Pablo C." (vista compacta mes) */
+const shortTechLabel = (nombre: string): string => {
+  const parts = nombre.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+};
+
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 const toLocalYmd = (d: Date) =>
@@ -59,6 +75,12 @@ const taskToEvent = (task: Task): EventInput | null => {
   if (!ymd) return null;
 
   const colors = colorFromTask(task);
+  const techNames = techNamesFromTask(task);
+  const techLabel = techNames.length > 0 ? techNames.join(' · ') : 'Sin técnico';
+  const techShort =
+    techNames.length > 0
+      ? techNames.map(shortTechLabel).join(' · ')
+      : 'Sin técnico';
   const title = task.numero ? `#${task.numero} · ${task.titulo}` : task.titulo;
   const franja = parseFranjaHoraria(task.franja_horaria);
 
@@ -68,7 +90,7 @@ const taskToEvent = (task: Task): EventInput | null => {
     backgroundColor: colors.bg,
     borderColor: colors.border,
     textColor: colors.text,
-    extendedProps: { task },
+    extendedProps: { task, techLabel, techShort },
   };
 
   if (franja) {
@@ -317,24 +339,40 @@ const TaskCalendar: React.FC = () => {
     openCreateFromRange(arg.date, end, false);
   };
 
+  const renderEventContent = useCallback((arg: { event: { title: string; extendedProps: Record<string, unknown> }; timeText: string; view: { type: string } }) => {
+    const techLabel = String(arg.event.extendedProps.techLabel || 'Sin técnico');
+    const techShort = String(arg.event.extendedProps.techShort || techLabel);
+    const isMonth = arg.view.type === 'dayGridMonth';
+    const isList = arg.view.type.startsWith('list');
+    const tech = isMonth ? techShort : techLabel;
+
+    if (isList) {
+      return (
+        <div className="fc-event-tech-list">
+          <span className="fc-event-tech-badge">{tech}</span>
+          <span className="fc-event-tech-task">{arg.event.title}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`fc-event-tech-wrap ${isMonth ? 'is-month' : 'is-timed'}`}>
+        <div className="fc-event-tech-name" title={techLabel}>
+          {tech}
+        </div>
+        <div className="fc-event-tech-meta">
+          {arg.timeText ? <span className="fc-event-tech-time">{arg.timeText}</span> : null}
+          <span className="fc-event-tech-task">{arg.event.title}</span>
+        </div>
+      </div>
+    );
+  }, []);
+
   const filterTrailing = (
     <>
       <div className="hidden sm:flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-        <span className="inline-flex items-center gap-1">
-          <span className="task-calendar-legend-dot" style={{ background: STATUS_COLORS.pendiente.bg }} />
-          Pendiente
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="task-calendar-legend-dot" style={{ background: STATUS_COLORS['en progreso'].bg }} />
-          En progreso
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="task-calendar-legend-dot" style={{ background: STATUS_COLORS.completada.bg }} />
-          OK
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="task-calendar-legend-dot" style={{ background: STATUS_COLORS.cancelada.bg }} />
-          Cancelada
+        <span className="font-medium text-slate-600 dark:text-slate-300">
+          Color + nombre = técnico asignado
         </span>
       </div>
       {loading && (
@@ -427,6 +465,7 @@ const TaskCalendar: React.FC = () => {
           selectMinDistance={4}
           unselectAuto
           events={events}
+          eventContent={renderEventContent}
           datesSet={handleDatesSet}
           eventClick={handleEventClick}
           select={(arg) => {

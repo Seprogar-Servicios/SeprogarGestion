@@ -1,6 +1,4 @@
-/** Paleta alineada con backend/src/utils/tecnicoColors.js (ángulo áureo). */
-
-const GOLDEN_ANGLE = 137.508;
+/** Paleta alineada con backend/src/utils/tecnicoColors.js (hues equiespaciados). */
 
 function hslToHex(h: number, s: number, l: number): string {
   const sat = s / 100;
@@ -27,27 +25,60 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 }
 
+function colorDistance(a: string, b: string): number {
+  const parse = (hex: string) => [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
+  const [r1, g1, b1] = parse(a);
+  const [r2, g2, b2] = parse(b);
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+}
+
+function isFarEnough(hex: string, existing: string[], minDist: number): boolean {
+  for (const other of existing) {
+    if (colorDistance(hex, other) < minDist) return false;
+  }
+  return true;
+}
+
 function buildPalette(count = 180): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
-  const layers = [
-    { s: 72, l: 42 },
-    { s: 65, l: 52 },
-    { s: 78, l: 36 },
-    { s: 58, l: 48 },
-    { s: 70, l: 58 },
+  const bands = [
+    { n: 24, s: 82, l: 42, offset: 0, minDist: 72 },
+    { n: 24, s: 70, l: 52, offset: 7.5, minDist: 58 },
+    { n: 24, s: 78, l: 32, offset: 15, minDist: 52 },
+    { n: 30, s: 60, l: 46, offset: 3.5, minDist: 45 },
+    { n: 30, s: 85, l: 58, offset: 11, minDist: 42 },
+    { n: 36, s: 55, l: 38, offset: 19, minDist: 38 },
+    { n: 36, s: 68, l: 55, offset: 23, minDist: 35 },
   ];
-  let i = 0;
-  while (out.length < count && i < count * 3) {
-    const layer = layers[i % layers.length];
-    const hue = (i * GOLDEN_ANGLE) % 360;
-    const hex = hslToHex(hue, layer.s, layer.l);
-    if (!seen.has(hex)) {
+
+  for (const band of bands) {
+    for (let i = 0; i < band.n && out.length < count; i++) {
+      const hue = (i * (360 / band.n) + band.offset) % 360;
+      const hex = hslToHex(hue, band.s, band.l);
+      if (seen.has(hex)) continue;
+      if (!isFarEnough(hex, out, band.minDist)) continue;
       seen.add(hex);
       out.push(hex);
     }
-    i += 1;
   }
+
+  let guard = 0;
+  while (out.length < count && guard < 4000) {
+    const hue = (guard * 13.7 + 4) % 360;
+    const s = 50 + (guard % 5) * 7;
+    const l = 32 + (guard % 6) * 5;
+    const hex = hslToHex(hue, s, l);
+    guard += 1;
+    if (seen.has(hex) || !isFarEnough(hex, out, 32)) continue;
+    seen.add(hex);
+    out.push(hex);
+  }
+
   return out;
 }
 
@@ -70,7 +101,6 @@ export const nextAvailableColor = (used: Iterable<string>): string | null => {
   return null;
 };
 
-/** Contraste simple para texto sobre el color del técnico */
 export const textColorForBg = (hex: string): string => {
   const h = hex.replace('#', '');
   if (h.length !== 6) return '#ffffff';

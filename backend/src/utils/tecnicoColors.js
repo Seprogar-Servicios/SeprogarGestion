@@ -1,9 +1,11 @@
 /**
- * Paleta de colores distintivos para técnicos (calendario).
- * Generada por HSL con ángulo áureo: ~180 colores bien separados a ojo.
+ * Paleta de colores bien separados a ojo para técnicos (calendario).
+ *
+ * Estrategia:
+ * 1) Primera tanda: hues equiespaciados (máxima diferencia).
+ * 2) Segundas tandas: mismos pasos con otra luminosidad/saturación
+ *    y un offset de hue, para llegar a ~180 sin “hermanos” casi iguales.
  */
-
-const GOLDEN_ANGLE = 137.508;
 
 function hslToHex(h, s, l) {
   const sat = s / 100;
@@ -30,30 +32,66 @@ function hslToHex(h, s, l) {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
 }
 
+/**
+ * Distancia perceptual burda (RGB) para filtrar casi-duplicados.
+ */
+function colorDistance(a, b) {
+  const parse = (hex) => [
+    parseInt(hex.slice(1, 3), 16),
+    parseInt(hex.slice(3, 5), 16),
+    parseInt(hex.slice(5, 7), 16),
+  ];
+  const [r1, g1, b1] = parse(a);
+  const [r2, g2, b2] = parse(b);
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+}
+
+function isFarEnough(hex, existing, minDist = 55) {
+  for (const other of existing) {
+    if (colorDistance(hex, other) < minDist) return false;
+  }
+  return true;
+}
+
 /** @returns {string[]} */
 function buildTecnicoPalette(count = 180) {
   const out = [];
   const seen = new Set();
-  // Variar saturación/luminosidad en capas para > ~60 colores
-  const layers = [
-    { s: 72, l: 42 },
-    { s: 65, l: 52 },
-    { s: 78, l: 36 },
-    { s: 58, l: 48 },
-    { s: 70, l: 58 },
+
+  const bands = [
+    { n: 24, s: 82, l: 42, offset: 0, minDist: 72 }, // máxima separación
+    { n: 24, s: 70, l: 52, offset: 7.5, minDist: 58 },
+    { n: 24, s: 78, l: 32, offset: 15, minDist: 52 },
+    { n: 30, s: 60, l: 46, offset: 3.5, minDist: 45 },
+    { n: 30, s: 85, l: 58, offset: 11, minDist: 42 },
+    { n: 36, s: 55, l: 38, offset: 19, minDist: 38 },
+    { n: 36, s: 68, l: 55, offset: 23, minDist: 35 },
   ];
 
-  let i = 0;
-  while (out.length < count && i < count * 3) {
-    const layer = layers[i % layers.length];
-    const hue = (i * GOLDEN_ANGLE) % 360;
-    const hex = hslToHex(hue, layer.s, layer.l);
-    if (!seen.has(hex)) {
+  for (const band of bands) {
+    for (let i = 0; i < band.n && out.length < count; i++) {
+      const hue = (i * (360 / band.n) + band.offset) % 360;
+      const hex = hslToHex(hue, band.s, band.l);
+      if (seen.has(hex)) continue;
+      if (!isFarEnough(hex, out, band.minDist)) continue;
       seen.add(hex);
       out.push(hex);
     }
-    i += 1;
   }
+
+  // Relleno hasta count
+  let guard = 0;
+  while (out.length < count && guard < 4000) {
+    const hue = (guard * 13.7 + 4) % 360;
+    const s = 50 + (guard % 5) * 7;
+    const l = 32 + (guard % 6) * 5;
+    const hex = hslToHex(hue, s, l);
+    guard += 1;
+    if (seen.has(hex) || !isFarEnough(hex, out, 32)) continue;
+    seen.add(hex);
+    out.push(hex);
+  }
+
   return out;
 }
 
@@ -69,7 +107,6 @@ function normalizeColor(value) {
 }
 
 /**
- * Primer color libre de la paleta (o null si se agotó).
  * @param {Set<string>|string[]} used
  */
 function nextAvailableColor(used) {
@@ -77,10 +114,9 @@ function nextAvailableColor(used) {
   for (const c of TECNICO_COLOR_PALETTE) {
     if (!taken.has(c.toUpperCase())) return c;
   }
-  // Fallback: generar uno random no usado (muy raro con 180)
-  for (let attempt = 0; attempt < 50; attempt++) {
+  for (let attempt = 0; attempt < 80; attempt++) {
     const h = Math.floor(Math.random() * 360);
-    const hex = hslToHex(h, 68, 44);
+    const hex = hslToHex(h, 70, 44);
     if (!taken.has(hex)) return hex;
   }
   return null;
@@ -91,4 +127,5 @@ module.exports = {
   normalizeColor,
   nextAvailableColor,
   HEX_RE,
+  hslToHex,
 };

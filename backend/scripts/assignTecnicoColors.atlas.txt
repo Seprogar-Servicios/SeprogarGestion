@@ -1,0 +1,42 @@
+﻿
+========== SNIPPET MONGOSH (Atlas) ==========
+
+// Pegá esto en mongosh apuntando a la DB correcta (use futurgas_gestion)
+const palette = ["#B81E1E","#35D463","#6814A3","#C1B033","#49C6DF","#B81E71","#5DD435","#1A14A3","#C16333","#49DFA7","#AC1EB8","#B3D435","#145CA3","#C13351","#49DF56","#581EB8","#D49F35","#14A39E","#C1339E","#8DDF49","#1E37B8","#D44935","#14A350","#9833C1","#DEDF49","#1E8BB8","#D43577","#26A314","#4C33C1","#DF8E49","#1EB892","#D435CD","#73A314","#3368C1","#DF4955","#1EB83F","#8535D4","#A38614","#33B5C1","#DF49A6","#51B81E","#353BD4","#A33914","#33C181","#C749DF","#A4B81E","#3591D4","#A3143D","#33C134","#7649DF","#B8791E","#35D4C1","#A3148B","#7FC133","#496DDF","#B8261E","#35D46B","#6F14A3","#C1B733","#49BEDF","#B81E6A","#55D435","#2114A3","#C16A33","#49DFAE","#B31EB8","#ABD435","#1455A3","#C1334A","#49DF5D","#601EB8","#D4A735","#14A2A3","#C13397","#86DF49","#1E30B8","#D45135","#14A357","#9F33C1","#D7DF49","#1E83B8","#D4356F","#1FA314","#5333C1","#DF9649","#1EB89A","#D435C5","#6CA314","#3361C1","#DF494D","#1EB846","#8D35D4","#A38D14","#33AEC1","#DF499F","#49B81E","#3735D4","#A34014","#33C188","#CE49DF","#9CB81E","#3589D4","#A31436","#33C13B","#7D49DF","#B8811E","#35D4C9","#A31484","#78C133","#4966DF","#B82D1E","#35D473","#7614A3","#C1BE33","#49B7DF","#B81E62","#4DD435","#2814A3","#C17133","#49DFB6","#B81EB6","#A3D435","#144EA3","#C13343","#49DF64","#671EB8","#D4AF35","#149BA3","#C13390","#7FDF49","#1E28B8","#D45935","#14A35E","#A633C1","#D0DF49","#1E7CB8","#D43567","#18A314","#5A33C1","#DF9D49","#1EB8A1","#D435BD","#65A314","#335AC1","#DF4C49","#1EB84E","#9535D4","#A39414","#33A7C1","#DF4997","#41B81E","#3F35D4","#A34714","#33C18F","#D549DF","#95B81E","#3581D4","#A3142F","#33C142","#8449DF","#B8881E","#35D4D1","#A3147D","#71C133","#495FDF","#B8351E","#35D47B","#7D14A3","#BEC133","#49B0DF","#B81E5B","#45D435","#2F14A3","#C17833","#49DFBD","#B81EAE","#9BD435","#1447A3","#C1333C","#49DF6C"];
+const used = new Set(
+  db.usuarios.find({ color: { $type: 'string', $ne: '' } }, { color: 1 })
+    .toArray()
+    .map((u) => String(u.color).toUpperCase())
+);
+const techs = db.usuarios
+  .find({
+    rol: 'usuario',
+    $or: [{ color: null }, { color: { $exists: false } }, { color: '' }],
+  })
+  .sort({ createdAt: 1 })
+  .toArray();
+
+let pi = 0;
+let assigned = 0;
+for (const t of techs) {
+  while (pi < palette.length && used.has(palette[pi])) pi++;
+  if (pi >= palette.length) throw new Error('Paleta agotada');
+  const color = palette[pi++];
+  db.usuarios.updateOne({ _id: t._id }, { $set: { color } });
+  used.add(color);
+  assigned++;
+  print(t.nombre + ' → ' + color);
+}
+print('Asignados: ' + assigned);
+
+=============================================
+
+node : (node:22944) [MONGOOSE] Warning: Duplicate schema index on {"email":1} found. This is often due to declaring an 
+index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+En línea: 1 Carácter: 49
++ ... n\backend"; node scripts/assignTecnicoColors.js --mongosh 2>&1 | Out- ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:22944) [M...dex definition.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)

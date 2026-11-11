@@ -198,7 +198,7 @@
 }
 
 .task-calendar-shell .fc .fc-timegrid-event .fc-event-main {
-  padding: 1px 4px;
+  padding: 2px 5px;
 }
 
 .task-calendar-shell .fc .fc-timegrid-event .fc-event-title,
@@ -208,6 +208,97 @@
   text-overflow: ellipsis;
   line-height: 1.25;
   font-size: 0.7rem;
+}
+
+/* Técnico destacado dentro del evento */
+.task-calendar-shell .fc-event-tech-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  line-height: 1.2;
+  height: 100%;
+}
+
+.task-calendar-shell .fc-event-tech-name {
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.task-calendar-shell .fc-event-tech-wrap.is-month .fc-event-tech-name {
+  font-size: 0.68rem;
+  display: inline;
+}
+
+.task-calendar-shell .fc-event-tech-wrap.is-month {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.task-calendar-shell .fc-event-tech-wrap.is-month .fc-event-tech-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.92;
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+
+.task-calendar-shell .fc-event-tech-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  opacity: 0.95;
+}
+
+.task-calendar-shell .fc-event-tech-time {
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.task-calendar-shell .fc-event-tech-task {
+  font-size: 0.65rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-calendar-shell .fc-event-tech-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.task-calendar-shell .fc-event-tech-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.22);
+  white-space: nowrap;
+}
+
+.task-calendar-shell .fc-event-tech-list .fc-event-tech-task {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-calendar-shell .fc .fc-timegrid-now-indicator-line {
