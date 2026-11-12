@@ -81,6 +81,18 @@ const tareaSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
+tareaSchema.index({ estado: 1 });
+tareaSchema.index({ fechaEjecucion: 1 });
+tareaSchema.index({ tecnicos: 1 });
+tareaSchema.index({ cuentaCliente: 1 });
+tareaSchema.index({ cliente: 1 });
+tareaSchema.index({ fechaCompletado: 1 });
+// Consultas de análisis / calendario (estado + fechas)
+tareaSchema.index({ estado: 1, fechaEjecucion: 1 });
+tareaSchema.index({ estado: 1, fechaCompletado: 1 });
+tareaSchema.index({ tecnicos: 1, fechaEjecucion: 1 });
+tareaSchema.index({ cuentaCliente: 1, estado: 1 });
+
 tareaSchema.pre('save', function(next) {
   this.fechaModificacion = new Date();
   next();

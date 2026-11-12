@@ -64,7 +64,7 @@ const FinancialAnalyticsPanel: React.FC<Props> = ({ summary }) => {
         <Kpi
           title="Presupuesto liquidado"
           value={formatMoney(summary.totalPresupuesto)}
-          sub={`${summary.liquidacionesCount} liquidaciones`}
+          sub={`${summary.liquidacionesActivas} activas · ${summary.liquidacionesCount} en rango`}
           icon={DollarSign}
           accent="bg-blue-600"
         />
@@ -88,6 +88,13 @@ const FinancialAnalyticsPanel: React.FC<Props> = ({ summary }) => {
           sub="Margen empresa"
           icon={Building2}
           accent="bg-indigo-600"
+        />
+        <Kpi
+          title="Deuda técnicos"
+          value={formatMoney(summary.deudaTecnicos)}
+          sub="Devengado − pagos manuales"
+          icon={Coins}
+          accent="bg-amber-600"
         />
         <Kpi
           title="Mano de obra"
@@ -146,6 +153,51 @@ const FinancialAnalyticsPanel: React.FC<Props> = ({ summary }) => {
                   label={`${m.label} (${m.count})`}
                   value={m.amount}
                   max={maxMotivo}
+                  suffix="money"
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-3">
+          <h3 className="text-xs font-semibold text-slate-900 dark:text-white mb-2">
+            Rentabilidad por cuenta
+          </h3>
+          {summary.rentabilidadPorCuenta.length === 0 ? (
+            <p className="text-xs text-slate-500 py-4 text-center">
+              Sin liquidaciones. Se potencia al cargar precios/MO/materiales.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {summary.rentabilidadPorCuenta.map((c) => (
+                <BarRow
+                  key={c.label}
+                  label={`${c.label} (${c.count})`}
+                  value={c.ganancia}
+                  max={Math.max(...summary.rentabilidadPorCuenta.map((x) => x.ganancia), 1)}
+                  suffix="money"
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-3">
+          <h3 className="text-xs font-semibold text-slate-900 dark:text-white mb-2">
+            Pago liquidado por técnico
+          </h3>
+          {summary.rentabilidadPorTecnico.length === 0 ? (
+            <p className="text-xs text-slate-500 py-4 text-center">Sin datos</p>
+          ) : (
+            <div className="space-y-2">
+              {summary.rentabilidadPorTecnico.map((t) => (
+                <BarRow
+                  key={t.label}
+                  label={`${t.label} (${t.count})`}
+                  value={t.pago}
+                  max={Math.max(...summary.rentabilidadPorTecnico.map((x) => x.pago), 1)}
                   suffix="money"
                 />
               ))}

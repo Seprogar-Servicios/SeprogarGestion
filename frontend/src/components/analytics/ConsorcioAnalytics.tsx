@@ -19,13 +19,16 @@ import {
   Image,
   Briefcase,
   Check,
+  Download,
 } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import type { TareaConsorcio } from '../../types';
 import AdminPageHeader from '../common/AdminPageHeader';
 import { isAdminRole } from '../../utils/roles';
 import api from '../../config/api';
-import { buildConsorcioSummary, formatMoney } from '../../utils/analyticsHelpers';
+import { agingBuckets, buildConsorcioSummary, formatMoney } from '../../utils/analyticsHelpers';
+import { DATE_PRESETS } from '../../utils/analyticsPeriod';
+import { exportConsorcioCsv, exportKpisCsv } from '../../utils/analyticsExport';
 import SimpleCategoryChart from './SimpleCategoryChart';
 import ConsorcioDrilldownPanel, { type ConsorcioDrilldown } from './ConsorcioDrilldownPanel';
 
@@ -90,6 +93,7 @@ const ConsorcioAnalytics: React.FC<Props> = ({
   const [detail, setDetail] = useState<ConsorcioDrilldown | null>(null);
 
   const [tareas, setTareas] = useState<TareaConsorcio[]>([]);
+  const [truncated, setTruncated] = useState(false);
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
     start: format(startOfMonth(subMonths(new Date(), 12)), 'yyyy-MM-dd'),
     end: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
@@ -107,23 +111,42 @@ const ConsorcioAnalytics: React.FC<Props> = ({
           await dispatch(fetchUsers());
         }
 
-        const response = await api.get('/tareas-consorcio', {
-          params: { limit: 2000, page: 1 },
-        });
-        if (cancelled) return;
-        const payload = response.data;
-        const list: TareaConsorcio[] = Array.isArray(payload?.tareas)
-          ? payload.tareas
-          : Array.isArray(payload?.data)
-            ? payload.data
-            : Array.isArray(payload)
-              ? payload
-              : [];
-        setTareas(list);
+        const pageSize = 2000;
+        const maxPages = 5; // tope duro ~10k para no saturar el browser
+        let page = 1;
+        let all: TareaConsorcio[] = [];
+        let totalItems = 0;
+
+        while (page <= maxPages) {
+          const response = await api.get('/tareas-consorcio', {
+            params: { limit: pageSize, page },
+          });
+          if (cancelled) return;
+          const payload = response.data;
+          const chunk: TareaConsorcio[] = Array.isArray(payload?.tareas)
+            ? payload.tareas
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : Array.isArray(payload)
+                ? payload
+                : [];
+          totalItems =
+            typeof payload?.pagination?.totalItems === 'number'
+              ? payload.pagination.totalItems
+              : totalItems;
+          all = all.concat(chunk);
+          if (chunk.length < pageSize) break;
+          if (totalItems > 0 && all.length >= totalItems) break;
+          page += 1;
+        }
+
+        setTruncated(totalItems > 0 ? all.length < totalItems : all.length >= pageSize * maxPages);
+        setTareas(all);
       } catch (error) {
         if (!cancelled) {
           console.error('Error al cargar los datos:', error);
           setTareas([]);
+          setTruncated(false);
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -168,7 +191,18 @@ const ConsorcioAnalytics: React.FC<Props> = ({
     return filtered;
   }, [tareas, dateRange, statusFilter, adminConsorcioFilter, hideAdminFilter]);
 
-  const summary = useMemo(() => buildConsorcioSummary(filteredTasks), [filteredTasks]);
+  const summary = useMemo(
+    () => buildConsorcioSummary(filteredTasks, { truncated }),
+    [filteredTasks, truncated]
+  );
+
+  const agingByBucket = useMemo(
+    () =>
+      agingBuckets(
+        filteredTasks.filter((t) => ['PENDIENTE_PAGO', 'FACTURADO'].includes(t.estado))
+      ),
+    [filteredTasks]
+  );
   const adminConsorcios = useMemo(
     () => (Array.isArray(users) ? users.filter((u) => u.rol === 'adminConsorcio') : []),
     [users]
@@ -221,9 +255,7 @@ const ConsorcioAnalytics: React.FC<Props> = ({
       icon: Clock,
       color: 'bg-orange-500',
       list: filteredTasks.filter((t) =>
-        ['PENDIENTE_PAGO', 'FACTURADO', 'completada', 'en_progreso', 'confirmado', 'pendiente'].includes(
-          t.estado
-        )
+        ['PENDIENTE_PAGO', 'FACTURADO'].includes(t.estado)
       ),
     },
     {
@@ -231,7 +263,9 @@ const ConsorcioAnalytics: React.FC<Props> = ({
       value: formatMoney(summary.ticketPromedio),
       icon: CreditCard,
       color: 'bg-indigo-500',
-      list: filteredTasks.filter((t) => (t.precio || 0) > 0),
+      list: filteredTasks.filter(
+        (t) => (t.precio || 0) > 0 && t.estado !== 'cancelada' && t.estado !== 'presupuesto'
+      ),
     },
     {
       title: 'Conv. a pago',
@@ -243,21 +277,57 @@ const ConsorcioAnalytics: React.FC<Props> = ({
     {
       title: 'Aging cobranza',
       value: summary.agingCobranza,
+      hint:
+        summary.agingDiasPromedio > 0
+          ? `prom ${summary.agingDiasPromedio}d · ≥30d: ${summary.agingOver30}`
+          : undefined,
       icon: AlertTriangle,
       color: 'bg-amber-500',
       list: filteredTasks.filter((t) => ['PENDIENTE_PAGO', 'FACTURADO'].includes(t.estado)),
     },
   ];
 
+  const exportCurrent = () => {
+    exportConsorcioCsv(
+      filteredTasks,
+      `analisis-consorcio-${dateRange.start}_${dateRange.end}.csv`
+    );
+    exportKpisCsv(
+      [
+        { metrica: 'Tareas', valor: summary.total },
+        { metrica: 'Cobrados', valor: Math.round(summary.revenuePaid) },
+        { metrica: 'Por cobrar', valor: Math.round(summary.revenuePending) },
+        { metrica: 'Ticket prom.', valor: Math.round(summary.ticketPromedio) },
+        { metrica: 'Conv. a pago %', valor: summary.conversionPago },
+        { metrica: 'Aging cobranza', valor: summary.agingCobranza },
+        { metrica: 'Aging días prom.', valor: summary.agingDiasPromedio },
+        { metrica: 'Aging ≥30d', valor: summary.agingOver30 },
+        { metrica: 'Con fotos', valor: summary.withPhotos },
+        { metrica: 'Con comprobante', valor: summary.withComprobante },
+      ],
+      `analisis-consorcio-kpis-${dateRange.start}_${dateRange.end}.csv`
+    );
+  };
+
   const filtersButton = (
-    <button
-      type="button"
-      onClick={() => setShowFilters(!showFilters)}
-      className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
-    >
-      <Filter className="h-4 w-4 mr-2" />
-      Filtros
-    </button>
+    <div className="flex items-center gap-2 flex-wrap justify-end">
+      <button
+        type="button"
+        onClick={exportCurrent}
+        className="inline-flex items-center px-3 py-2.5 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-700 hover:bg-slate-50"
+      >
+        <Download className="h-4 w-4 mr-2" />
+        Exportar
+      </button>
+      <button
+        type="button"
+        onClick={() => setShowFilters(!showFilters)}
+        className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
+      >
+        <Filter className="h-4 w-4 mr-2" />
+        Filtros
+      </button>
+    </div>
   );
 
   return (
@@ -318,6 +388,18 @@ const ConsorcioAnalytics: React.FC<Props> = ({
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-gray-700 text-sm py-2 px-2"
                   />
                 </div>
+                <div className="flex flex-wrap gap-1">
+                  {DATE_PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setDateRange(p.range())}
+                      className="px-2 py-0.5 text-[11px] rounded-full border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-2 block">Estados</label>
@@ -373,6 +455,13 @@ const ConsorcioAnalytics: React.FC<Props> = ({
           </div>
         )}
 
+        {truncated && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+            Se cargaron hasta ~10.000 tareas de consorcio. Filtrá por fechas/estados o
+            exportá el recorte actual; el total en base puede ser mayor.
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {kpis.map((kpi) => {
             const Icon = kpi.icon;
@@ -392,6 +481,9 @@ const ConsorcioAnalytics: React.FC<Props> = ({
                 <span className="text-lg font-bold text-slate-900 dark:text-white tabular-nums truncate block">
                   {kpi.value}
                 </span>
+                {'hint' in kpi && kpi.hint ? (
+                  <span className="text-[11px] text-slate-400 mt-1 block">{kpi.hint}</span>
+                ) : null}
               </button>
             );
           })}
@@ -433,6 +525,28 @@ const ConsorcioAnalytics: React.FC<Props> = ({
                 openTasks(
                   `Estado: ${label}`,
                   filteredTasks.filter((t) => (key ? t.estado === key : false))
+                );
+              }}
+            />
+          </ChartCard>
+
+          <ChartCard
+            title="Aging cobranza (días)"
+            icon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+          >
+            <SimpleCategoryChart
+              items={agingByBucket}
+              color="#f59e0b"
+              onBarClick={(label) => {
+                const pending = filteredTasks.filter((t) =>
+                  ['PENDIENTE_PAGO', 'FACTURADO'].includes(t.estado)
+                );
+                openTasks(
+                  `Aging: ${label}`,
+                  pending.filter((t) => {
+                    const buckets = agingBuckets([t]);
+                    return buckets.some((b) => b.label === label && b.count > 0);
+                  })
                 );
               }}
             />

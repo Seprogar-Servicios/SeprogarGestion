@@ -1,18 +1,19 @@
-import React from 'react';
-import { 
-  Chart as ChartJS, 
-  CategoryScale, 
-  LinearScale, 
-  PointElement, 
-  LineElement, 
-  Title, 
-  Tooltip, 
-  Legend 
+import React, { useMemo } from 'react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { differenceInHours, format, parseISO } from 'date-fns';
+import { differenceInHours, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Task } from '../../types';
+import { useTheme } from '../../hooks/useTheme';
 
 ChartJS.register(
   CategoryScale,
@@ -29,102 +30,119 @@ interface TasksCompletionTimeChartProps {
 }
 
 const TasksCompletionTimeChart: React.FC<TasksCompletionTimeChartProps> = ({ tasks }) => {
-  // Filtrar tareas completadas que tengan fechas válidas
-  // Para tareas completadas, usamos fechaModificacion como aproximación de la fecha de completado
-  const completedTasks = tasks.filter(task => 
-    task.estado === 'completada' && 
-    task.fechaCreacion && 
-    task.fechaModificacion
-  );
-  
-  // Calcular tiempo promedio de completado por mes
-  const tasksByMonth: Record<string, { totalHours: number, count: number }> = {};
-  
-  completedTasks.forEach(task => {
-    if (!task.fechaCreacion || !task.fechaModificacion) return;
-    
-    const creationDate = typeof task.fechaCreacion === 'string' 
-      ? new Date(task.fechaCreacion) 
-      : task.fechaCreacion;
-      
-    const completionDate = typeof task.fechaModificacion === 'string' 
-      ? new Date(task.fechaModificacion) 
-      : task.fechaModificacion;
-    
-    const monthKey = format(creationDate, 'yyyy-MM');
-    const completionHours = differenceInHours(completionDate, creationDate);
-    
-    if (!tasksByMonth[monthKey]) {
-      tasksByMonth[monthKey] = { totalHours: 0, count: 0 };
-    }
-    
-    tasksByMonth[monthKey].totalHours += completionHours;
-    tasksByMonth[monthKey].count += 1;
-  });
-  
-  // Ordenar por fecha
-  const sortedMonths = Object.keys(tasksByMonth).sort();
-  
-  // Calcular promedios
-  const labels = sortedMonths.map(month => {
-    const date = parseISO(`${month}-01`);
-    return format(date, 'MMM yyyy', { locale: es });
-  });
-  
-  const data = sortedMonths.map(month => {
-    const { totalHours, count } = tasksByMonth[month];
-    return count > 0 ? Math.round(totalHours / count) : 0;
-  });
-  
+  const { isDarkMode } = useTheme();
+
+  const { labels, avgData, medianData, sampleNote } = useMemo(() => {
+    const completedTasks = tasks.filter(
+      (task) =>
+        task.estado === 'completada' &&
+        task.fechaCreacion &&
+        (task.fechaCompletado || task.fechaModificacion)
+    );
+
+    const tasksByMonth: Record<string, number[]> = {};
+    let withCompletado = 0;
+
+    completedTasks.forEach((task) => {
+      const creationDate = new Date(task.fechaCreacion!);
+      const endRaw = task.fechaCompletado || task.fechaModificacion;
+      if (!endRaw) return;
+      if (task.fechaCompletado) withCompletado += 1;
+      const completionDate = new Date(endRaw);
+      if (isNaN(creationDate.getTime()) || isNaN(completionDate.getTime())) return;
+
+      const monthKey = format(task.fechaCompletado ? completionDate : creationDate, 'yyyy-MM');
+      const hours = Math.max(0, differenceInHours(completionDate, creationDate));
+      if (!tasksByMonth[monthKey]) tasksByMonth[monthKey] = [];
+      tasksByMonth[monthKey].push(hours);
+    });
+
+    const sortedMonths = Object.keys(tasksByMonth).sort();
+    const labels = sortedMonths.map((month) => {
+      const [y, m] = month.split('-').map(Number);
+      return format(new Date(y, m - 1, 1), 'MMM yyyy', { locale: es });
+    });
+
+    const avgData = sortedMonths.map((month) => {
+      const arr = tasksByMonth[month];
+      return Math.round(arr.reduce((s, h) => s + h, 0) / arr.length);
+    });
+
+    const medianData = sortedMonths.map((month) => {
+      const arr = [...tasksByMonth[month]].sort((a, b) => a - b);
+      const mid = Math.floor(arr.length / 2);
+      return arr.length % 2 ? arr[mid] : Math.round((arr[mid - 1] + arr[mid]) / 2);
+    });
+
+    return {
+      labels,
+      avgData,
+      medianData,
+      sampleNote: `${withCompletado}/${completedTasks.length} con fechaCompletado`,
+    };
+  }, [tasks]);
+
   const chartData = {
     labels,
     datasets: [
       {
-        label: 'Tiempo promedio de completado (horas)',
-        data,
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-        tension: 0.3,
+        label: 'Promedio (h)',
+        data: avgData,
+        borderColor: isDarkMode ? '#60A5FA' : '#2563EB',
+        backgroundColor: 'transparent',
+        tension: 0.25,
+      },
+      {
+        label: 'Mediana (h)',
+        data: medianData,
+        borderColor: isDarkMode ? '#34D399' : '#059669',
+        backgroundColor: 'transparent',
+        borderDash: [4, 4],
+        tension: 0.25,
       },
     ],
   };
-  
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top' as const,
+        labels: { color: isDarkMode ? '#D1D5DB' : '#374151', boxWidth: 12 },
       },
-      tooltip: {
-        callbacks: {
-          label: function(context: any) {
-            const value = context.raw;
-            return `${value} hora${value !== 1 ? 's' : ''}`;
-          }
-        }
-      }
     },
     scales: {
+      x: {
+        ticks: { color: isDarkMode ? '#9CA3AF' : '#6B7280' },
+        grid: { display: false },
+      },
       y: {
         beginAtZero: true,
+        ticks: { color: isDarkMode ? '#9CA3AF' : '#6B7280' },
+        grid: { color: isDarkMode ? '#374151' : '#E5E7EB' },
         title: {
           display: true,
-          text: 'Horas'
-        }
-      }
-    }
+          text: 'Horas',
+          color: isDarkMode ? '#9CA3AF' : '#6B7280',
+        },
+      },
+    },
   };
-  
+
+  if (labels.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center text-sm text-slate-500">
+        Sin tareas completadas con fechas suficientes
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full w-full">
-      {labels.length > 0 ? (
-        <Line data={chartData} options={options} />
-      ) : (
-        <div className="flex justify-center items-center h-full text-gray-500 dark:text-gray-400 text-sm">
-          No hay suficientes tareas completadas para mostrar estadísticas
-        </div>
-      )}
+    <div className="h-full flex flex-col">
+      <div className="flex-1 min-h-0">
+        <Line data={chartData} options={options as never} />
+      </div>
+      <p className="text-[10px] text-slate-400 mt-1">{sampleNote}</p>
     </div>
   );
 };

@@ -14,9 +14,11 @@ exports.getLiquidaciones = async (req, res) => {
       .populate({
         path: 'tarea',
         match: { tecnicos: { $exists: true, $ne: [] } },
+        select: 'numero titulo estado fechaEjecucion cliente cuentaCliente tecnicos',
         populate: {
           path: 'tecnicos',
-          select: 'nombre email porcentajeTecnico'
+          select: 'nombre email porcentajeTecnico especialidad',
+          populate: { path: 'especialidad', select: 'nombre' },
         }
       });
 
@@ -129,9 +131,11 @@ exports.getLiquidacionesByTecnico = async (req, res) => {
       .populate({
         path: 'tarea',
         match: { tecnicos: { $in: [tecnicoId] } },
+        select: 'numero titulo estado fechaEjecucion cliente cuentaCliente tecnicos',
         populate: {
           path: 'tecnicos',
-          select: 'nombre email porcentajeTecnico'
+          select: 'nombre email porcentajeTecnico especialidad',
+          populate: { path: 'especialidad', select: 'nombre' },
         }
       });
 

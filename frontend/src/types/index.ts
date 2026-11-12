@@ -5,7 +5,7 @@ export interface User {
   apellido?: string;
   email: string;
   rol: 'super_admin' | 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
-  especialidad?: string;
+  especialidad?: string | { _id: string; nombre: string } | null;
   aprobado: boolean;
   telefono?: string;
   direccion?: string;
@@ -211,6 +211,12 @@ export interface TareaConsorcio {
   fechaCreacion: string;
   fechaEjecucion: string;
   franja_horaria: string;
+  historialEstados?: Array<{
+    estado?: string;
+    fecha?: string;
+    usuario?: string;
+    observaciones?: string;
+  }>;
 }
 
 // Recibo types

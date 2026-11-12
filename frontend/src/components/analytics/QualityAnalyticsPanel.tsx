@@ -9,6 +9,7 @@ import {
   Wallet,
   Building2,
   Briefcase,
+  Clock,
 } from 'lucide-react';
 import SimpleCategoryChart from './SimpleCategoryChart';
 import type { MonthlyCloseSummary, QualitySummary } from '../../utils/analyticsHelpers';
@@ -82,20 +83,21 @@ const QualityAnalyticsPanel: React.FC<Props> = ({ close, quality }) => {
             color="bg-indigo-500"
           />
           <Kpi
-            title="Margen op."
+            title="Margen real"
             value={formatMoney(close.margenOperativo)}
-            hint={`${close.margenPct}%`}
+            hint={`${close.margenPct}% · ganancia/futurgas`}
             icon={Percent}
             color="bg-teal-500"
           />
           <Kpi
             title="Ticket prom."
             value={formatMoney(close.ticketPromedio)}
+            hint="s/ completadas"
             icon={Wallet}
             color="bg-sky-500"
           />
           <Kpi
-            title="Top-2 clientes"
+            title="Top-2 cuentas"
             value={`${close.top2ConcentracionPct}%`}
             hint="concentración"
             icon={Building2}
@@ -104,21 +106,27 @@ const QualityAnalyticsPanel: React.FC<Props> = ({ close, quality }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-4">
-          <p className="text-xs text-slate-500 mb-1">Costo mano de obra</p>
+          <p className="text-xs text-slate-500 mb-1">Mano de obra (precio)</p>
           <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
             {formatMoney(close.costoManoObra)}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-4">
-          <p className="text-xs text-slate-500 mb-1">Costo materiales</p>
+          <p className="text-xs text-slate-500 mb-1">Materiales (precio liq.)</p>
           <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
             {formatMoney(close.costoMateriales)}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-4">
-          <p className="text-xs text-slate-500 mb-1">Pago a técnicos (liquidaciones)</p>
+          <p className="text-xs text-slate-500 mb-1">Costo real (pago + mat. real)</p>
+          <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+            {formatMoney(close.costoReal)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 p-4">
+          <p className="text-xs text-slate-500 mb-1">Pago a técnicos</p>
           <p className="text-lg font-bold tabular-nums text-slate-900 dark:text-white">
             {formatMoney(close.pagoTecnico)}
           </p>
@@ -175,7 +183,7 @@ const QualityAnalyticsPanel: React.FC<Props> = ({ close, quality }) => {
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">
           Calidad y reclamos
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
           <Kpi
             title="Reclamos"
             value={quality.reclamos}
@@ -183,11 +191,18 @@ const QualityAnalyticsPanel: React.FC<Props> = ({ close, quality }) => {
             color="bg-rose-500"
           />
           <Kpi
-            title="Tasa reclamo"
+            title="Tasa s/ servicios"
             value={`${quality.tasaReclamo}%`}
-            hint="s/ servicios"
+            hint="todos los estados"
             icon={Percent}
             color="bg-red-500"
+          />
+          <Kpi
+            title="Tasa s/ completadas"
+            value={`${quality.tasaReclamoSobreCompletadas}%`}
+            hint="cohorte útil"
+            icon={Percent}
+            color="bg-orange-500"
           />
           <Kpi
             title="Resueltos"
@@ -198,9 +213,10 @@ const QualityAnalyticsPanel: React.FC<Props> = ({ close, quality }) => {
           />
           <Kpi title="Abiertos" value={quality.abiertos} icon={AlertTriangle} color="bg-amber-500" />
           <Kpi
-            title="Reabiertos"
-            value={quality.reabiertos}
-            icon={ShieldAlert}
+            title="MTTR"
+            value={quality.mttrHoras > 0 ? `${quality.mttrHoras}h` : '—'}
+            hint="tiempo resolución"
+            icon={Clock}
             color="bg-purple-500"
           />
         </div>

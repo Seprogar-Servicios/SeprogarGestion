@@ -95,6 +95,10 @@ tareaConsorcioSchema.index({ administradorConsorcio: 1 });
 tareaConsorcioSchema.index({ estado: 1 });
 tareaConsorcioSchema.index({ creadoPor: 1 });
 tareaConsorcioSchema.index({ fechaCreacion: -1 });
+tareaConsorcioSchema.index({ fechaEjecucion: 1 });
+tareaConsorcioSchema.index({ estado: 1, fechaCreacion: -1 });
+tareaConsorcioSchema.index({ administradorConsorcio: 1, estado: 1 });
+tareaConsorcioSchema.index({ estado: 1, fechaEjecucion: 1 });
 
 // Middleware para actualizar fechaModificacion
 tareaConsorcioSchema.pre('save', function(next) {

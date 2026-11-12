@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, ExternalLink, ClipboardList } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, ExternalLink, ClipboardList, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Task } from '../../types';
+import { exportTasksCsv } from '../../utils/analyticsExport';
 
 export interface ChartDrilldown {
   title: string;
@@ -27,46 +28,101 @@ const estadoClass = (estado: string) => {
   }
 };
 
+const PAGE = 50;
+
 const ChartDrilldownPanel: React.FC<Props> = ({ drilldown, onClose }) => {
   const navigate = useNavigate();
+  const [q, setQ] = useState('');
+  const [visible, setVisible] = useState(PAGE);
+
+  const filtered = useMemo(() => {
+    if (!drilldown) return [];
+    const term = q.trim().toLowerCase();
+    if (!term) return drilldown.tasks;
+    return drilldown.tasks.filter((t) => {
+      const hay = [
+        t.numero,
+        t.titulo,
+        t.cliente,
+        t.estado,
+        t.direccion,
+        ...(Array.isArray(t.tecnicos)
+          ? t.tecnicos.map((x) => (typeof x === 'object' && x ? x.nombre : ''))
+          : []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(term);
+    });
+  }, [drilldown, q]);
 
   if (!drilldown) return null;
 
-  const { title, subtitle, tasks } = drilldown;
+  const { title, subtitle } = drilldown;
+  const shown = filtered.slice(0, visible);
 
   return (
     <div className="rounded-xl border border-blue-200 dark:border-blue-800/60 bg-white dark:bg-gray-800 shadow-lg overflow-hidden animate-fadeIn">
       <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-blue-50/70 dark:bg-blue-950/30">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
               {title}
             </h3>
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-600 text-white tabular-nums">
-              {tasks.length}
+              {filtered.length}
             </span>
           </div>
           {subtitle && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-500 hover:bg-white/80 dark:hover:bg-slate-700"
-          aria-label="Cerrar detalle"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() =>
+              exportTasksCsv(
+                filtered,
+                `detalle-${title.replace(/[^\w\-]+/g, '_').slice(0, 40)}.csv`
+              )
+            }
+            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700"
+            title="Exportar CSV"
+          >
+            <Download className="h-3.5 w-3.5" />
+            CSV
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-500 hover:bg-white/80 dark:hover:bg-slate-700"
+            aria-label="Cerrar detalle"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      <div className="max-h-48 overflow-y-auto">
-        {tasks.length === 0 ? (
+      <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700">
+        <input
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setVisible(PAGE);
+          }}
+          placeholder="Buscar en el detalle…"
+          className="w-full text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-gray-700 px-3 py-1.5"
+        />
+      </div>
+
+      <div className="max-h-64 overflow-y-auto">
+        {shown.length === 0 ? (
           <p className="text-sm text-slate-500 text-center py-8">Sin tareas en este segmento</p>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-700/80">
-            {tasks.slice(0, 40).map((task) => (
+            {shown.map((task) => (
               <li
                 key={task._id}
                 className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700/40"
@@ -77,10 +133,15 @@ const ChartDrilldownPanel: React.FC<Props> = ({ drilldown, onClose }) => {
                     {task.titulo}
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    {[task.cliente, task.fechaEjecucion].filter(Boolean).join(' · ') || 'Sin cliente/fecha'}
+                    {[task.cliente, task.fechaEjecucion].filter(Boolean).join(' · ') ||
+                      'Sin cliente/fecha'}
                   </p>
                 </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 ${estadoClass(task.estado)}`}>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full flex-shrink-0 ${estadoClass(
+                    task.estado
+                  )}`}
+                >
                   {task.estado}
                 </span>
                 <button
@@ -97,9 +158,18 @@ const ChartDrilldownPanel: React.FC<Props> = ({ drilldown, onClose }) => {
         )}
       </div>
 
-      {tasks.length > 40 && (
-        <div className="px-4 py-2 text-[11px] text-slate-500 border-t border-slate-100 dark:border-slate-700">
-          Mostrando 40 de {tasks.length}. Usá filtros para acotar.
+      {filtered.length > visible && (
+        <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
+          <span className="text-[11px] text-slate-500">
+            Mostrando {visible} de {filtered.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => setVisible((v) => v + PAGE)}
+            className="text-[11px] font-medium text-blue-600 hover:underline"
+          >
+            Ver más
+          </button>
         </div>
       )}
     </div>

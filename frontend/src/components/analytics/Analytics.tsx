@@ -34,19 +34,24 @@ import {
   Tag,
   ShieldAlert,
   Building,
+  Download,
 } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import AdminPageHeader from '../common/AdminPageHeader';
 import { isAdminRole } from '../../utils/roles';
 import {
+  buildDataCoverage,
   buildFinancialSummary,
   buildMonthlyCloseSummary,
   buildOperationalSummary,
   buildQualitySummary,
+  especialidadOf,
   filterTasksForAnalytics,
   inDateRange,
 } from '../../utils/analyticsHelpers';
+import { DATE_PRESETS, formatDelta, previousPeriod } from '../../utils/analyticsPeriod';
+import { exportKpisCsv, exportTasksCsv } from '../../utils/analyticsExport';
 import type { Reclamo, Task } from '../../types';
 import api from '../../config/api';
 
@@ -90,13 +95,14 @@ const Analytics: React.FC = () => {
   const [tab, setTab] = useState<TabId>(initialTab);
   const [detail, setDetail] = useState<ChartDrilldown | null>(null);
   const [reclamos, setReclamos] = useState<Reclamo[]>([]);
+  const [reclamosError, setReclamosError] = useState<string | null>(null);
 
   useEffect(() => {
     const q = searchParams.get('tab') || '';
     if (TAB_FROM_QUERY[q] && TAB_FROM_QUERY[q] !== tab) {
       setTab(TAB_FROM_QUERY[q]);
     }
-  }, [searchParams]);
+  }, [searchParams, tab]);
 
   const selectTab = (id: TabId) => {
     setTab(id);
@@ -131,8 +137,12 @@ const Analytics: React.FC = () => {
           try {
             const res = await api.get<{ success: boolean; data: Reclamo[] }>('/reclamos');
             setReclamos(res.data.data || []);
-          } catch {
+            setReclamosError(null);
+          } catch (err: any) {
             setReclamos([]);
+            setReclamosError(
+              err?.response?.data?.message || 'No se pudieron cargar los reclamos'
+            );
           }
         }
       } catch (error) {
@@ -165,15 +175,33 @@ const Analytics: React.FC = () => {
     [filteredTasks, users]
   );
 
+  const prevRange = useMemo(() => previousPeriod(dateRange), [dateRange]);
+
+  const prevTasks = useMemo(
+    () =>
+      filterTasksForAnalytics(Array.isArray(tasks) ? tasks : [], {
+        start: prevRange.start,
+        end: prevRange.end,
+        statuses: statusFilter,
+        tecnicoIds: userFilter,
+      }),
+    [tasks, prevRange, statusFilter, userFilter]
+  );
+
   const finance = useMemo(
     () =>
       buildFinancialSummary(
         Array.isArray(liquidaciones) ? liquidaciones : [],
         Array.isArray(pagos) ? pagos : [],
         Array.isArray(recibos) ? recibos : [],
-        dateRange
+        {
+          start: dateRange.start,
+          end: dateRange.end,
+          statuses: statusFilter,
+          tecnicoIds: userFilter,
+        }
       ),
-    [liquidaciones, pagos, recibos, dateRange]
+    [liquidaciones, pagos, recibos, dateRange, statusFilter, userFilter]
   );
 
   const reclamosFiltrados = useMemo(
@@ -195,6 +223,11 @@ const Analytics: React.FC = () => {
     [filteredTasks, users, liquidaciones]
   );
 
+  const prevOps = useMemo(
+    () => buildOperationalSummary(prevTasks, Array.isArray(users) ? users : []),
+    [prevTasks, users]
+  );
+
   const quality = useMemo(
     () =>
       buildQualitySummary(
@@ -204,6 +237,49 @@ const Analytics: React.FC = () => {
       ),
     [filteredTasks, users, reclamosFiltrados]
   );
+
+  const coverage = useMemo(() => buildDataCoverage(filteredTasks), [filteredTasks]);
+
+  const prevFinance = useMemo(
+    () =>
+      buildFinancialSummary(
+        Array.isArray(liquidaciones) ? liquidaciones : [],
+        Array.isArray(pagos) ? pagos : [],
+        Array.isArray(recibos) ? recibos : [],
+        {
+          start: prevRange.start,
+          end: prevRange.end,
+          statuses: statusFilter,
+          tecnicoIds: userFilter,
+        }
+      ),
+    [liquidaciones, pagos, recibos, prevRange, statusFilter, userFilter]
+  );
+
+  const filtersActive =
+    statusFilter.length !== 4 ||
+    userFilter.length > 0 ||
+    dateRange.start !== format(subMonths(new Date(), 12), 'yyyy-MM-dd');
+
+  const exportCurrent = () => {
+    exportTasksCsv(filteredTasks, `analisis-tareas-${dateRange.start}_${dateRange.end}.csv`);
+    exportKpisCsv(
+      [
+        { metrica: 'Tareas', valor: ops.total, nota: `vs ant ${formatDelta(ops.total, prevOps.total)}` },
+        { metrica: 'Completadas', valor: ops.completadas },
+        { metrica: 'Tasa cierre %', valor: ops.completionRate },
+        { metrica: 'Avg completado h', valor: ops.avgCompletionHours },
+        { metrica: 'Mediana completado h', valor: ops.medianCompletionHours },
+        { metrica: 'Presupuesto liq.', valor: Math.round(finance.totalPresupuesto) },
+        { metrica: 'Ganancia', valor: Math.round(finance.gananciaTotal) },
+        { metrica: 'Deuda técnicos', valor: Math.round(finance.deudaTecnicos) },
+        { metrica: 'Margen cierre', valor: Math.round(monthlyClose.margenOperativo) },
+        { metrica: 'Reclamos', valor: quality.reclamos },
+        { metrica: 'MTTR h', valor: quality.mttrHoras },
+      ],
+      `analisis-kpis-${dateRange.start}_${dateRange.end}.csv`
+    );
+  };
 
   const resetFilters = () => {
     setDateRange({
@@ -228,11 +304,17 @@ const Analytics: React.FC = () => {
   }
 
   const kpis = [
-    { title: 'Tareas', value: ops.total, icon: ClipboardList, color: 'bg-blue-500' },
+    {
+      title: 'Tareas',
+      value: ops.total,
+      hint: formatDelta(ops.total, prevOps.total),
+      icon: ClipboardList,
+      color: 'bg-blue-500',
+    },
     {
       title: 'Completadas',
       value: ops.completadas,
-      hint: `${ops.completionRate}%`,
+      hint: `${ops.completionRate}% · ${formatDelta(ops.completadas, prevOps.completadas)}`,
       icon: CheckCircle,
       color: 'bg-green-500',
       list: filteredTasks.filter((t) => t.estado === 'completada'),
@@ -240,6 +322,7 @@ const Analytics: React.FC = () => {
     {
       title: 'En progreso',
       value: ops.enProgreso,
+      hint: formatDelta(ops.enProgreso, prevOps.enProgreso),
       icon: Clock,
       color: 'bg-yellow-500',
       list: filteredTasks.filter((t) => t.estado === 'en progreso'),
@@ -260,11 +343,12 @@ const Analytics: React.FC = () => {
       list: filteredTasks.filter((t) => t.estado === 'cancelada'),
     },
     {
-      title: 'Sin técnico',
-      value: ops.sinTecnico,
-      icon: User,
-      color: 'bg-slate-500',
-      list: filteredTasks.filter((t) => !t.tecnicos || t.tecnicos.length === 0),
+      title: 'SLA (mediana)',
+      value: ops.medianCompletionHours > 0 ? `${ops.medianCompletionHours}h` : '—',
+      hint: `avg ${ops.avgCompletionHours}h · p90 ${ops.p90CompletionHours}h`,
+      icon: Clock,
+      color: 'bg-violet-500',
+      list: filteredTasks.filter((t) => t.estado === 'completada'),
     },
   ];
 
@@ -277,15 +361,29 @@ const Analytics: React.FC = () => {
           eyebrow="Análisis"
           icon={<BarChart3 className="h-5 w-5" />}
           actions={
-            tab !== 'consorcio' ? (
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filtros
-              </button>
-            ) : undefined
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              {tab !== 'consorcio' && (
+                <button
+                  type="button"
+                  onClick={exportCurrent}
+                  className="inline-flex items-center px-3 py-2.5 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-gray-700 hover:bg-slate-50"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </button>
+              )}
+              {tab !== 'consorcio' ? (
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-lg text-white ${
+                    filtersActive ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtros{filtersActive ? ' · activos' : ''}
+                </button>
+              ) : undefined}
+            </div>
           }
         />
 
@@ -350,6 +448,21 @@ const Analytics: React.FC = () => {
                     className="w-full rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-gray-700 text-sm py-2 px-2"
                   />
                 </div>
+                <div className="flex flex-wrap gap-1">
+                  {DATE_PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setDateRange(p.range())}
+                      className="px-2 py-0.5 text-[11px] rounded-full border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Comparación vs período anterior: {prevRange.start} → {prevRange.end}
+                </p>
               </div>
               <div>
                 <label className="text-xs text-slate-500 mb-2 block">Estados</label>
@@ -403,6 +516,38 @@ const Analytics: React.FC = () => {
 
         {tab === 'operativo' && (
           <>
+            {coverage.gaps.length > 0 && (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 px-4 py-3">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 mb-2">
+                  Cobertura de datos (mejora sola a medida que completan campos)
+                </p>
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  <span className="px-2 py-1 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                    Técnico {coverage.conTecnicoPct}%
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                    Fecha ejec. {coverage.conFechaEjecucionPct}%
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                    Completado {coverage.conFechaCompletadoPct}%
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                    Cuenta {coverage.conCuentaPct}%
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                    Franja {coverage.conFranjaPct}%
+                  </span>
+                  {coverage.gaps.slice(0, 3).map((g) => (
+                    <span
+                      key={g.label}
+                      className="px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200"
+                    >
+                      {g.label}: {g.count} ({g.pct}%)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {kpis.map((kpi) => {
                 const Icon = kpi.icon;
@@ -441,7 +586,11 @@ const Analytics: React.FC = () => {
                 title="Tareas por período"
                 icon={<Calendar className="h-4 w-4 text-blue-500" />}
               >
-                <TasksByTimeChart tasks={filteredTasks} onSegmentClick={setDetail} />
+                <TasksByTimeChart
+                  tasks={filteredTasks}
+                  dateRange={dateRange}
+                  onSegmentClick={setDetail}
+                />
               </ChartCard>
               <ChartCard
                 title="Distribución por estado"
@@ -478,13 +627,9 @@ const Analytics: React.FC = () => {
                       filteredTasks.filter((task) => {
                         const tecnicosTask = Array.isArray(task.tecnicos) ? task.tecnicos : [];
                         if (tecnicosTask.length === 0) return label === 'Sin asignar';
-                        return tecnicosTask.some((tec) => {
-                          if (typeof tec === 'string') {
-                            const u = users.find((x) => x._id === tec);
-                            return (u?.especialidad || 'Sin especialidad') === label;
-                          }
-                          return ((tec as any)?.especialidad || 'Sin especialidad') === label;
-                        });
+                        return tecnicosTask.some(
+                          (tec) => especialidadOf(tec as any, users) === label
+                        );
                       })
                     )
                   }
@@ -555,12 +700,60 @@ const Analytics: React.FC = () => {
           </>
         )}
 
-        {tab === 'financiero' && <FinancialAnalyticsPanel summary={finance} />}
+        {tab === 'financiero' && (
+          <>
+            <p className="text-xs text-slate-500">
+              Respeta fecha, estado y técnico. Canceladas excluidas del presupuesto activo.
+              Deuda = pago liquidado − pagos manuales. Deltas vs{' '}
+              {prevRange.start} → {prevRange.end}.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-3 py-2">
+                <p className="text-[11px] text-slate-500">Presupuesto vs ant.</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatDelta(finance.totalPresupuesto, prevFinance.totalPresupuesto)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-3 py-2">
+                <p className="text-[11px] text-slate-500">Ganancia vs ant.</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatDelta(finance.gananciaTotal, prevFinance.gananciaTotal)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-3 py-2">
+                <p className="text-[11px] text-slate-500">Deuda vs ant.</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatDelta(finance.deudaTecnicos, prevFinance.deudaTecnicos)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-3 py-2">
+                <p className="text-[11px] text-slate-500">Firma recibos vs ant.</p>
+                <p className="text-sm font-semibold tabular-nums">
+                  {formatDelta(finance.firmaRate, prevFinance.firmaRate)}
+                </p>
+              </div>
+            </div>
+            <FinancialAnalyticsPanel summary={finance} />
+          </>
+        )}
 
         {tab === 'consorcio' && <ConsorcioAnalytics embedded />}
 
         {tab === 'cierre' && (
-          <QualityAnalyticsPanel close={monthlyClose} quality={quality} />
+          <>
+            {reclamosError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-800 px-4 py-3 text-sm text-rose-800 dark:text-rose-200">
+                {reclamosError}. Los KPIs de calidad pueden quedar incompletos.
+              </div>
+            )}
+            {ops.sinFechaCompletado > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+                {ops.sinFechaCompletado} completadas sin <code>fechaCompletado</code>. Al
+                cerrar tareas de ahora en más, el SLA y el gráfico de tiempos mejoran solos.
+              </div>
+            )}
+            <QualityAnalyticsPanel close={monthlyClose} quality={quality} />
+          </>
         )}
       </div>
     </div>
