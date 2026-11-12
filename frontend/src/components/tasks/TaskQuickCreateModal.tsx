@@ -6,6 +6,8 @@ import { fetchUsers } from '../../store/slices/usersSlice';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AddressAutocomplete from '../common/AddressAutocomplete';
+import { CUENTAS_CLIENTE } from '../../utils/cuentaCliente';
+import type { CuentaCliente } from '../../types';
 
 export interface QuickCreateDefaults {
   fechaEjecucion: string; // YYYY-MM-DD
@@ -34,6 +36,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
     numero: '',
     titulo: '',
     cliente: '',
+    cuentaCliente: '' as '' | CuentaCliente,
     direccion: '',
     descripcion: '',
     fechaEjecucion: defaults.fechaEjecucion,
@@ -66,6 +69,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           numero: form.numero.trim(),
           titulo: form.titulo.trim(),
           cliente: form.cliente.trim(),
+          ...(form.cuentaCliente ? { cuentaCliente: form.cuentaCliente } : {}),
           direccion: form.direccion.trim(),
           descripcion: form.descripcion.trim(),
           fechaEjecucion: form.fechaEjecucion,
@@ -121,7 +125,11 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} onKeyDown={preventEnterSubmit} className="px-5 py-4 space-y-3">
+        <form
+          onSubmit={handleSubmit}
+          onKeyDown={preventEnterSubmit}
+          className="px-5 py-4 space-y-3 max-h-[75vh] overflow-y-auto"
+        >
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
               Número *
@@ -225,6 +233,26 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
                 className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+              Proveedor / Cuenta
+            </label>
+            <select
+              value={form.cuentaCliente}
+              onChange={(e) =>
+                setForm({ ...form, cuentaCliente: e.target.value as '' | CuentaCliente })
+              }
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+            >
+              <option value="">Sin clasificar</option>
+              {CUENTAS_CLIENTE.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
 
           <AddressAutocomplete

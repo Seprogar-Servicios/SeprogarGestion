@@ -1,10 +1,12 @@
 export interface FranjaParsed {
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
+  /** true cuando fin <= inicio (ej. 21:00 → 00:00 / 12:00 del día siguiente) */
+  crossesMidnight: boolean;
 }
 
 /**
- * Parsea franjas tipo "09:00 - 18:00", "9:00–18:00", "09:00-18:00".
+ * Parsea franjas tipo "09:00 - 18:00", "9:00–18:00", "09:00-18:00", "21:00 - 00:00".
  */
 export const parseFranjaHoraria = (franja?: string | null): FranjaParsed | null => {
   if (!franja || typeof franja !== 'string') return null;
@@ -31,16 +33,22 @@ export const parseFranjaHoraria = (franja?: string | null): FranjaParsed | null 
 
   const pad = (n: number) => String(n).padStart(2, '0');
   const startTime = `${pad(startH)}:${pad(startM)}`;
-  let endTime = `${pad(endH)}:${pad(endM)}`;
+  const endTime = `${pad(endH)}:${pad(endM)}`;
 
-  // Si fin <= inicio, asumir al menos 1 hora
-  if (endTime <= startTime) {
-    const endDate = new Date(2000, 0, 1, startH, startM);
-    endDate.setHours(endDate.getHours() + 1);
-    endTime = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
-  }
+  // Fin igual o anterior al inicio ⇒ cruza medianoche (no forzar +1h)
+  const crossesMidnight = endTime <= startTime;
 
-  return { startTime, endTime };
+  return { startTime, endTime, crossesMidnight };
+};
+
+/** Suma un día calendario a un YYYY-MM-DD local. */
+export const addDaysYmd = (ymd: string, days: number): string => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 };
 
 /**

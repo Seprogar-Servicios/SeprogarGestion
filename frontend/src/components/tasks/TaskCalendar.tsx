@@ -19,7 +19,7 @@ import AdminPageHeader from '../common/AdminPageHeader';
 import TaskEventPopover from './TaskEventPopover';
 import TaskQuickCreateModal, { type QuickCreateDefaults } from './TaskQuickCreateModal';
 import type { Task, TaskFilters } from '../../types';
-import { parseFranjaHoraria, toFechaEjecucionYmd } from '../../utils/franjaHoraria';
+import { addDaysYmd, parseFranjaHoraria, toFechaEjecucionYmd } from '../../utils/franjaHoraria';
 import { useTheme } from '../../hooks/useTheme';
 import './TaskCalendar.css';
 import { isAdminRole } from '../../utils/roles';
@@ -94,10 +94,11 @@ const taskToEvent = (task: Task): EventInput | null => {
   };
 
   if (franja) {
+    const endYmd = franja.crossesMidnight ? addDaysYmd(ymd, 1) : ymd;
     return {
       ...base,
       start: `${ymd}T${franja.startTime}:00`,
-      end: `${ymd}T${franja.endTime}:00`,
+      end: `${endYmd}T${franja.endTime}:00`,
       allDay: false,
     };
   }

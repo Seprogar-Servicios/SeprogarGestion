@@ -1,11 +1,13 @@
 /**
- * Geocodificación y sugerencias (Buenos Aires / Argentina).
- * Nominatim para geocode puntual; Photon (Komoot) para autocomplete.
- * Uso moderado: ~1 req/s a Nominatim.
+ * Geocodificación y sugerencias (Buenos Aires / AMBA / Argentina).
+ * USIG (GCBA) como fuente principal de autocomplete; Georef y Photon como fallback.
+ * Nominatim para geocode puntual.
  */
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const PHOTON_URL = 'https://photon.komoot.io/api/';
+const USIG_URL = 'https://servicios.usig.buenosaires.gob.ar/normalizar/';
+const GEOREF_URL = 'https://apis.datos.gob.ar/georef/api/direcciones';
 
 /** BBox aprox. AMBA / Provincia BA: west,south,east,north */
 const BA_BBOX = '-59.2,-35.2,-57.8,-34.0';
@@ -19,6 +21,10 @@ async function throttleNominatim() {
   const wait = 1100 - (Date.now() - lastNominatimAt);
   if (wait > 0) await delay(wait);
   lastNominatimAt = Date.now();
+}
+
+function inBaArea(lat, lng) {
+  return lat >= -36 && lat <= -33 && lng >= -60 && lng <= -57;
 }
 
 /**
@@ -40,6 +46,167 @@ function haversineKm(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
+function dedupeSuggestions(items, limit) {
+  const seen = new Set();
+  const out = [];
+  for (const item of items) {
+    if (!item?.label) continue;
+    const key = item.label.toLowerCase().replace(/\s+/g, ' ').trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/**
+ * Autocomplete oficial GCBA / AMBA (calle + altura + partido).
+ */
+async function suggestFromUsig(query, limit) {
+  try {
+    const url = new URL(USIG_URL);
+    url.searchParams.set('direccion', query);
+    url.searchParams.set('geocodificar', 'true');
+    url.searchParams.set('maxOptions', String(Math.min(limit, 10)));
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'SeprogarGestion/1.0 (address-suggest-usig)',
+      },
+    });
+    if (!response.ok) {
+      console.warn('USIG error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const list = Array.isArray(data?.direccionesNormalizadas)
+      ? data.direccionesNormalizadas
+      : [];
+
+    return list
+      .map((d) => {
+        const label = String(d.direccion || '').trim();
+        if (!label) return null;
+        const lng = Number(d.coordenadas?.x);
+        const lat = Number(d.coordenadas?.y);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+          // Sin coords aún: devolver label con 0,0 filtrado abajo
+          return null;
+        }
+        if (!inBaArea(lat, lng)) return null;
+        return { label, lat, lng };
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.error('Error USIG suggest:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Georef (datos.gob.ar) — buena cobertura CABA / provincia.
+ */
+async function suggestFromGeoref(query, limit) {
+  try {
+    const provinces = [
+      'Ciudad Autónoma de Buenos Aires',
+      'Buenos Aires',
+    ];
+    const results = [];
+
+    for (const provincia of provinces) {
+      const url = new URL(GEOREF_URL);
+      url.searchParams.set('direccion', query);
+      url.searchParams.set('provincia', provincia);
+      url.searchParams.set('max', String(Math.min(limit, 10)));
+      url.searchParams.set('campos', 'estandar');
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'SeprogarGestion/1.0 (address-suggest-georef)',
+        },
+      });
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const list = Array.isArray(data?.direcciones) ? data.direcciones : [];
+      for (const d of list) {
+        const label = String(d.nomenclatura || '').trim();
+        const lat = Number(d.ubicacion?.lat);
+        const lng = Number(d.ubicacion?.lon);
+        if (!label || Number.isNaN(lat) || Number.isNaN(lng)) continue;
+        if (!inBaArea(lat, lng)) continue;
+        results.push({ label, lat, lng });
+      }
+      if (results.length >= limit) break;
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error Georef suggest:', error.message);
+    return [];
+  }
+}
+
+async function suggestFromPhoton(query, limit) {
+  try {
+    const url = new URL(PHOTON_URL);
+    url.searchParams.set('q', query.trim());
+    url.searchParams.set('lang', 'es');
+    url.searchParams.set('limit', String(Math.min(limit, 10)));
+    url.searchParams.set('lat', String(BA_CENTER.lat));
+    url.searchParams.set('lon', String(BA_CENTER.lon));
+    url.searchParams.set('bbox', '-59.2,-35.2,-57.8,-34.0');
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'User-Agent': 'SeprogarGestion/1.0 (address-suggest)',
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn('Photon error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const features = Array.isArray(data?.features) ? data.features : [];
+
+    return features
+      .map((f) => {
+        const p = f.properties || {};
+        const coords = f.geometry?.coordinates;
+        if (!Array.isArray(coords) || coords.length < 2) return null;
+
+        const lng = Number(coords[0]);
+        const lat = Number(coords[1]);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+        if (!inBaArea(lat, lng)) return null;
+
+        const parts = [
+          p.name,
+          p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street,
+          p.district || p.suburb || p.city || p.town || p.county,
+          p.state,
+        ].filter(Boolean);
+
+        const label = [...new Set(parts)].join(', ');
+        if (!label) return null;
+
+        return { label, lat, lng };
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.error('Error Photon suggest:', error.message);
+    return [];
+  }
+}
+
 /**
  * @param {string} address
  * @returns {Promise<{ lat: number, lng: number } | null>}
@@ -47,6 +214,12 @@ function haversineKm(a, b) {
 async function geocodeAddress(address) {
   if (!address || typeof address !== 'string' || !address.trim()) {
     return null;
+  }
+
+  // Preferir USIG / Georef para direcciones locales
+  const suggestions = await suggestAddresses(address, 1);
+  if (suggestions[0]) {
+    return { lat: suggestions[0].lat, lng: suggestions[0].lng };
   }
 
   let query = address.trim();
@@ -94,7 +267,7 @@ async function geocodeAddress(address) {
 }
 
 /**
- * Sugerencias de dirección (Photon), acotadas a BA.
+ * Sugerencias de dirección acotadas a BA / AMBA.
  * @param {string} query
  * @param {number} [limit=6]
  * @returns {Promise<Array<{ label: string, lat: number, lng: number }>>}
@@ -104,63 +277,18 @@ async function suggestAddresses(query, limit = 6) {
     return [];
   }
 
-  try {
-    const url = new URL(PHOTON_URL);
-    url.searchParams.set('q', query.trim());
-    url.searchParams.set('lang', 'es');
-    url.searchParams.set('limit', String(Math.min(limit, 10)));
-    url.searchParams.set('lat', String(BA_CENTER.lat));
-    url.searchParams.set('lon', String(BA_CENTER.lon));
-    // bbox: minLon,minLat,maxLon,maxLat
-    url.searchParams.set('bbox', '-59.2,-35.2,-57.8,-34.0');
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        'User-Agent': 'SeprogarGestion/1.0 (address-suggest)',
-        Accept: 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.warn('Photon error:', response.status);
-      return [];
-    }
-
-    const data = await response.json();
-    const features = Array.isArray(data?.features) ? data.features : [];
-
-    return features
-      .map((f) => {
-        const p = f.properties || {};
-        const coords = f.geometry?.coordinates;
-        if (!Array.isArray(coords) || coords.length < 2) return null;
-
-        const lng = Number(coords[0]);
-        const lat = Number(coords[1]);
-        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-
-        // Filtrar fuera de Argentina / muy lejos de BA
-        if (lat < -36 || lat > -33 || lng < -60 || lng > -57) return null;
-
-        const parts = [
-          p.name,
-          p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street,
-          p.district || p.suburb || p.city || p.town || p.county,
-          p.state,
-        ].filter(Boolean);
-
-        // Deduplicar partes consecutivas iguales
-        const label = [...new Set(parts)].join(', ');
-        if (!label) return null;
-
-        return { label, lat, lng };
-      })
-      .filter(Boolean)
-      .slice(0, limit);
-  } catch (error) {
-    console.error('Error en sugerencias de dirección:', error.message);
-    return [];
+  const q = query.trim();
+  const usig = await suggestFromUsig(q, limit);
+  if (usig.length >= limit) {
+    return dedupeSuggestions(usig, limit);
   }
+
+  const [georef, photon] = await Promise.all([
+    suggestFromGeoref(q, limit),
+    suggestFromPhoton(q, limit),
+  ]);
+
+  return dedupeSuggestions([...usig, ...georef, ...photon], limit);
 }
 
 module.exports = {

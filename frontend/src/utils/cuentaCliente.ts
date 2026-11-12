@@ -23,28 +23,16 @@ export const RECLAMO_ESTADO_LABELS: Record<string, string> = {
   reabierto: 'Reabierto',
 };
 
-/** Infieren cuenta desde texto libre; no exige campo nuevo en datos históricos. */
+/**
+ * Solo usa el valor del selector `cuentaCliente`.
+ * No infiere desde el nombre del cliente.
+ * El primer argumento se mantiene por compatibilidad de llamadas.
+ */
 export function resolveCuentaCliente(
-  cliente?: string | null,
+  _cliente?: string | null,
   cuentaExplicit?: string | null
 ): string {
   const explicit = String(cuentaExplicit || '').trim();
   if (explicit && (CUENTAS_CLIENTE as string[]).includes(explicit)) return explicit;
-
-  const raw = String(cliente || '').trim().toUpperCase();
-  if (!raw) return 'Sin clasificar';
-
-  if (/\bIKE\b/.test(raw) || raw.includes('IKE')) return 'IKE';
-  if (raw.includes('VAITTY') || raw.includes('VAITY')) return 'VAITTY';
-  if (/\bMDO\b/.test(raw)) return 'MDO';
-  if (raw.includes('CONSORCIO')) return 'Consorcio';
-  if (
-    raw.includes('PARTICULAR') ||
-    raw.includes('PRIVADO') ||
-    raw === 'PART.' ||
-    raw.startsWith('PART ')
-  ) {
-    return 'Particular';
-  }
-  return 'Otro';
+  return 'Sin clasificar';
 }

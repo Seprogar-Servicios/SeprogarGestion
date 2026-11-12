@@ -15,6 +15,9 @@ import { preventEnterSubmit } from '../../utils/formGuards';
 import AdminPageHeader from '../common/AdminPageHeader';
 import AddressAutocomplete from '../common/AddressAutocomplete';
 import { isAdminRole } from '../../utils/roles';
+import { CUENTAS_CLIENTE } from '../../utils/cuentaCliente';
+import { parseFranjaHoraria } from '../../utils/franjaHoraria';
+import type { CuentaCliente } from '../../types';
 
 // Las clases de botones se definen directamente en los componentes
 
@@ -115,6 +118,7 @@ const TaskList: React.FC = () => {
     titulo: '',
     descripcion: '',
     cliente: '',
+    cuentaCliente: '' as '' | CuentaCliente,
     numeroTitular: '',
     direccion: '',
     fechaEjecucion: '',
@@ -327,6 +331,7 @@ const TaskList: React.FC = () => {
       titulo: '',
       descripcion: '',
       cliente: '',
+      cuentaCliente: '',
       numeroTitular: '',
       direccion: '',
       fechaEjecucion: '',
@@ -342,20 +347,16 @@ const TaskList: React.FC = () => {
   const openEditModal = (task: Task) => {
     setEditingTask(task);
     
-    // Extraer hora de inicio y hora de fin si existe franja_horaria
-    let horaInicio = '';
-    let horaFin = '';
-    if (task.franja_horaria) {
-      const partes = task.franja_horaria.split('-');
-      horaInicio = partes[0] || '';
-      horaFin = partes[1] || '';
-    }
+    const parsed = parseFranjaHoraria(task.franja_horaria);
+    const horaInicio = parsed?.startTime || '';
+    const horaFin = parsed?.endTime || '';
     
     setFormData({
       numero: task.numero,
       titulo: task.titulo,
       descripcion: task.descripcion || '',
       cliente: task.cliente || '',
+      cuentaCliente: (task.cuentaCliente as '' | CuentaCliente) || '',
       numeroTitular: task.numeroTitular || '',
       direccion: task.direccion || '',
       fechaEjecucion: task.fechaEjecucion ? new Date(task.fechaEjecucion).toISOString().split('T')[0] : '',
@@ -1434,6 +1435,34 @@ const TaskList: React.FC = () => {
                       className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                       placeholder="Nombre del cliente"
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Proveedor / Cuenta
+                  </label>
+                  <div className="relative rounded-lg shadow-sm">
+                    <select
+                      value={formData.cuentaCliente || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          cuentaCliente: e.target.value as '' | CuentaCliente,
+                        })
+                      }
+                      className="block w-full pl-3 pr-10 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 appearance-none"
+                    >
+                      <option value="">Sin clasificar</option>
+                      {CUENTAS_CLIENTE.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    </div>
                   </div>
                 </div>
 
