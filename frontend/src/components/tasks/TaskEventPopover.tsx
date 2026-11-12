@@ -15,6 +15,7 @@ import {
   formatDireccionToMapsUrl,
   formatDireccionToMapsEmbedUrl,
 } from '../../utils/mapsUtils';
+import { parseFranjaHoraria } from '../../utils/franjaHoraria';
 
 interface TaskEventPopoverProps {
   task: Task;
@@ -123,7 +124,14 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) =>
             {task.franja_horaria && (
               <div className="flex items-start gap-2.5 text-gray-700 dark:text-gray-200">
                 <Clock className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
-                <span>{task.franja_horaria}</span>
+                <span>
+                  {(() => {
+                    const f = parseFranjaHoraria(task.franja_horaria);
+                    return f
+                      ? `${f.startTime} – ${f.endTime}${f.crossesMidnight ? ' (+1 día)' : ''}`
+                      : task.franja_horaria;
+                  })()}
+                </span>
               </div>
             )}
             {task.cliente && (

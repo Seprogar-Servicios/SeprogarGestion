@@ -100,6 +100,11 @@ const taskToEvent = (task: Task): EventInput | null => {
       start: `${ymd}T${franja.startTime}:00`,
       end: `${endYmd}T${franja.endTime}:00`,
       allDay: false,
+      extendedProps: {
+        ...base.extendedProps,
+        // Etiqueta propia en 24h (ej. 21:00 – 00:00), sin am/pm
+        timeLabel: `${franja.startTime} – ${franja.endTime}`,
+      },
     };
   }
 
@@ -340,9 +345,15 @@ const TaskCalendar: React.FC = () => {
     openCreateFromRange(arg.date, end, false);
   };
 
-  const renderEventContent = useCallback((arg: { event: { title: string; extendedProps: Record<string, unknown> }; timeText: string; view: { type: string } }) => {
+  const renderEventContent = useCallback((arg: { event: { title: string; start: Date | null; end: Date | null; extendedProps: Record<string, unknown> }; timeText: string; view: { type: string } }) => {
     const techLabel = String(arg.event.extendedProps.techLabel || 'Sin técnico');
     const techShort = String(arg.event.extendedProps.techShort || techLabel);
+    const customTime = String(arg.event.extendedProps.timeLabel || '');
+    const fallbackTime =
+      arg.event.start && arg.event.end
+        ? `${toLocalHm(arg.event.start)} – ${toLocalHm(arg.event.end)}`
+        : arg.timeText;
+    const timeLabel = customTime || fallbackTime;
     const isMonth = arg.view.type === 'dayGridMonth';
     const isList = arg.view.type.startsWith('list');
     const tech = isMonth ? techShort : techLabel;
@@ -350,6 +361,7 @@ const TaskCalendar: React.FC = () => {
     if (isList) {
       return (
         <div className="fc-event-tech-list">
+          {timeLabel ? <span className="fc-event-tech-time">{timeLabel}</span> : null}
           <span className="fc-event-tech-badge">{tech}</span>
           <span className="fc-event-tech-task">{arg.event.title}</span>
         </div>
@@ -362,7 +374,7 @@ const TaskCalendar: React.FC = () => {
           {tech}
         </div>
         <div className="fc-event-tech-meta">
-          {arg.timeText ? <span className="fc-event-tech-time">{arg.timeText}</span> : null}
+          {timeLabel ? <span className="fc-event-tech-time">{timeLabel}</span> : null}
           <span className="fc-event-tech-task">{arg.event.title}</span>
         </div>
       </div>
@@ -447,7 +459,6 @@ const TaskCalendar: React.FC = () => {
             list: 'Agenda',
           }}
           height="100%"
-          expandRows
           stickyHeaderDates
           nowIndicator
           dayMaxEvents={3}
@@ -467,6 +478,8 @@ const TaskCalendar: React.FC = () => {
           unselectAuto
           events={events}
           eventContent={renderEventContent}
+          displayEventTime={false}
+          displayEventEnd={false}
           datesSet={handleDatesSet}
           eventClick={handleEventClick}
           select={(arg) => {
@@ -474,17 +487,16 @@ const TaskCalendar: React.FC = () => {
             handleSelect(arg);
           }}
           dateClick={handleDateClick}
+          /* Reloj 24h: 00:00 … 23:00 (medianoche = 00:00, mediodía = 12:00) */
           eventTimeFormat={{
-            hour: 'numeric',
+            hour: '2-digit',
             minute: '2-digit',
-            meridiem: 'short',
-            hour12: true,
+            hour12: false,
           }}
           slotLabelFormat={{
-            hour: 'numeric',
+            hour: '2-digit',
             minute: '2-digit',
-            meridiem: 'short',
-            hour12: true,
+            hour12: false,
           }}
           dayHeaderFormat={{ weekday: 'short', day: 'numeric', omitCommas: true }}
         />

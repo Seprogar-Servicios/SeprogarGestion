@@ -356,8 +356,14 @@
   border-color: var(--fc-border-color);
 }
 
+/* Altura fija por media hora para poder scrollear las 24h completas */
 .task-calendar-shell .fc .fc-timegrid-slot {
-  height: 3rem;
+  height: 2.75rem !important;
+}
+
+.task-calendar-shell .fc .fc-timegrid-body {
+  /* Asegura que el body deje scrollear de 00:00 a 24:00 */
+  min-height: 0;
 }
 
 .task-calendar-shell .fc .fc-timegrid-slot-label-cushion {
