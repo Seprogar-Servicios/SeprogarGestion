@@ -293,7 +293,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
                 ))}
             </select>
             <p className="mt-1 text-[11px] text-gray-400">
-              Ctrl/Cmd + clic para selección múltiple
+              Opcional. Sin técnico = gris en el calendario. Ctrl/Cmd + clic para varios.
             </p>
           </div>
 

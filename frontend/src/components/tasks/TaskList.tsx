@@ -1629,7 +1629,8 @@ const TaskList: React.FC = () => {
                       ))}
                   </select>
                   <p className="mt-1 text-[11px] text-gray-400">
-                    Ctrl/Cmd + clic para selección múltiple
+                    Opcional. Sin técnico aparece en gris en el calendario. Ctrl/Cmd + clic para
+                    selección múltiple.
                   </p>
                 </div>
 

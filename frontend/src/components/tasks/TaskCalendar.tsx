@@ -33,8 +33,14 @@ const STATUS_COLORS: Record<string, { bg: string; border: string }> = {
   cancelada: { bg: '#d93025', border: '#d93025' },
 };
 
+/** Sin técnico asignado → gris fijo en el calendario */
+const UNASSIGNED_COLOR = { bg: '#9aa0a6', border: '#80868b', text: '#ffffff' };
+
 const colorFromTask = (task: Task): { bg: string; border: string; text: string } => {
   const tecnicos = Array.isArray(task.tecnicos) ? task.tecnicos : [];
+  if (tecnicos.length === 0) {
+    return UNASSIGNED_COLOR;
+  }
   for (const t of tecnicos) {
     if (typeof t === 'object' && t !== null) {
       const c = normalizeColor((t as { color?: string }).color);
@@ -43,8 +49,8 @@ const colorFromTask = (task: Task): { bg: string; border: string; text: string }
       }
     }
   }
-  const fallback = STATUS_COLORS[task.estado] || STATUS_COLORS.pendiente;
-  return { ...fallback, text: '#ffffff' };
+  // Técnico sin color propio: gris (no usar color de estado)
+  return UNASSIGNED_COLOR;
 };
 
 const techNamesFromTask = (task: Task): string[] => {
@@ -385,7 +391,7 @@ const TaskCalendar: React.FC = () => {
     <>
       <div className="hidden sm:flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
         <span className="font-medium text-slate-600 dark:text-slate-300">
-          Color + nombre = técnico asignado
+          Color = técnico · gris = sin asignar
         </span>
       </div>
       {loading && (
