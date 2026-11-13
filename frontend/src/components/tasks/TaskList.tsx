@@ -16,7 +16,7 @@ import AdminPageHeader from '../common/AdminPageHeader';
 import AddressAutocomplete from '../common/AddressAutocomplete';
 import { isAdminRole } from '../../utils/roles';
 import { CUENTAS_CLIENTE } from '../../utils/cuentaCliente';
-import { parseFranjaHoraria } from '../../utils/franjaHoraria';
+import { compareTasksBySchedule, parseFranjaHoraria } from '../../utils/franjaHoraria';
 import type { CuentaCliente } from '../../types';
 
 // Las clases de botones se definen directamente en los componentes
@@ -40,6 +40,8 @@ const TaskList: React.FC = () => {
   // State for the new status with explicit type
   const [newStatus, setNewStatus] = useState<Status>('pendiente');
   const [selectedTecnico, setSelectedTecnico] = useState<string | null>(null);
+  const [expandedWhatsAppTecnico, setExpandedWhatsAppTecnico] = useState<string | null>(null);
+  const [whatsAppTechQuery, setWhatsAppTechQuery] = useState('');
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
   const [showTextExportModal, setShowTextExportModal] = useState(false);
   
@@ -419,33 +421,62 @@ const TaskList: React.FC = () => {
     setSelectedTasks(newSelectedTasks);
   };
   
-  // Agrupar tareas por técnico para el WhatsApp
+  // Agrupar tareas por técnico para WhatsApp (respeta filtro de técnico + búsqueda local)
   const groupedTasks = React.useMemo(() => {
     const grouped: Record<string, { tecnico: UserType; tasks: Task[] }> = {};
-    
-    tasks.forEach(task => {
-      if (task.tecnicos && task.tecnicos.length > 0) {
-        task.tecnicos.forEach(tecnico => {
-          // Verificar que el técnico tenga un ID válido
-          if (tecnico && tecnico._id) {
-            if (!grouped[tecnico._id]) {
-              // Crear una copia del objeto técnico para evitar problemas de referencia
-              grouped[tecnico._id] = {
-                tecnico: { ...tecnico },
-                tasks: []
-              };
-            }
-            // Verificar que la tarea no esté ya en el array
-            if (!grouped[tecnico._id].tasks.some(t => t._id === task._id)) {
-              grouped[tecnico._id].tasks.push(task);
-            }
-          }
-        });
-      }
+    const onlyTecnicoId = filters.tecnico || null;
+
+    filteredTasks.forEach((task) => {
+      if (!task.tecnicos || task.tecnicos.length === 0) return;
+
+      task.tecnicos.forEach((tecnico) => {
+        if (!tecnico || !tecnico._id) return;
+        // Si hay filtro de técnico, no mostrar otras tarjetas (tareas multi-asignadas)
+        if (onlyTecnicoId && tecnico._id !== onlyTecnicoId) return;
+
+        if (!grouped[tecnico._id]) {
+          grouped[tecnico._id] = {
+            tecnico: { ...tecnico },
+            tasks: [],
+          };
+        }
+        if (!grouped[tecnico._id].tasks.some((t) => t._id === task._id)) {
+          grouped[tecnico._id].tasks.push(task);
+        }
+      });
     });
-    
+
+    // Ordenar por fecha y hora de inicio de franja (ej. 10:00 antes que 13:00)
+    Object.values(grouped).forEach((g) => {
+      g.tasks.sort(compareTasksBySchedule);
+    });
+
     return grouped;
-  }, [tasks]);
+  }, [filteredTasks, filters.tecnico]);
+
+  const whatsAppGroupedEntries = React.useMemo(() => {
+    const q = whatsAppTechQuery.trim().toLowerCase();
+    return Object.entries(groupedTasks)
+      .filter(([, { tecnico }]) =>
+        !q ? true : (tecnico.nombre || '').toLowerCase().includes(q)
+      )
+      .sort((a, b) =>
+        (a[1].tecnico.nombre || '').localeCompare(b[1].tecnico.nombre || '', 'es')
+      );
+  }, [groupedTasks, whatsAppTechQuery]);
+
+  // Al abrir WhatsApp, enfocar el técnico del filtro (o el único disponible)
+  React.useEffect(() => {
+    if (!showWhatsAppPanel) return;
+
+    const focusId =
+      (filters.tecnico && groupedTasks[filters.tecnico] && filters.tecnico) ||
+      (Object.keys(groupedTasks).length === 1 ? Object.keys(groupedTasks)[0] : null);
+
+    if (!focusId) return;
+    setSelectedTecnico(focusId);
+    setExpandedWhatsAppTecnico(focusId);
+  }, [showWhatsAppPanel, filters.tecnico]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // Eliminar múltiples tareas seleccionadas
   const handleDeleteMultipleTasks = async () => {
@@ -518,26 +549,41 @@ const TaskList: React.FC = () => {
     }
   };
   
-  // Manejar selección/deselección de todas las tareas de un técnico
-  const handleSelectAllForTecnico = (tecnicoId: string) => {
+  // Selección de tareas de un técnico (exclusiva: un técnico a la vez)
+  const handleSelectAllForTecnico = (tecnicoId: string, onlyActive = false) => {
     const tecnicoTasks = groupedTasks[tecnicoId]?.tasks || [];
-    const tecnicoTaskIds = tecnicoTasks.map(task => task._id);
-    
-    // Verificar si todas las tareas del técnico ya están seleccionadas
-    const allSelected = tecnicoTaskIds.every(id => selectedTasks.includes(id));
-    
+    const tecnicoTaskIds = tecnicoTasks
+      .filter((t) =>
+        onlyActive ? t.estado !== 'completada' && t.estado !== 'cancelada' : true
+      )
+      .map((task) => task._id);
+
+    const allSelected =
+      tecnicoTaskIds.length > 0 &&
+      tecnicoTaskIds.every((id) => selectedTasks.includes(id)) &&
+      selectedTecnico === tecnicoId;
+
     if (allSelected) {
-      // Deseleccionar todas las tareas del técnico
-      setSelectedTasks(selectedTasks.filter(id => !tecnicoTaskIds.includes(id)));
+      setSelectedTasks([]);
       setSelectedTecnico(null);
     } else {
-      // Primero deseleccionar todas las tareas actuales
-      setSelectedTasks([]);
-      
-      // Luego seleccionar solo las tareas del técnico actual
       setSelectedTasks(tecnicoTaskIds);
       setSelectedTecnico(tecnicoId);
+      setExpandedWhatsAppTecnico(tecnicoId);
     }
+  };
+
+  const handleToggleTaskForTecnico = (tecnicoId: string, taskId: string) => {
+    // Cambiar de técnico limpia la selección previa
+    if (selectedTecnico && selectedTecnico !== tecnicoId) {
+      setSelectedTasks([taskId]);
+      setSelectedTecnico(tecnicoId);
+      return;
+    }
+    setSelectedTecnico(tecnicoId);
+    setSelectedTasks((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
   };
   
   // Generar mensaje de WhatsApp y archivo .ics para el técnico seleccionado
@@ -551,10 +597,10 @@ const TaskList: React.FC = () => {
 
     // Obtener las tareas del técnico que están seleccionadas
     const tecnicoTasks = groupedTasks[tecnicoId]?.tasks || [];
-    // Respetar el orden de selección del administrador
-    const selectedTasksForTecnico = selectedTasks
-      .map(taskId => tecnicoTasks.find(task => task._id === taskId))
-      .filter(task => task !== undefined);
+    // Orden cronológico por hora de inicio de franja (no por orden de click)
+    const selectedTasksForTecnico = tecnicoTasks
+      .filter((task) => selectedTasks.includes(task._id))
+      .sort(compareTasksBySchedule);
     
     if (selectedTasksForTecnico.length === 0) {
       alert('No hay tareas seleccionadas para este técnico');
@@ -626,7 +672,9 @@ const TaskList: React.FC = () => {
     
     // Obtener las tareas del técnico que están seleccionadas
     const tecnicoTasks = groupedTasks[tecnicoId]?.tasks || [];
-    const selectedTasksForTecnico = tecnicoTasks.filter(task => selectedTasks.includes(task._id));
+    const selectedTasksForTecnico = tecnicoTasks
+      .filter((task) => selectedTasks.includes(task._id))
+      .sort(compareTasksBySchedule);
     
     if (selectedTasksForTecnico.length === 0) {
       alert('No hay tareas seleccionadas para este técnico');
@@ -674,8 +722,10 @@ const TaskList: React.FC = () => {
       return;
     }
     
-    // Obtener las tareas seleccionadas del usuario actual
-    const userSelectedTasks = filteredTasks.filter(task => selectedTasks.includes(task._id));
+    // Obtener las tareas seleccionadas del usuario actual (orden por franja)
+    const userSelectedTasks = filteredTasks
+      .filter((task) => selectedTasks.includes(task._id))
+      .sort(compareTasksBySchedule);
     
     if (userSelectedTasks.length === 0) {
       alert('No hay tareas seleccionadas');
@@ -969,7 +1019,9 @@ const TaskList: React.FC = () => {
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
               {isAdminRole(user)
-                ? 'Envía un recordatorio de sus tareas al técnico por WhatsApp. Solo puedes seleccionar un técnico a la vez.'
+                ? filters.tecnico
+                  ? 'Filtro de técnico activo: solo ves ese técnico. Podés marcar tareas abajo y enviar.'
+                  : 'Elegí un técnico, marcá las tareas a enviar (un técnico a la vez) y abrí WhatsApp.'
                 : 'Envía un recordatorio de tus tareas a tu WhatsApp o descárgalas como eventos para tu calendario.'}
             </p>
           
@@ -978,28 +1030,62 @@ const TaskList: React.FC = () => {
                 {isAdminRole(user) ? (
                   // Panel para administradores
                   Object.keys(groupedTasks).length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Object.entries(groupedTasks).map(([tecnicoId, { tecnico, tasks }]) => (
+                    <div className="space-y-3">
+                      {!filters.tecnico && Object.keys(groupedTasks).length > 4 && (
+                        <div className="relative max-w-md">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="search"
+                            value={whatsAppTechQuery}
+                            onChange={(e) => setWhatsAppTechQuery(e.target.value)}
+                            placeholder="Buscar técnico…"
+                            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      )}
+                      {filters.tecnico && (
+                        <div className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+                          Mostrando solo el técnico del filtro actual.
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {whatsAppGroupedEntries.map(([tecnicoId, { tecnico, tasks: techTasks }]) => {
+                        const selectedCount = techTasks.filter((task) =>
+                          selectedTasks.includes(task._id)
+                        ).length;
+                        const expanded = expandedWhatsAppTecnico === tecnicoId;
+                        const activeTasks = techTasks.filter(
+                          (t) => t.estado !== 'completada' && t.estado !== 'cancelada'
+                        );
+                        return (
                         <div key={tecnicoId} className={`border ${selectedTecnico === tecnicoId ? 'border-[#f7941d] bg-orange-50 dark:bg-gray-700/50' : 'border-gray-200 dark:border-gray-700'} rounded-lg p-4 hover:shadow-md transition-shadow`}>
                           <div className="flex flex-col space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center min-w-0">
                                 <button 
+                                  type="button"
                                   onClick={() => handleSelectAllForTecnico(tecnicoId)}
                                   className="text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 mr-2 cursor-pointer"
+                                  title="Seleccionar todas"
                                 >
-                                  {tasks.every(task => selectedTasks.includes(task._id)) ? (
+                                  {selectedCount === techTasks.length && techTasks.length > 0 ? (
                                     <CheckSquare className="h-5 w-5" />
                                   ) : (
                                     <Square className="h-5 w-5" />
                                   )}
                                 </button>
-                                <span className="font-medium text-gray-900 dark:text-white truncate max-w-[150px]">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setExpandedWhatsAppTecnico(expanded ? null : tecnicoId)
+                                  }
+                                  className="font-medium text-gray-900 dark:text-white truncate text-left hover:text-blue-600"
+                                >
                                   {tecnico.nombre}
-                                </span>
+                                </button>
                               </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {tasks.filter(task => selectedTasks.includes(task._id)).length}/{tasks.length} tareas
+                              <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {selectedCount}/{techTasks.length}
                               </div>
                             </div>
                             
@@ -1007,15 +1093,78 @@ const TaskList: React.FC = () => {
                               <Phone className="h-4 w-4 mr-1" />
                               <span className="truncate">{tecnico.telefono || 'Sin teléfono'}</span>
                             </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectAllForTecnico(tecnicoId, true)}
+                                className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                              >
+                                Activas ({activeTasks.length})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectAllForTecnico(tecnicoId, false)}
+                                className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                              >
+                                Todas
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedWhatsAppTecnico(expanded ? null : tecnicoId)
+                                }
+                                className="text-xs px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                              >
+                                {expanded ? 'Ocultar lista' : 'Ver / elegir tareas'}
+                              </button>
+                            </div>
+
+                            {expanded && (
+                              <ul className="max-h-48 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-600 divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-gray-800">
+                                {techTasks.map((task) => {
+                                  const checked = selectedTasks.includes(task._id);
+                                  return (
+                                    <li key={task._id}>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleToggleTaskForTecnico(tecnicoId, task._id)
+                                        }
+                                        className="w-full flex items-start gap-2 px-2.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                                      >
+                                        {checked ? (
+                                          <CheckSquare className="h-4 w-4 mt-0.5 text-green-600 shrink-0" />
+                                        ) : (
+                                          <Square className="h-4 w-4 mt-0.5 text-slate-400 shrink-0" />
+                                        )}
+                                        <span className="min-w-0">
+                                          <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                                            #{task.numero} · {task.titulo}
+                                          </span>
+                                          <span className="block text-[11px] text-slate-500 truncate">
+                                            {task.fechaEjecucion || 'Sin fecha'}
+                                            {task.franja_horaria
+                                              ? ` · ${task.franja_horaria}`
+                                              : ''}
+                                            {task.estado ? ` · ${task.estado}` : ''}
+                                          </span>
+                                        </span>
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
                             
                             <div className="flex flex-col sm:flex-row gap-2">
                               <button
                                 onClick={() => {
                                   generateWhatsAppMessage(tecnicoId);
                                 }}
-                                disabled={!tecnico.telefono || tecnico.telefono.trim() === '' || !tasks.some(task => selectedTasks.includes(task._id))}
+                                disabled={!tecnico.telefono || tecnico.telefono.trim() === '' || selectedCount === 0}
                                 className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
-                                  !tecnico.telefono || tecnico.telefono.trim() === '' || !tasks.some(task => selectedTasks.includes(task._id))
+                                  !tecnico.telefono || tecnico.telefono.trim() === '' || selectedCount === 0
                                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                     : 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
                                 }`}
@@ -1025,9 +1174,9 @@ const TaskList: React.FC = () => {
                               </button>
                               <button
                                 onClick={() => handleDownloadCalendar(tecnicoId)}
-                                disabled={!tasks.some(task => selectedTasks.includes(task._id))}
+                                disabled={selectedCount === 0}
                                 className={`inline-flex items-center justify-center px-3 py-2 text-sm rounded-md w-full ${
-                                  !tasks.some(task => selectedTasks.includes(task._id))
+                                  selectedCount === 0
                                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                     : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
                                 }`}
@@ -1038,11 +1187,19 @@ const TaskList: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
+                      </div>
+                      {whatsAppGroupedEntries.length === 0 && (
+                        <p className="text-gray-500 dark:text-gray-400 py-2 text-center text-sm">
+                          Ningún técnico coincide con la búsqueda
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p className="text-gray-500 dark:text-gray-400 py-4 text-center">
                       No hay tareas asignadas a técnicos
+                      {filters.tecnico ? ' con el filtro actual' : ''}
                     </p>
                   )
                 ) : (

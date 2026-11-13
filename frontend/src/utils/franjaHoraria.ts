@@ -83,3 +83,22 @@ export const toFechaEjecucionYmd = (fecha?: string | Date | null): string | null
 
   return null;
 };
+
+/** Minutos desde 00:00 del inicio de franja; sin franja válida → alto (van al final). */
+export const franjaStartMinutes = (franja?: string | null): number => {
+  const parsed = parseFranjaHoraria(franja);
+  if (!parsed) return 24 * 60 + 1;
+  const [h, m] = parsed.startTime.split(':').map(Number);
+  return h * 60 + m;
+};
+
+/** Orden: fecha ejecución, luego hora inicio de franja. */
+export const compareTasksBySchedule = (
+  a: { fechaEjecucion?: string | null; franja_horaria?: string | null },
+  b: { fechaEjecucion?: string | null; franja_horaria?: string | null }
+): number => {
+  const da = toFechaEjecucionYmd(a.fechaEjecucion) || '';
+  const db = toFechaEjecucionYmd(b.fechaEjecucion) || '';
+  if (da !== db) return da.localeCompare(db);
+  return franjaStartMinutes(a.franja_horaria) - franjaStartMinutes(b.franja_horaria);
+};
