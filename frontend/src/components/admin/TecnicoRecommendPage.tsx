@@ -60,6 +60,8 @@ const TecnicoRecommendPage: React.FC = () => {
   const [fecha, setFecha] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [horaInicio, setHoraInicio] = useState('10:00');
   const [horaFin, setHoraFin] = useState('12:00');
+  /** true = rankear por cercanía aunque solape franja (puede terminar antes) */
+  const [priorizarCercania, setPriorizarCercania] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RecommendResponse | null>(null);
 
@@ -84,6 +86,7 @@ const TecnicoRecommendPage: React.FC = () => {
           fecha,
           horaInicio,
           horaFin,
+          priorizarCercania,
           ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
         }
       );
@@ -109,10 +112,9 @@ const TecnicoRecommendPage: React.FC = () => {
       />
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-        <strong>Cómo funciona:</strong> si el técnico no tiene tareas ese día, se mide
-        distancia a su domicilio/base. Si ya tiene recorrido, se mira quién quedaría más
-        cerca al terminar la tarea anterior a esa franja. Los conflictos de horario se
-        marcan pero igual aparecen en el ranking.
+        <strong>Cómo funciona:</strong> sin tareas ese día → distancia a su base. Con
+        recorrido → quién queda más cerca al terminar la tarea anterior. El check
+        “priorizar cercanía” decide si el solape de franja penaliza o no el ranking.
       </div>
 
       <form
@@ -170,6 +172,22 @@ const TecnicoRecommendPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <label className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-900/30 px-3 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={priorizarCercania}
+            onChange={(e) => setPriorizarCercania(e.target.checked)}
+            className="mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm text-slate-700 dark:text-slate-200">
+            <span className="font-medium">Priorizar cercanía aunque solape franja</span>
+            <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Activado: gana el más cerca (puede terminar antes y llegar). Desactivado:
+              prioriza a quien no tenga franja coincidente y, entre esos, el más cerca.
+            </span>
+          </span>
+        </label>
 
         <div className="flex justify-end">
           <button

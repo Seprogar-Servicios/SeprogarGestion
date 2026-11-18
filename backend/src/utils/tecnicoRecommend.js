@@ -170,6 +170,8 @@ const rankTecnicos = ({
   proposedEnd,
   tecnicos,
   tareasPorTecnico,
+  /** true = ordenar solo por cercanía (ignora solape de franja al rankear) */
+  priorizarCercania = false,
 }) => {
   const ranked = tecnicos.map((tec) => {
     const tid = String(tec._id);
@@ -208,7 +210,9 @@ const rankTecnicos = ({
         // Menor score = mejor. Sin distancia → peor.
         if (km == null) return 1e9;
         let s = km;
-        if (resolved.conflictoFranja) s += 50;
+        // Desactivado: priorizar quienes no solapan franja.
+        // Activado: solo distancia (puede terminar antes y llegar).
+        if (!priorizarCercania && resolved.conflictoFranja) s += 50;
         if (resolved.modo === 'sin_ubicacion') s += 100;
         return s;
       })(),

@@ -452,8 +452,8 @@ const DayMap: React.FC = () => {
               Orden del día
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Todas las del día (con o sin ubicación). Clic abre el detalle para editar o
-              borrar. Las sin pin solo aparecen acá.
+              Todas las del día (con o sin ubicación). Usá “Abrir detalle” para editar o
+              borrar. Clic en la tarjeta solo la selecciona / centra en el mapa.
             </p>
           </div>
 
@@ -484,7 +484,9 @@ const DayMap: React.FC = () => {
                     >
                       <button
                         type="button"
-                        onClick={() => navigate(`/tasks/${task._id}`)}
+                        onClick={() =>
+                          hasCoords ? focusTask(task._id) : setSelectedTaskId(task._id)
+                        }
                         className="w-full text-left"
                       >
                         <div className="flex items-start gap-3">

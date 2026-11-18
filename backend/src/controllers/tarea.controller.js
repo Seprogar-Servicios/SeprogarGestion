@@ -535,6 +535,10 @@ exports.recomendarTecnicos = async (req, res) => {
       : new Date().toISOString().slice(0, 10);
     const horaInicio = String(src.horaInicio || '').trim();
     const horaFin = String(src.horaFin || '').trim();
+    const priorizarCercania =
+      src.priorizarCercania === true ||
+      src.priorizarCercania === 'true' ||
+      src.priorizarCercania === '1';
 
     const proposedStart = parseHmToMinutes(horaInicio);
     const proposedEndRaw = parseHmToMinutes(horaFin);
@@ -622,6 +626,7 @@ exports.recomendarTecnicos = async (req, res) => {
       proposedEnd,
       tecnicos,
       tareasPorTecnico,
+      priorizarCercania,
     });
 
     res.json({
@@ -630,6 +635,7 @@ exports.recomendarTecnicos = async (req, res) => {
         fecha,
         direccion: direccion || null,
         franja: { inicio: horaInicio, fin: horaFin },
+        priorizarCercania,
         destino: targetCoords,
         recomendaciones,
         meta: {
