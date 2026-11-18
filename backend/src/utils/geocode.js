@@ -272,18 +272,16 @@ async function geocodeAddress(address) {
  * @param {number} [limit=6]
  * @returns {Promise<Array<{ label: string, lat: number, lng: number }>>}
  */
-async function suggestAddresses(query, limit = 6) {
+async function suggestAddresses(query, limit = 8) {
   if (!query || typeof query !== 'string' || query.trim().length < 3) {
     return [];
   }
 
   const q = query.trim();
-  const usig = await suggestFromUsig(q, limit);
-  if (usig.length >= limit) {
-    return dedupeSuggestions(usig, limit);
-  }
-
-  const [georef, photon] = await Promise.all([
+  // Siempre consultar las 3 fuentes en paralelo para maximizar coincidencias AMBA.
+  // USIG primero en el merge (prioridad GCBA).
+  const [usig, georef, photon] = await Promise.all([
+    suggestFromUsig(q, limit),
     suggestFromGeoref(q, limit),
     suggestFromPhoton(q, limit),
   ]);

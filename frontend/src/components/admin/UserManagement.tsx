@@ -955,18 +955,14 @@ const UserManagement: React.FC = () => {
                     inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
                   />
                 ) : (
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Dirección
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.direccion || ''}
-                      onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                      className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Dirección del usuario"
-                    />
-                  </div>
+                  <AddressAutocomplete
+                    label="Dirección"
+                    value={formData.direccion || ''}
+                    onChange={(direccion) => setFormData({ ...formData, direccion })}
+                    onSelect={(s) => setFormData({ ...formData, direccion: s.label })}
+                    placeholder="Dirección del usuario"
+                    inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
+                  />
                 )}
 
                 <div>
@@ -1240,7 +1236,7 @@ const UserManagement: React.FC = () => {
                   </div>
                 </div>
 
-                {(createFormData.rol === 'usuario') ? (
+                {createFormData.rol === 'usuario' ? (
                   <AddressAutocomplete
                     label="Localidad (base del técnico)"
                     mode="localidad"
@@ -1250,18 +1246,14 @@ const UserManagement: React.FC = () => {
                     inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
                   />
                 ) : (
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Dirección
-                    </label>
-                    <input
-                      type="text"
-                      value={createFormData.direccion}
-                      onChange={(e) => setCreateFormData({ ...createFormData, direccion: e.target.value })}
-                      className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Dirección del usuario"
-                    />
-                  </div>
+                  <AddressAutocomplete
+                    label="Dirección"
+                    value={createFormData.direccion}
+                    onChange={(direccion) => setCreateFormData({ ...createFormData, direccion })}
+                    onSelect={(s) => setCreateFormData({ ...createFormData, direccion: s.label })}
+                    placeholder="Dirección del usuario"
+                    inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
+                  />
                 )}
 
                 <div className="space-y-1">

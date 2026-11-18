@@ -16,10 +16,13 @@ type Props = {
   placeholder?: string;
   label?: string;
   disabled?: boolean;
+  required?: boolean;
   className?: string;
   inputClassName?: string;
   /** Solo localidad/barrio (misma API, copy distinto) */
   mode?: 'address' | 'localidad';
+  /** Oculta el texto de ayuda debajo del input */
+  hideHint?: boolean;
 };
 
 const AddressAutocomplete: React.FC<Props> = ({
@@ -29,14 +32,17 @@ const AddressAutocomplete: React.FC<Props> = ({
   placeholder,
   label,
   disabled,
+  required,
   className = '',
   inputClassName = '',
   mode = 'address',
+  hideHint = false,
 }) => {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorHint, setErrorHint] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(
     null
   );
@@ -66,7 +72,6 @@ const AddressAutocomplete: React.FC<Props> = ({
     if (!open) return;
     const onScrollOrResize = () => updateMenuPos();
     window.addEventListener('resize', onScrollOrResize);
-    // capture scroll en contenedores con overflow (modales)
     window.addEventListener('scroll', onScrollOrResize, true);
     return () => {
       window.removeEventListener('resize', onScrollOrResize);
@@ -79,6 +84,7 @@ const AddressAutocomplete: React.FC<Props> = ({
       const t = e.target as Node;
       if (wrapRef.current?.contains(t) || menuRef.current?.contains(t)) return;
       setOpen(false);
+      setActiveIndex(-1);
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
@@ -97,6 +103,7 @@ const AddressAutocomplete: React.FC<Props> = ({
       setLoading(false);
       setErrorHint(null);
       setOpen(false);
+      setActiveIndex(-1);
       return;
     }
 
@@ -105,17 +112,23 @@ const AddressAutocomplete: React.FC<Props> = ({
     debounceRef.current = window.setTimeout(async () => {
       try {
         const res = await api.get<{ success: boolean; data: AddressSuggestion[] }>('/geo/suggest', {
-          params: { q, limit: 8 },
+          params: { q, limit: 10 },
         });
         const list = res.data.data || [];
         setSuggestions(list);
+        setActiveIndex(list.length > 0 ? 0 : -1);
         setOpen(list.length > 0);
         if (list.length === 0) {
-          setErrorHint('Sin coincidencias en Buenos Aires. Probá calle + altura y partido.');
+          setErrorHint(
+            mode === 'localidad'
+              ? 'Sin coincidencias. Probá barrio, partido o localidad (AMBA).'
+              : 'Sin coincidencias. Probá calle + altura y partido (ej. Av. Corrientes 1234, CABA).'
+          );
         }
       } catch (err: any) {
         setSuggestions([]);
         setOpen(false);
+        setActiveIndex(-1);
         const status = err?.response?.status;
         setErrorHint(
           status === 429
@@ -125,12 +138,12 @@ const AddressAutocomplete: React.FC<Props> = ({
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, 280);
 
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
-  }, [value]);
+  }, [value, mode]);
 
   const pick = (s: AddressSuggestion) => {
     skipFetchRef.current = true;
@@ -138,8 +151,36 @@ const AddressAutocomplete: React.FC<Props> = ({
     onSelect?.(s);
     setSuggestions([]);
     setOpen(false);
+    setActiveIndex(-1);
     setErrorHint(null);
   };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || suggestions.length === 0) {
+      if (e.key === 'Escape') setOpen(false);
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (e.key === 'Enter' && activeIndex >= 0 && activeIndex < suggestions.length) {
+      e.preventDefault();
+      pick(suggestions[activeIndex]);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  useEffect(() => {
+    if (!open || activeIndex < 0 || !menuRef.current) return;
+    const el = menuRef.current.children[activeIndex] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, open]);
 
   const defaultPlaceholder =
     mode === 'localidad'
@@ -151,6 +192,7 @@ const AddressAutocomplete: React.FC<Props> = ({
       ? createPortal(
           <ul
             ref={menuRef}
+            role="listbox"
             className="fixed z-[9999] max-h-56 overflow-auto rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-gray-800 shadow-xl"
             style={{
               top: menuPos.top,
@@ -158,12 +200,17 @@ const AddressAutocomplete: React.FC<Props> = ({
               width: menuPos.width,
             }}
           >
-            {suggestions.map((s) => (
-              <li key={`${s.label}-${s.lat}-${s.lng}`}>
+            {suggestions.map((s, idx) => (
+              <li key={`${s.label}-${s.lat}-${s.lng}`} role="option" aria-selected={idx === activeIndex}>
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-slate-700 flex items-start gap-2"
+                  className={`w-full text-left px-3 py-2 text-sm flex items-start gap-2 ${
+                    idx === activeIndex
+                      ? 'bg-blue-100 dark:bg-slate-600 text-slate-900 dark:text-white'
+                      : 'text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-slate-700'
+                  }`}
                   onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setActiveIndex(idx)}
                   onClick={() => pick(s)}
                 >
                   <MapPin className="h-3.5 w-3.5 mt-0.5 text-blue-500 flex-shrink-0" />
@@ -181,6 +228,7 @@ const AddressAutocomplete: React.FC<Props> = ({
       {label && (
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           {label}
+          {required ? <span className="text-red-500"> *</span> : null}
         </label>
       )}
       <div className="relative">
@@ -190,29 +238,35 @@ const AddressAutocomplete: React.FC<Props> = ({
           type="text"
           value={value}
           disabled={disabled}
+          required={required}
           autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-autocomplete="list"
           placeholder={placeholder || defaultPlaceholder}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
           onFocus={() => {
             if (suggestions.length > 0) {
               updateMenuPos();
               setOpen(true);
             }
           }}
-          className={`w-full pl-9 pr-9 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${inputClassName}`}
+          className={`w-full pl-9 pr-9 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed ${inputClassName}`}
         />
         {loading && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 animate-spin" />
         )}
       </div>
       {menu}
-      {errorHint ? (
-        <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{errorHint}</p>
-      ) : (
-        <p className="mt-1 text-[11px] text-slate-400">
-          Sugerencias AMBA / Buenos Aires (USIG + Georef)
-        </p>
-      )}
+      {!hideHint &&
+        (errorHint ? (
+          <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{errorHint}</p>
+        ) : (
+          <p className="mt-1 text-[11px] text-slate-400">
+            Elegí una sugerencia cuando aparezca (USIG + Georef). También podés escribir texto libre.
+          </p>
+        ))}
     </div>
   );
 };

@@ -4,7 +4,7 @@ const MAX_Q_LEN = 200;
 /** Rate limit simple en memoria por usuario/IP */
 const hits = new Map();
 const WINDOW_MS = 60_000;
-const MAX_HITS = 40;
+const MAX_HITS = 60;
 
 function allowGeoRequest(key) {
   const now = Date.now();

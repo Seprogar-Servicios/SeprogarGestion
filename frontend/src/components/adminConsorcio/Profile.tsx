@@ -4,7 +4,6 @@ import {
   User,
   Mail,
   Phone,
-  MapPin,
   Calendar,
   Building,
   Shield,
@@ -14,6 +13,7 @@ import {
   UserCircle
 } from 'lucide-react';
 import AdminPageHeader from '../common/AdminPageHeader';
+import AddressAutocomplete from '../common/AddressAutocomplete';
 
 const AdminConsorcioProfile: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -233,27 +233,19 @@ const AdminConsorcioProfile: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Dirección
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      name="direccion"
-                      value={formData.direccion}
-                      onChange={handleChange}
-                      disabled={!isEditing}
-                      placeholder="Calle, Número, Ciudad"
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${
-                        isEditing 
-                          ? 'border-gray-300 dark:border-gray-600' 
-                          : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
-                      }`}
-                    />
-                  </div>
-                </div>
+                <AddressAutocomplete
+                  label="Dirección"
+                  value={formData.direccion}
+                  disabled={!isEditing}
+                  onChange={(direccion) => setFormData((prev) => ({ ...prev, direccion }))}
+                  onSelect={(s) => setFormData((prev) => ({ ...prev, direccion: s.label }))}
+                  placeholder="Calle, número y partido"
+                  inputClassName={
+                    !isEditing
+                      ? '!border-gray-200 dark:!border-gray-700 !bg-gray-50 dark:!bg-gray-800'
+                      : ''
+                  }
+                />
               </div>
 
               {/* Información de Cuenta */}
