@@ -11,7 +11,7 @@ import {
   Navigation,
   ExternalLink,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import api from '../../config/api';
 import { useAppDispatch, useAppSelector } from '../../store';
@@ -158,12 +158,18 @@ const estadoBadge = (estado: string) => {
 
 const DayMap: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useAppDispatch();
   const { users } = useAppSelector((s) => s.users);
   const { user } = useAppSelector((s) => s.auth);
 
-  const [fecha, setFecha] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [tecnicoId, setTecnicoId] = useState('');
+  const initialFecha = searchParams.get('fecha') || format(new Date(), 'yyyy-MM-dd');
+  const initialTecnico = searchParams.get('tecnico') || '';
+
+  const [fecha, setFecha] = useState(
+    /^\d{4}-\d{2}-\d{2}$/.test(initialFecha) ? initialFecha : format(new Date(), 'yyyy-MM-dd')
+  );
+  const [tecnicoId, setTecnicoId] = useState(initialTecnico);
   const [payload, setPayload] = useState<DayMapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,6 +179,13 @@ const DayMap: React.FC = () => {
   useEffect(() => {
     if (isAdminRole(user)) dispatch(fetchUsers());
   }, [dispatch, user]);
+
+  useEffect(() => {
+    const qFecha = searchParams.get('fecha');
+    const qTec = searchParams.get('tecnico');
+    if (qFecha && /^\d{4}-\d{2}-\d{2}$/.test(qFecha)) setFecha(qFecha);
+    if (qTec != null) setTecnicoId(qTec);
+  }, [searchParams]);
 
   const tecnicos = useMemo(
     () =>

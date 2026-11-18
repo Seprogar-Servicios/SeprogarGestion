@@ -8,6 +8,10 @@ const { sendNotification } = require('../utils/push');
 const { normalizeAddress } = require('../utils/addressNormalizer');
 const { geocodeAddress } = require('../utils/geocode');
 const { isPrivilegedAdmin } = require('../utils/roles');
+const {
+  parseHmToMinutes,
+  rankTecnicos,
+} = require('../utils/tecnicoRecommend');
 
 /**
  * @swagger
@@ -511,6 +515,137 @@ const franjaStartMinutes = (franja) => {
   const m = franja.trim().match(/(\d{1,2}):(\d{2})\s*[-–—]/);
   if (!m) return 24 * 60 + 1;
   return Number(m[1]) * 60 + Number(m[2]);
+};
+
+/**
+ * Recomendación de técnico (pantalla de prueba).
+ * Body/query: direccion, fecha, horaInicio, horaFin (HH:mm), lat/lng opcionales.
+ */
+exports.recomendarTecnicos = async (req, res) => {
+  try {
+    if (!isPrivilegedAdmin(req.user)) {
+      return res.status(403).json({ success: false, message: 'Solo administradores' });
+    }
+
+    const src = { ...req.query, ...req.body };
+    const direccion = String(src.direccion || '').trim();
+    const fechaRaw = String(src.fecha || '').trim();
+    const fecha = /^\d{4}-\d{2}-\d{2}$/.test(fechaRaw)
+      ? fechaRaw
+      : new Date().toISOString().slice(0, 10);
+    const horaInicio = String(src.horaInicio || '').trim();
+    const horaFin = String(src.horaFin || '').trim();
+
+    const proposedStart = parseHmToMinutes(horaInicio);
+    const proposedEndRaw = parseHmToMinutes(horaFin);
+    if (proposedStart == null || proposedEndRaw == null) {
+      return res.status(400).json({
+        success: false,
+        message: 'horaInicio y horaFin son obligatorias (HH:mm)',
+      });
+    }
+    let proposedEnd = proposedEndRaw;
+    if (proposedEnd <= proposedStart) proposedEnd += 24 * 60;
+
+    let targetCoords = null;
+    if (
+      src.lat != null &&
+      src.lng != null &&
+      !Number.isNaN(Number(src.lat)) &&
+      !Number.isNaN(Number(src.lng))
+    ) {
+      targetCoords = { lat: Number(src.lat), lng: Number(src.lng) };
+    } else if (direccion) {
+      targetCoords = await geocodeAddress(direccion);
+    }
+
+    if (!targetCoords) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se pudo ubicar la dirección. Probá con calle, altura y partido.',
+      });
+    }
+
+    const tecnicos = await Usuario.find({
+      rol: 'usuario',
+      aprobado: true,
+    })
+      .select('nombre telefono localidad direccion ubicacionBase color especialidad')
+      .populate('especialidad', 'nombre')
+      .lean();
+
+    const tareasDia = await Tarea.find({
+      fechaEjecucion: fecha,
+      estado: { $ne: 'cancelada' },
+      tecnicos: { $exists: true, $ne: [] },
+    })
+      .select('numero titulo estado direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos')
+      .lean();
+
+    // Geocode liviano de tareas del día sin coords (máx 8 para no demorar)
+    let geocodeBudget = 8;
+    for (const t of tareasDia) {
+      const has =
+        t.ubicacionMapa &&
+        typeof t.ubicacionMapa.lat === 'number' &&
+        typeof t.ubicacionMapa.lng === 'number';
+      if (has || !t.direccion || geocodeBudget <= 0) continue;
+      const coords = await geocodeAddress(String(t.direccion).trim());
+      geocodeBudget -= 1;
+      if (coords) {
+        t.ubicacionMapa = {
+          lat: coords.lat,
+          lng: coords.lng,
+          fuente: 'direccion',
+          actualizadoAt: new Date(),
+        };
+        Tarea.updateOne(
+          { _id: t._id },
+          { $set: { ubicacionMapa: t.ubicacionMapa } }
+        ).catch(() => {});
+      }
+    }
+
+    const tareasPorTecnico = new Map();
+    for (const t of tareasDia) {
+      const ids = Array.isArray(t.tecnicos) ? t.tecnicos : [];
+      for (const raw of ids) {
+        const tid = String(raw);
+        if (!tareasPorTecnico.has(tid)) tareasPorTecnico.set(tid, []);
+        tareasPorTecnico.get(tid).push(t);
+      }
+    }
+
+    const recomendaciones = rankTecnicos({
+      targetCoords,
+      proposedStart,
+      proposedEnd,
+      tecnicos,
+      tareasPorTecnico,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        fecha,
+        direccion: direccion || null,
+        franja: { inicio: horaInicio, fin: horaFin },
+        destino: targetCoords,
+        recomendaciones,
+        meta: {
+          tecnicosEvaluados: tecnicos.length,
+          tareasDelDia: tareasDia.length,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Error en recomendarTecnicos:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al recomendar técnicos',
+      error: err.message,
+    });
+  }
 };
 
 /**
