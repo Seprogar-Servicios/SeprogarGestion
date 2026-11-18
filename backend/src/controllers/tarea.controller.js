@@ -496,13 +496,127 @@ exports.getMapaVivo = async (req, res) => {
       'ubicacionMapa.lng': { $exists: true, $ne: null },
     })
       .select('numero titulo estado cliente direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos')
-      .populate('tecnicos', 'nombre telefono direccion')
+      .populate('tecnicos', 'nombre telefono direccion color')
       .sort({ 'ubicacionMapa.actualizadoAt': -1 });
 
     res.json({ success: true, data: tareas });
   } catch (err) {
     console.error('Error en mapa vivo:', err);
     res.status(500).json({ success: false, message: 'Error al obtener mapa en vivo', error: err.message });
+  }
+};
+
+const franjaStartMinutes = (franja) => {
+  if (!franja || typeof franja !== 'string') return 24 * 60 + 1;
+  const m = franja.trim().match(/(\d{1,2}):(\d{2})\s*[-–—]/);
+  if (!m) return 24 * 60 + 1;
+  return Number(m[1]) * 60 + Number(m[2]);
+};
+
+/**
+ * Mapa del día: tareas de una fecha (y opcional técnico) con coordenadas.
+ * Geocodifica direcciones faltantes (y las guarda) para poder ver el recorrido.
+ */
+exports.getMapaDia = async (req, res) => {
+  try {
+    if (!isPrivilegedAdmin(req.user)) {
+      return res.status(403).json({ success: false, message: 'Solo administradores' });
+    }
+
+    const fechaRaw = String(req.query.fecha || '').trim();
+    const fecha = /^\d{4}-\d{2}-\d{2}$/.test(fechaRaw)
+      ? fechaRaw
+      : new Date().toISOString().slice(0, 10);
+    const tecnicoId = String(req.query.tecnico || '').trim();
+    const incluirCanceladas = String(req.query.incluirCanceladas || '') === '1';
+
+    const filtro = { fechaEjecucion: fecha };
+    if (!incluirCanceladas) {
+      filtro.estado = { $ne: 'cancelada' };
+    }
+    if (tecnicoId) {
+      filtro.tecnicos = tecnicoId;
+    }
+
+    const tareas = await Tarea.find(filtro)
+      .select(
+        'numero titulo estado cliente direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos'
+      )
+      .populate('tecnicos', 'nombre telefono direccion color localidad')
+      .lean();
+
+    let geocoded = 0;
+    let sinCoords = 0;
+
+    for (const tarea of tareas) {
+      const hasCoords =
+        tarea.ubicacionMapa &&
+        typeof tarea.ubicacionMapa.lat === 'number' &&
+        typeof tarea.ubicacionMapa.lng === 'number';
+
+      if (hasCoords) continue;
+
+      if (tarea.direccion && String(tarea.direccion).trim()) {
+        try {
+          const coords = await geocodeAddress(String(tarea.direccion).trim());
+          if (coords && coords.lat != null && coords.lng != null) {
+            tarea.ubicacionMapa = {
+              lat: coords.lat,
+              lng: coords.lng,
+              fuente: 'direccion',
+              actualizadoAt: new Date(),
+            };
+            geocoded += 1;
+            // Persistir para próximas cargas (no bloquea la respuesta si falla)
+            Tarea.updateOne(
+              { _id: tarea._id },
+              {
+                $set: {
+                  ubicacionMapa: {
+                    lat: coords.lat,
+                    lng: coords.lng,
+                    fuente: 'direccion',
+                    actualizadoAt: new Date(),
+                  },
+                },
+              }
+            ).catch(() => {});
+            continue;
+          }
+        } catch (e) {
+          console.warn('Geocode mapa-día falló:', tarea._id, e.message);
+        }
+      }
+      sinCoords += 1;
+    }
+
+    tareas.sort((a, b) => {
+      const fa = franjaStartMinutes(a.franja_horaria);
+      const fb = franjaStartMinutes(b.franja_horaria);
+      if (fa !== fb) return fa - fb;
+      return String(a.numero || '').localeCompare(String(b.numero || ''));
+    });
+
+    res.json({
+      success: true,
+      data: {
+        fecha,
+        tareas,
+        meta: {
+          total: tareas.length,
+          conCoords: tareas.length - sinCoords,
+          sinCoords,
+          geocoded,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('Error en mapa del día:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener mapa del día',
+      error: err.message,
+    });
   }
 };
 

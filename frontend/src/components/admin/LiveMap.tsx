@@ -186,7 +186,17 @@ const LiveMap: React.FC = () => {
         const nombre = techNameFrom(t) || 'Sin técnico';
         const techId = typeof t === 'object' && t?._id ? t._id : nombre;
         if (!colorByTech.has(techId)) {
-          colorByTech.set(techId, TECH_COLORS[colorIdx % TECH_COLORS.length]);
+          const own =
+            typeof t === 'object' && t && (t as AppUser).color
+              ? String((t as AppUser).color)
+              : '';
+          const normalized =
+            own && /^#?[0-9a-fA-F]{6}$/.test(own.replace('#', ''))
+              ? own.startsWith('#')
+                ? own
+                : `#${own}`
+              : TECH_COLORS[colorIdx % TECH_COLORS.length];
+          colorByTech.set(techId, normalized);
           colorIdx += 1;
         }
         result.push({
@@ -244,7 +254,7 @@ const LiveMap: React.FC = () => {
     <div className="space-y-4 h-full flex flex-col animate-fadeIn" style={{ minHeight: '85vh' }}>
       <AdminPageHeader
         title="Mapa en vivo"
-        description="Técnicos con tarea en progreso."
+        description="Dónde están ahora los técnicos con tarea en progreso."
         eyebrow="Operaciones"
         icon={<User className="h-5 w-5" />}
         actions={

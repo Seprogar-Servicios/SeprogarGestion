@@ -15,6 +15,7 @@ import TareaConsorcioManagement from './components/admin/TareaConsorcioManagemen
 import DataImportExport from './components/admin/DataImportExport';
 import Liquidaciones from './components/admin/Liquidaciones';
 import LiveMap from './components/admin/LiveMap';
+import DayMap from './components/admin/DayMap';
 import ReclamosManagement from './components/admin/ReclamosManagement';
 import CatalogoHub from './components/admin/CatalogoHub';
 import PagosHub from './components/admin/PagosHub';
@@ -121,6 +122,11 @@ const AppRoutes = () => {
         <Route path="/admin/mapa-vivo" element={
           <ProtectedRoute requiredRole="admin">
             <LiveMap />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/mapa-dia" element={
+          <ProtectedRoute requiredRole="admin">
+            <DayMap />
           </ProtectedRoute>
         } />
 
