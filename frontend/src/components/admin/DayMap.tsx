@@ -9,6 +9,7 @@ import {
   Calendar,
   Route,
   Navigation,
+  ExternalLink,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -438,7 +439,8 @@ const DayMap: React.FC = () => {
               Orden del día
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Ordenadas por hora de inicio de franja. El número coincide con el pin del mapa.
+              Todas las del día (con o sin ubicación). Clic abre el detalle para editar o
+              borrar. Las sin pin solo aparecen acá.
             </p>
           </div>
 
@@ -460,61 +462,85 @@ const DayMap: React.FC = () => {
                 const franja = parseFranjaHoraria(task.franja_horaria);
                 return (
                   <li key={task._id}>
-                    <button
-                      type="button"
-                      onClick={() => (hasCoords ? focusTask(task._id) : setSelectedTaskId(task._id))}
-                      className={`w-full text-left rounded-xl border p-3 transition-colors ${
+                    <div
+                      className={`rounded-xl border p-3 transition-colors ${
                         selected
                           ? 'border-blue-400 bg-blue-50/80 dark:bg-blue-900/20 dark:border-blue-500'
-                          : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40'
-                      }`}
+                          : 'border-gray-200 dark:border-gray-700'
+                      } ${!hasCoords ? 'border-dashed border-amber-300/80 dark:border-amber-700/60' : ''}`}
                     >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
-                          style={{ background: color }}
-                        >
-                          {order}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                              #{task.numero}
-                            </span>
-                            <span
-                              className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${estadoBadge(
-                                task.estado
-                              )}`}
-                            >
-                              {task.estado}
-                            </span>
-                            {!hasCoords && (
-                              <span className="text-[10px] text-amber-700 dark:text-amber-300">
-                                Sin pin
-                              </span>
-                            )}
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/tasks/${task._id}`)}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                            style={{ background: hasCoords ? color : UNASSIGNED_COLOR }}
+                          >
+                            {order}
                           </div>
-                          <p className="text-xs text-gray-700 dark:text-gray-200 truncate mt-0.5">
-                            {task.titulo}
-                          </p>
-                          <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-500">
-                            <Clock className="h-3 w-3" />
-                            {franja
-                              ? `${franja.startTime} – ${franja.endTime}`
-                              : task.franja_horaria || 'Sin franja'}
-                          </p>
-                          <p className="mt-0.5 flex items-start gap-1 text-[11px] text-gray-500">
-                            <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
-                            <span className="line-clamp-2">
-                              {task.direccion || 'Sin dirección'}
-                            </span>
-                          </p>
-                          <p className="mt-0.5 text-[11px] text-gray-400 truncate">
-                            {techNames(task)}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                #{task.numero}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${estadoBadge(
+                                  task.estado
+                                )}`}
+                              >
+                                {task.estado}
+                              </span>
+                              {!hasCoords && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
+                                  Solo lista · sin mapa
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-700 dark:text-gray-200 truncate mt-0.5">
+                              {task.titulo}
+                            </p>
+                            <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-500">
+                              <Clock className="h-3 w-3" />
+                              {franja
+                                ? `${franja.startTime} – ${franja.endTime}`
+                                : task.franja_horaria || 'Sin franja'}
+                            </p>
+                            <p className="mt-0.5 flex items-start gap-1 text-[11px] text-gray-500">
+                              <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                              <span className="line-clamp-2">
+                                {task.direccion || 'Sin dirección'}
+                              </span>
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-gray-400 truncate">
+                              {techNames(task)}
+                            </p>
+                          </div>
                         </div>
+                      </button>
+                      <div className="mt-2 flex items-center gap-2 pl-11">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/tasks/${task._id}`)}
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Abrir detalle
+                        </button>
+                        {hasCoords && (
+                          <button
+                            type="button"
+                            onClick={() => focusTask(task._id)}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                          >
+                            <MapPin className="h-3 w-3" />
+                            Ver en mapa
+                          </button>
+                        )}
                       </div>
-                    </button>
+                    </div>
                   </li>
                 );
               })}
