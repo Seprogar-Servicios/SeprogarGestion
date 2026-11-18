@@ -25,6 +25,7 @@ import {
   Route,
   Lightbulb,
   ChevronDown,
+  ChevronUp,
   Pin,
   PinOff,
   Sun,
@@ -33,11 +34,22 @@ import {
 } from 'lucide-react';
 import { isAdminRole, roleLabel } from '../../utils/roles';
 import { useTheme } from '../../hooks/useTheme';
+import {
+  applyOrder,
+  loadNavOrder,
+  moveInList,
+  saveNavOrder,
+  type NavOrderState,
+} from '../../utils/navOrder';
 
 type NavItem = { name: string; href: string; icon: React.ComponentType<{ className?: string }> };
 type NavGroup = { id: string; label: string; items: NavItem[] };
 
 const SIDEBAR_PIN_KEY = 'seprogar-sidebar-pinned';
+const isDashboardHref = (href: string) =>
+  href === '/dashboard' ||
+  href === '/tecnico/dashboard' ||
+  href === '/adminConsorcio/dashboard';
 /** Ancho del riel vacío (solo ahí se abre el menú, no sobre el contenido) */
 const EDGE_RAIL_PX = 48;
 /** Cerrar si el cursor se aleja más allá del menú abierto */
@@ -154,43 +166,54 @@ const Layout: React.FC = () => {
     return 'text-blue-100/80 group-hover:text-white';
   };
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Tareas', href: '/tasks', icon: Calendar },
-    { name: 'Calendario', href: '/calendar', icon: Calendar },
-    ...(user?.rol === 'usuario'
-      ? [{ name: 'Mis finanzas', href: '/tecnico/finanzas', icon: DollarSign }]
-      : []),
-    { name: 'Legales', href: '/legales', icon: Shield },
-    { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
-  ];
+  const navigation = useMemo(
+    () => [
+      { name: 'Dashboard', href: '/dashboard', icon: Home },
+      { name: 'Tareas', href: '/tasks', icon: Calendar },
+      { name: 'Calendario', href: '/calendar', icon: Calendar },
+      ...(user?.rol === 'usuario'
+        ? [{ name: 'Mis finanzas', href: '/tecnico/finanzas', icon: DollarSign }]
+        : []),
+      { name: 'Legales', href: '/legales', icon: Shield },
+      { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
+    ],
+    [user?.rol]
+  );
 
-  const adminConsorcioNavigation = [
-    { name: 'Dashboard', href: '/adminConsorcio/dashboard', icon: Home },
-    { name: 'Análisis', href: '/adminConsorcio/analytics', icon: BarChart },
-    { name: 'Calendario', href: '/adminConsorcio/calendario', icon: Calendar },
-    { name: 'Legales', href: '/legales', icon: Shield },
-    { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
-    { name: 'Tareas de Consorcio', href: '/adminConsorcio/tareas', icon: Building },
-  ];
+  const adminConsorcioNavigation = useMemo(
+    () => [
+      { name: 'Dashboard', href: '/adminConsorcio/dashboard', icon: Home },
+      { name: 'Análisis', href: '/adminConsorcio/analytics', icon: BarChart },
+      { name: 'Calendario', href: '/adminConsorcio/calendario', icon: Calendar },
+      { name: 'Legales', href: '/legales', icon: Shield },
+      { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
+      { name: 'Tareas de Consorcio', href: '/adminConsorcio/tareas', icon: Building },
+    ],
+    []
+  );
 
-  const tecnicoNavigation = [
-    { name: 'Dashboard', href: '/tecnico/dashboard', icon: Home },
-    { name: 'Calendario', href: '/calendar', icon: Calendar },
-    { name: 'Tareas Normales', href: '/tasks', icon: Calendar },
-    { name: 'Tareas de Consorcio', href: '/tecnico/tareas-consorcio', icon: Building },
-    { name: 'Mis finanzas', href: '/tecnico/finanzas', icon: DollarSign },
-    { name: 'Legales', href: '/legales', icon: Shield },
-    { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
-  ];
+  const tecnicoNavigation = useMemo(
+    () => [
+      { name: 'Dashboard', href: '/tecnico/dashboard', icon: Home },
+      { name: 'Calendario', href: '/calendar', icon: Calendar },
+      { name: 'Tareas Normales', href: '/tasks', icon: Calendar },
+      { name: 'Tareas de Consorcio', href: '/tecnico/tareas-consorcio', icon: Building },
+      { name: 'Mis finanzas', href: '/tecnico/finanzas', icon: DollarSign },
+      { name: 'Legales', href: '/legales', icon: Shield },
+      { name: 'Mi Perfil', href: '/profile', icon: UserCircle },
+    ],
+    []
+  );
 
-  const adminNavGroups: NavGroup[] = useMemo(
+  /** Dashboard queda fuera de los grupos, fijo arriba. */
+  const adminDashboardItem: NavItem = { name: 'Dashboard', href: '/dashboard', icon: Home };
+
+  const adminNavGroupsBase: NavGroup[] = useMemo(
     () => [
       {
         id: 'operacion',
         label: 'Operación',
         items: [
-          { name: 'Dashboard', href: '/dashboard', icon: Home },
           { name: 'Calendario', href: '/calendar', icon: Calendar },
           { name: 'Mapa en vivo', href: '/admin/mapa-vivo', icon: MapPin },
           { name: 'Mapa del día', href: '/admin/mapa-dia', icon: Route },
@@ -238,6 +261,62 @@ const Layout: React.FC = () => {
     []
   );
 
+  const navScope = user?.rol || 'guest';
+  const navUserId = user?._id || 'anon';
+
+  const [navOrder, setNavOrder] = useState<NavOrderState>({});
+
+  useEffect(() => {
+    setNavOrder(loadNavOrder(navUserId, navScope));
+  }, [navUserId, navScope]);
+
+  const persistNavOrder = useCallback(
+    (next: NavOrderState) => {
+      setNavOrder(next);
+      saveNavOrder(navUserId, navScope, next);
+    },
+    [navUserId, navScope]
+  );
+
+  const orderedFlat = useCallback(
+    (items: NavItem[]) => {
+      const dash = items.filter((i) => isDashboardHref(i.href));
+      const rest = items.filter((i) => !isDashboardHref(i.href));
+      const orderedRest = applyOrder(rest, (i) => i.href, navOrder.flat);
+      return [...dash, ...orderedRest];
+    },
+    [navOrder.flat]
+  );
+
+  const adminNavGroups: NavGroup[] = useMemo(() => {
+    const groupsOrdered = applyOrder(
+      adminNavGroupsBase,
+      (g) => g.id,
+      navOrder.groups
+    );
+    return groupsOrdered.map((g) => ({
+      ...g,
+      items: applyOrder(g.items, (i) => i.href, navOrder.groupItems?.[g.id]),
+    }));
+  }, [adminNavGroupsBase, navOrder.groups, navOrder.groupItems]);
+
+  const moveFlatItem = (items: NavItem[], index: number, direction: -1 | 1) => {
+    const nextItems = moveInList(items, index, direction, { pinFirst: true });
+    persistNavOrder({
+      ...navOrder,
+      flat: nextItems.map((i) => i.href),
+    });
+  };
+
+  const moveGroup = (groupIndex: number, direction: -1 | 1) => {
+    const nextGroups = moveInList(adminNavGroups, groupIndex, direction);
+    persistNavOrder({
+      ...navOrder,
+      groups: nextGroups.map((g) => g.id),
+    });
+  };
+
+
   const isActive = (path: string) => {
     if (path === '/dashboard') {
       return location.pathname === path || location.pathname === '/';
@@ -259,23 +338,100 @@ const Layout: React.FC = () => {
     });
   };
 
-  const renderNavButton = (item: NavItem) => {
+  const renderReorderControls = (
+    canUp: boolean,
+    canDown: boolean,
+    onUp: () => void,
+    onDown: () => void
+  ) => (
+    <span className="ml-auto flex items-center gap-0.5 flex-shrink-0">
+      <button
+        type="button"
+        title="Subir"
+        aria-label="Subir"
+        disabled={!canUp}
+        onClick={(e) => {
+          e.stopPropagation();
+          onUp();
+        }}
+        className="p-0.5 rounded text-blue-100/70 hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:cursor-default"
+      >
+        <ChevronUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        title="Bajar"
+        aria-label="Bajar"
+        disabled={!canDown}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDown();
+        }}
+        className="p-0.5 rounded text-blue-100/70 hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:cursor-default"
+      >
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+    </span>
+  );
+
+  const renderNavButton = (
+    item: NavItem,
+    opts?: { index?: number; total?: number; onMove?: (direction: -1 | 1) => void; pinned?: boolean }
+  ) => {
     const Icon = item.icon;
     const active = isActive(item.href);
+    const pinned = opts?.pinned || isDashboardHref(item.href);
+    const canReorder =
+      !pinned &&
+      typeof opts?.index === 'number' &&
+      typeof opts?.total === 'number' &&
+      !!opts?.onMove;
+    // Dashboard queda fijo en índice 0; el resto puede subir/bajar entre sí
+    const minMovable = 1;
+    const idx = opts?.index ?? 0;
+    const total = opts?.total ?? 0;
+    const showUp = canReorder && idx > minMovable;
+    const showDown = canReorder && idx < total - 1 && idx >= minMovable;
+
     return (
-      <button
-        key={item.name}
-        onClick={() => {
-          navigate(item.href);
-          if (window.innerWidth < 1024) setSidebarOpen(false);
-          if (!sidebarPinned) scheduleCloseDesktopSidebar();
-        }}
-        className={`group w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${navItemClass(active)}`}
+      <div
+        key={item.href}
+        className={`group w-full flex items-center rounded-lg transition-all duration-200 ${navItemClass(active)}`}
       >
-        <Icon className={`mr-2.5 h-4 w-4 flex-shrink-0 transition-colors ${navIconClass(active)}`} />
-        <span className="text-left truncate">{item.name}</span>
-        {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white flex-shrink-0" />}
-      </button>
+        <button
+          type="button"
+          onClick={() => {
+            navigate(item.href);
+            if (window.innerWidth < 1024) setSidebarOpen(false);
+            if (!sidebarPinned) scheduleCloseDesktopSidebar();
+          }}
+          className="flex-1 min-w-0 flex items-center px-3 py-2 text-sm font-medium cursor-pointer"
+        >
+          <Icon className={`mr-2.5 h-4 w-4 flex-shrink-0 transition-colors ${navIconClass(active)}`} />
+          <span className="text-left truncate">{item.name}</span>
+          {active && !canReorder && (
+            <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white flex-shrink-0" />
+          )}
+        </button>
+        {canReorder &&
+          renderReorderControls(showUp, showDown, () => opts!.onMove!(-1), () => opts!.onMove!(1))}
+      </div>
+    );
+  };
+
+  const renderFlatNav = (items: NavItem[]) => {
+    const ordered = orderedFlat(items);
+    return (
+      <div className="space-y-0.5">
+        {ordered.map((item, index) =>
+          renderNavButton(item, {
+            index,
+            total: ordered.length,
+            pinned: isDashboardHref(item.href),
+            onMove: (direction) => moveFlatItem(ordered, index, direction),
+          })
+        )}
+      </div>
     );
   };
 
@@ -368,33 +524,39 @@ const Layout: React.FC = () => {
           </div>
 
           <nav className="flex-1 min-h-0 px-2.5 py-3 space-y-0.5 overflow-y-auto overscroll-contain">
-            {user?.rol === 'usuario' && (
-              <div className="space-y-0.5">{tecnicoNavigation.map(renderNavButton)}</div>
-            )}
+            {user?.rol === 'usuario' && renderFlatNav(tecnicoNavigation)}
 
-            {!isAdminRole(user) && user?.rol !== 'adminConsorcio' && user?.rol !== 'usuario' && (
-              <div className="space-y-0.5">{navigation.map(renderNavButton)}</div>
-            )}
+            {!isAdminRole(user) && user?.rol !== 'adminConsorcio' && user?.rol !== 'usuario' &&
+              renderFlatNav(navigation)}
 
             {isAdminRole(user) && (
               <div className="space-y-1">
-                {adminNavGroups.map((group) => {
+                {renderNavButton(adminDashboardItem, { pinned: true })}
+                {adminNavGroups.map((group, groupIndex) => {
                   const open = isGroupOpen(group);
                   return (
                     <div key={group.id} className="rounded-lg">
-                      <button
-                        type="button"
-                        onClick={() => toggleGroup(group.id)}
-                        className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-blue-100/70 hover:text-white transition-colors"
-                      >
-                        <span>{group.label}</span>
-                        <ChevronDown
-                          className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`}
-                        />
-                      </button>
+                      <div className="flex items-center gap-0.5 px-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(group.id)}
+                          className="flex-1 min-w-0 flex items-center justify-between px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-blue-100/70 hover:text-white transition-colors"
+                        >
+                          <span className="truncate">{group.label}</span>
+                          <ChevronDown
+                            className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${open ? 'rotate-0' : '-rotate-90'}`}
+                          />
+                        </button>
+                        {renderReorderControls(
+                          groupIndex > 0,
+                          groupIndex < adminNavGroups.length - 1,
+                          () => moveGroup(groupIndex, -1),
+                          () => moveGroup(groupIndex, 1)
+                        )}
+                      </div>
                       {open && (
                         <div className="space-y-0.5 pb-1">
-                          {group.items.map(renderNavButton)}
+                          {group.items.map((item) => renderNavButton(item, { pinned: true }))}
                         </div>
                       )}
                     </div>
@@ -403,9 +565,7 @@ const Layout: React.FC = () => {
               </div>
             )}
 
-            {user?.rol === 'adminConsorcio' && (
-              <div className="space-y-0.5">{adminConsorcioNavigation.map(renderNavButton)}</div>
-            )}
+            {user?.rol === 'adminConsorcio' && renderFlatNav(adminConsorcioNavigation)}
           </nav>
 
           <div className="p-3 mt-auto border-t border-blue-500/10 flex-shrink-0">
