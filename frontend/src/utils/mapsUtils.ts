@@ -163,14 +163,27 @@ export const formatCoordsToMapsUrl = (lat: number, lng: number): string => {
 
 type TaskLocationLike = {
   direccion?: string | null;
-  ubicacionMapa?: { lat?: number | null; lng?: number | null } | null;
+  ubicacionMapa?: {
+    lat?: number | null;
+    lng?: number | null;
+    fuente?: 'gps' | 'direccion' | 'tecnico' | string | null;
+  } | null;
 };
 
-/** Prefiere coords guardadas; si no, arma link por texto de dirección. */
+/**
+ * Prefiere coords solo si vienen de la dirección geocodificada.
+ * Evita mandar a GPS del técnico/admin cuando la tarea está en progreso.
+ */
 export const formatTaskToMapsUrl = (task: TaskLocationLike): string => {
   const lat = task.ubicacionMapa?.lat;
   const lng = task.ubicacionMapa?.lng;
-  if (typeof lat === 'number' && typeof lng === 'number') {
+  const fuente = task.ubicacionMapa?.fuente;
+  if (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    (fuente === 'direccion' || fuente == null || fuente === '')
+  ) {
+    // fuente vacía: coords históricas del autocomplete (sin pin en vivo)
     return formatCoordsToMapsUrl(lat, lng);
   }
   return formatDireccionToMapsUrl(task.direccion || '');

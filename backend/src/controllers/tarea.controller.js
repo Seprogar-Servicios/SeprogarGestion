@@ -244,10 +244,24 @@ exports.createTarea = async (req, res) => {
  *         description: Tarea no encontrada
  */
 
-// Listar tareas con filtros (usuario, estado, fecha, cliente)
+/** Campos de listado (sin materiales / mensaje WhatsApp / blobs pesados). */
+const TAREA_LIST_SELECT =
+  'numero titulo descripcion estado tecnicos fechaCreacion fechaModificacion fechaEjecucion franja_horaria creadoPor cliente cuentaCliente fechaCompletado numeroTitular direccion direccionExtra entreCalles especialidad ubicacionMapa origen';
+
+// Listar tareas con filtros (usuario, estado, fecha, cliente, q)
 exports.getTareas = async (req, res) => {
   try {
-    const { usuario, estado, fechaDesde, fechaHasta, cliente, useCreatedAt, numero, limit } = req.query;
+    const {
+      usuario,
+      estado,
+      fechaDesde,
+      fechaHasta,
+      cliente,
+      useCreatedAt,
+      numero,
+      q,
+      limit,
+    } = req.query;
     const filtro = {};
 
     // No admin: solo tareas propias (asignadas). Impide IDOR vía ?usuario=
@@ -260,40 +274,44 @@ exports.getTareas = async (req, res) => {
     if (estado) filtro.estado = estado;
     if (cliente) filtro.cliente = { $regex: cliente, $options: 'i' };
     if (numero) filtro.numero = { $regex: String(numero).trim(), $options: 'i' };
-    
-    // Manejo de filtros de fecha
-    if (fechaDesde || fechaHasta) {
+
+    const search = String(q || '').trim();
+    const searching = search.length >= 2;
+    if (searching) {
+      const rx = { $regex: search, $options: 'i' };
+      filtro.$or = [
+        { numero: rx },
+        { titulo: rx },
+        { cliente: rx },
+        { direccion: rx },
+        { numeroTitular: rx },
+      ];
+    }
+
+    // Con búsqueda de texto: no acotar por fechas (histórico accesible).
+    // Sin búsqueda: aplicar ventana de fechas si viene en query.
+    if (!searching && (fechaDesde || fechaHasta)) {
       if (useCreatedAt === 'true') {
-        // Filtrar por fecha de creación (Date object)
         const dateFilter = {};
-        if (fechaDesde) {
-          dateFilter.$gte = new Date(fechaDesde);
-          console.log('Filtrando por fecha de creación desde:', fechaDesde);
-        }
+        if (fechaDesde) dateFilter.$gte = new Date(fechaDesde);
         if (fechaHasta) {
           const hasta = new Date(fechaHasta);
-          hasta.setDate(hasta.getDate() + 1); // Incluir todo el día
+          hasta.setDate(hasta.getDate() + 1);
           dateFilter.$lt = hasta;
-          console.log('Filtrando por fecha de creación hasta:', fechaHasta);
         }
         filtro.fechaCreacion = dateFilter;
       } else {
-        // Filtrar por fecha de ejecución (string YYYY-MM-DD)
         const dateFilter = {};
-        if (fechaDesde) {
-          dateFilter.$gte = fechaDesde;
-          console.log('Filtrando por fecha de ejecución desde:', fechaDesde);
-        }
-        if (fechaHasta) {
-          dateFilter.$lte = fechaHasta;
-          console.log('Filtrando por fecha de ejecución hasta:', fechaHasta);
-        }
+        if (fechaDesde) dateFilter.$gte = fechaDesde;
+        if (fechaHasta) dateFilter.$lte = fechaHasta;
         if (Object.keys(dateFilter).length > 0) {
           filtro.fechaEjecucion = dateFilter;
         }
       }
     }
+
     let query = Tarea.find(filtro)
+      .select(TAREA_LIST_SELECT)
       .populate({
         path: 'tecnicos',
         select: 'nombre email telefono color especialidad porcentajeTecnico localidad',
@@ -301,7 +319,8 @@ exports.getTareas = async (req, res) => {
       })
       .populate('especialidad', 'nombre')
       .populate('creadoPor', 'nombre email')
-      .sort({ fechaEjecucion: 1 });
+      .sort({ fechaEjecucion: 1 })
+      .lean();
 
     const parsedLimit = limit ? parseInt(limit, 10) : null;
     if (parsedLimit && parsedLimit > 0) {
@@ -313,6 +332,50 @@ exports.getTareas = async (req, res) => {
   } catch (err) {
     console.error('Error completo al obtener tareas:', err);
     res.status(500).json({ message: 'Error al obtener tareas', error: err.message });
+  }
+};
+
+/** KPIs globales (conteos) sin devolver filas — Dashboard. */
+exports.getTareasResumen = async (req, res) => {
+  try {
+    const match = {};
+    if (!isPrivilegedAdmin(req.user)) {
+      match.tecnicos = req.user._id;
+    } else if (req.query.usuario) {
+      match.tecnicos = req.query.usuario;
+    }
+
+    const byEstado = await Tarea.aggregate([
+      { $match: match },
+      { $group: { _id: '$estado', count: { $sum: 1 } } },
+    ]);
+
+    const counts = {
+      total: 0,
+      pendiente: 0,
+      'en progreso': 0,
+      completada: 0,
+      cancelada: 0,
+    };
+    for (const row of byEstado) {
+      const key = row._id || 'pendiente';
+      counts[key] = row.count;
+      counts.total += row.count;
+    }
+
+    // Hoy (fechaEjecucion YYYY-MM-DD local del servidor UTC; el front también calcula hoy)
+    const today = new Date();
+    const ymd = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-');
+    const hoy = await Tarea.countDocuments({ ...match, fechaEjecucion: ymd });
+
+    res.json({ success: true, data: { ...counts, hoy } });
+  } catch (err) {
+    console.error('Error en getTareasResumen:', err);
+    res.status(500).json({ message: 'Error al obtener resumen', error: err.message });
   }
 };
 
@@ -420,6 +483,12 @@ exports.updateTarea = async (req, res) => {
         actualizadoAt: new Date(),
       };
     } else if (
+      Object.prototype.hasOwnProperty.call(datosActualizados, 'direccion') &&
+      String(datosActualizados.direccion || '').trim() === ''
+    ) {
+      // Dirección vaciada: limpiar coords stale
+      datosActualizados.ubicacionMapa = null;
+    } else if (
       datosActualizados.direccion &&
       datosActualizados.direccion !== tarea.direccion
     ) {
@@ -431,6 +500,9 @@ exports.updateTarea = async (req, res) => {
           fuente: 'direccion',
           actualizadoAt: new Date(),
         };
+      } else {
+        // Dirección cambió y no se pudo ubicar: no dejar coords de la dirección anterior
+        datosActualizados.ubicacionMapa = null;
       }
     }
 
@@ -484,9 +556,27 @@ exports.updateTarea = async (req, res) => {
       }
     }
 
-    // Salir de "en progreso": quitar pin del mapa
+    // Salir de "en progreso": quitar pin en vivo, restaurar coords de la dirección
+    // (LiveMap solo mira estado "en progreso"; DayMap/WhatsApp necesitan la dirección).
     if (estadoAnterior === 'en progreso' && estadoNuevo !== 'en progreso') {
-      datosActualizados.ubicacionMapa = null;
+      const dirTarea = String(
+        datosActualizados.direccion || tarea.direccion || ''
+      ).trim();
+      if (dirTarea) {
+        const coordsDir = await geocodeAddress(dirTarea);
+        if (coordsDir) {
+          datosActualizados.ubicacionMapa = {
+            lat: coordsDir.lat,
+            lng: coordsDir.lng,
+            fuente: 'direccion',
+            actualizadoAt: new Date(),
+          };
+        } else {
+          datosActualizados.ubicacionMapa = null;
+        }
+      } else {
+        datosActualizados.ubicacionMapa = null;
+      }
     }
 
     // Completada: registrar fechaCompletado solo si aún no existe (no pisa históricos)
@@ -505,6 +595,7 @@ exports.updateTarea = async (req, res) => {
 
     const populated = await Tarea.findById(tarea._id)
       .populate('tecnicos', 'nombre telefono direccion')
+      .populate('especialidad', 'nombre')
       .populate('creadoPor', 'nombre');
 
     res.json({ success: true, data: populated, message: 'Tarea actualizada' });
@@ -555,15 +646,32 @@ exports.getTareaByNumero = async (req, res) => {
 
     const tarea = await Tarea.findOne({ numero })
       .populate('especialidad', 'nombre')
+      .populate('creadoPor', 'nombre email')
       .populate({
         path: 'tecnicos',
         select: 'nombre telefono color especialidad localidad',
         populate: { path: 'especialidad', select: 'nombre' },
-      })
-      .lean();
+      });
 
     if (!tarea) {
       return res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+    }
+
+    const isAdmin = isPrivilegedAdmin(req.user);
+    const isCreator =
+      tarea.creadoPor &&
+      (tarea.creadoPor._id
+        ? tarea.creadoPor._id.equals(req.user._id)
+        : tarea.creadoPor.equals?.(req.user._id));
+    const isAssigned =
+      Array.isArray(tarea.tecnicos) &&
+      tarea.tecnicos.some((t) => {
+        const id = t && t._id ? t._id : t;
+        return id && id.equals?.(req.user._id);
+      });
+
+    if (!isAdmin && !isCreator && !isAssigned) {
+      return res.status(403).json({ success: false, message: 'No autorizado' });
     }
 
     res.json({ success: true, data: tarea });
@@ -578,7 +686,8 @@ exports.getTareaByNumero = async (req, res) => {
 
 /**
  * Recomendación de técnico.
- * Body/query: direccion, fecha, horaInicio, horaFin (HH:mm), especialidadId opcional, lat/lng opcionales.
+ * Body/query: direccion, fecha, horaInicio, horaFin (HH:mm), especialidadId opcional,
+ * excludeTareaId opcional, lat/lng opcionales.
  */
 exports.recomendarTecnicos = async (req, res) => {
   try {
@@ -599,6 +708,7 @@ exports.recomendarTecnicos = async (req, res) => {
       src.priorizarCercania === 'true' ||
       src.priorizarCercania === '1';
     const especialidadId = String(src.especialidadId || src.especialidad || '').trim();
+    const excludeTareaId = String(src.excludeTareaId || '').trim();
 
     const proposedStart = parseHmToMinutes(horaInicio);
     const proposedEndRaw = parseHmToMinutes(horaFin);
@@ -643,15 +753,21 @@ exports.recomendarTecnicos = async (req, res) => {
       .populate('especialidad', 'nombre')
       .lean();
 
-    const tareasDia = await Tarea.find({
+    const tareasDiaQuery = {
       fechaEjecucion: fecha,
       estado: { $ne: 'cancelada' },
       tecnicos: { $exists: true, $ne: [] },
-    })
+    };
+    if (excludeTareaId && mongoose.Types.ObjectId.isValid(excludeTareaId)) {
+      tareasDiaQuery._id = { $ne: excludeTareaId };
+    }
+
+    const tareasDia = await Tarea.find(tareasDiaQuery)
       .select('numero titulo estado direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos')
       .lean();
 
-    // Geocode liviano de tareas del día sin coords (máx 8 para no demorar)
+    // Geocode liviano de tareas del día sin coords (máx 8).
+    // No pisa pins en vivo (gps/tecnico) si ya hay ubicacionMapa.
     let geocodeBudget = 8;
     for (const t of tareasDia) {
       const has =
@@ -976,15 +1092,17 @@ exports.getTareasCalendario = async (req, res) => {
     
     const tareas = await Tarea.find(filtro)
       .select(
-        'titulo estado fechaEjecucion fechaCompletado franja_horaria tecnicos cliente cuentaCliente descripcion numero direccion numeroTitular origen'
+        'titulo estado fechaEjecucion fechaCompletado franja_horaria tecnicos cliente cuentaCliente descripcion numero direccion direccionExtra entreCalles especialidad ubicacionMapa numeroTitular origen'
       )
       .populate({
         path: 'tecnicos',
         select: 'nombre telefono color especialidad',
         populate: { path: 'especialidad', select: 'nombre' },
       })
+      .populate('especialidad', 'nombre')
       .populate('creadoPor', 'nombre')
-      .sort({ fechaEjecucion: 1 });
+      .sort({ fechaEjecucion: 1 })
+      .lean();
     
     console.log(`Se encontraron ${tareas.length} tareas`);
     

@@ -9,6 +9,7 @@ router.use(authenticateToken);
 // CRUD y vistas
 router.post('/', tareaCtrl.createTarea);
 router.get('/', tareaCtrl.getTareas);
+router.get('/resumen', tareaCtrl.getTareasResumen);
 router.get('/calendario', tareaCtrl.getTareasCalendario);
 router.get('/mapa-vivo', tareaCtrl.getMapaVivo);
 router.get('/mapa-dia', tareaCtrl.getMapaDia);

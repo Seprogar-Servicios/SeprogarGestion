@@ -47,8 +47,7 @@ const userSchema = new mongoose.Schema({
   },
 }, { timestamps: true });
 
-// Índices para mejor rendimiento
-userSchema.index({ email: 1 });
+// Índices para mejor rendimiento (email ya es unique en el campo)
 userSchema.index({ rol: 1 });
 userSchema.index({ aprobado: 1 });
 userSchema.index(

@@ -56,6 +56,22 @@ const getUpcomingDateRange = (filter: string) => {
       };
     }
     
+    case 'opsWindow': {
+      // Semana anterior + actual + siguiente (lun–dom)
+      const day = today.getDay();
+      const diffToMon = day === 0 ? -6 : 1 - day;
+      const mondayThis = new Date(today);
+      mondayThis.setDate(today.getDate() + diffToMon);
+      const mondayPrev = new Date(mondayThis);
+      mondayPrev.setDate(mondayThis.getDate() - 7);
+      const sundayNext = new Date(mondayThis);
+      sundayNext.setDate(mondayThis.getDate() + 13);
+      return {
+        fechaDesde: getLocalDateString(mondayPrev),
+        fechaHasta: getLocalDateString(sundayNext),
+      };
+    }
+
     case 'past': {
       // Tareas hasta ayer (inclusive)
       const yesterday = new Date(today);
@@ -138,42 +154,41 @@ export const fetchTasks = createAsyncThunk(
   async (filters: TaskFilters = {}, { rejectWithValue }) => {
     try {
       const params = new URLSearchParams();
-      
-      // Handle upcoming filter first to avoid duplicate parameters
-      if (filters.upcomingFilter && filters.upcomingFilter !== 'custom') {
+      const searching = Boolean(filters.q && String(filters.q).trim().length >= 2);
+
+      // Búsqueda de histórico: no aplicar ventana de fechas
+      if (
+        !searching &&
+        filters.upcomingFilter &&
+        filters.upcomingFilter !== 'custom'
+      ) {
         const dateRange = getUpcomingDateRange(filters.upcomingFilter);
-        // Skip if we have explicit date filters to avoid conflicts
         if (!filters.fechaDesde && !filters.fechaHasta) {
           Object.entries(dateRange).forEach(([key, value]) => {
             if (value !== undefined && value !== null) {
-              // Special handling for useCreatedAt flag
               if (key === 'useCreatedAt') {
                 params.set(key, 'true');
-              } else {
-                params.set(key, value);
+              } else if (key !== 'field') {
+                params.set(key, String(value));
               }
             }
           });
         }
       }
-      
-      // Handle other filters
+
       Object.entries(filters).forEach(([key, value]) => {
         if (value === undefined || value === null || key === 'upcomingFilter') return;
-        
-        // Mapear el nombre del filtro 'tecnico' a 'usuario' que es lo que espera el backend
+        if (searching && (key === 'fechaDesde' || key === 'fechaHasta')) return;
+
         if (key === 'tecnico') {
-          params.append('usuario', value);
+          params.append('usuario', String(value));
           return;
         }
-        
-        // Handle date fields
+
         if (key === 'fechaDesde' || key === 'fechaHasta') {
-          // If the value is already in YYYY-MM-DD format (from getUpcomingDateRange), use it directly
           if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
             params.append(key, value);
           } else {
-            // Otherwise, try to parse it as a date
             try {
               const date = new Date(value);
               if (!isNaN(date.getTime())) {
@@ -185,15 +200,37 @@ export const fetchTasks = createAsyncThunk(
           }
           return;
         }
-        
-        // For all other fields
+
         params.append(key, String(value));
       });
-      
+
       const response = await api.get<ApiResponse<Task[]>>(`/tareas?${params.toString()}`);
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Error al cargar tareas');
+    }
+  }
+);
+
+export const fetchTasksResumen = createAsyncThunk(
+  'tasks/fetchTasksResumen',
+  async (filters: { usuario?: string } = {}, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.usuario) params.set('usuario', filters.usuario);
+      const response = await api.get<
+        ApiResponse<{
+          total: number;
+          pendiente: number;
+          'en progreso': number;
+          completada: number;
+          cancelada: number;
+          hoy: number;
+        }>
+      >(`/tareas/resumen?${params.toString()}`);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Error al cargar resumen');
     }
   }
 );
@@ -276,30 +313,26 @@ export const fetchCalendarTasks = createAsyncThunk(
   async (filters: TaskFilters = {}, { rejectWithValue }) => {
     try {
       const params = new URLSearchParams();
-      
-      // Handle upcoming filter for calendar
+
       if (filters.upcomingFilter && filters.upcomingFilter !== 'custom') {
         const dateRange = getUpcomingDateRange(filters.upcomingFilter);
         Object.entries(dateRange).forEach(([key, value]) => {
-          if (value) params.append(key === 'fechaDesde' ? 'desde' : 'hasta', value);
+          if (!value || key === 'field' || key === 'useCreatedAt') return;
+          if (key === 'fechaDesde') params.append('desde', String(value));
+          else if (key === 'fechaHasta') params.append('hasta', String(value));
         });
       }
-      
-      // Handle other filters
+
       Object.entries(filters).forEach(([key, value]) => {
-        if (value && key !== 'upcomingFilter') {
-          // Map frontend filter names to backend parameter names for calendar endpoint
+        if (value && key !== 'upcomingFilter' && key !== 'q') {
           let paramKey = key;
-          if (key === 'fechaDesde') paramKey = 'desde';
-          if (key === 'fechaHasta') paramKey = 'hasta';
-          if (key === 'fechaInicio') paramKey = 'desde';
-          if (key === 'fechaFin') paramKey = 'hasta';
+          if (key === 'fechaDesde' || key === 'fechaInicio') paramKey = 'desde';
+          if (key === 'fechaHasta' || key === 'fechaFin') paramKey = 'hasta';
           if (key === 'tecnico') paramKey = 'usuario';
-          
-          params.append(paramKey, value);
+          params.append(paramKey, String(value));
         }
       });
-      
+
       const response = await api.get<ApiResponse<Task[]>>(`/tareas/calendario?${params.toString()}`);
       return response.data.data;
     } catch (error: any) {
@@ -316,13 +349,14 @@ const tasksSlice = createSlice({
       state.error = null;
     },
     setFilters: (state, action: PayloadAction<TaskFilters>) => {
-      // If the payload is empty, clear all filters
-      if (Object.keys(action.payload).length === 0) {
-        state.filters = {};
-      } else {
-        // Otherwise, merge the new filters with the existing ones
-        state.filters = { ...state.filters, ...action.payload };
-      }
+      // Reemplazo completo: permite limpiar q / fechas / upcomingFilter
+      const next: TaskFilters = {};
+      Object.entries(action.payload || {}).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          (next as Record<string, unknown>)[key] = value;
+        }
+      });
+      state.filters = next;
     },
     clearCurrentTask: (state) => {
       state.currentTask = null;

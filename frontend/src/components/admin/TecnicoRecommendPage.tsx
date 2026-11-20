@@ -13,17 +13,22 @@ import {
   Briefcase,
   Hash,
   Loader2,
+  UserPlus,
+  Plus,
+  X,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import api from '../../config/api';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
+import { updateTask } from '../../store/slices/tasksSlice';
 import AdminPageHeader from '../common/AdminPageHeader';
 import AddressAutocomplete, { type AddressSuggestion } from '../common/AddressAutocomplete';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { parseFranjaHoraria, toFechaEjecucionYmd } from '../../utils/franjaHoraria';
 import type { Task } from '../../types';
+import type { RecommendCreatePrefill } from '../../types/recommendPrefill';
 
 type Recomendacion = {
   tecnico: {
@@ -76,27 +81,111 @@ const TecnicoRecommendPage: React.FC = () => {
   const [especialidadId, setEspecialidadId] = useState('');
   const [numeroTarea, setNumeroTarea] = useState('');
   const [loadingTarea, setLoadingTarea] = useState(false);
+  const [tareaCargadaId, setTareaCargadaId] = useState<string | null>(null);
   const [tareaCargadaLabel, setTareaCargadaLabel] = useState<string | null>(null);
   const [autoWarnings, setAutoWarnings] = useState<string[]>([]);
   /** true = rankear por cercanía aunque solape franja (puede terminar antes) */
   const [priorizarCercania, setPriorizarCercania] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
   const [result, setResult] = useState<RecommendResponse | null>(null);
+
+  /** Modo autocompletar: hay tarea existente sin técnico (o a completar). */
+  const modoAsignar = Boolean(tareaCargadaId);
 
   useEffect(() => {
     dispatch(fetchEspecialidades());
   }, [dispatch]);
 
-  const especialidadLabel = (esp: Recomendacion['tecnico']['especialidad']) => {
-    if (!esp) return null;
-    if (typeof esp === 'object') return esp.nombre || null;
-    return String(esp);
+  const clearTareaCargada = () => {
+    setTareaCargadaId(null);
+    setTareaCargadaLabel(null);
+    setAutoWarnings([]);
+    setNumeroTarea('');
   };
 
   const especialidadIdOf = (esp: Task['especialidad']) => {
     if (!esp) return '';
     if (typeof esp === 'string') return esp;
     return esp._id || '';
+  };
+
+  const buildUpdateFromTask = (task: Task, tecnicos: string[]) => {
+    const origenRaw = String(task.origen || 'sistema');
+    const origen =
+      origenRaw === 'whatsapp' || origenRaw === 'web' || origenRaw === 'sistema'
+        ? origenRaw
+        : 'sistema';
+    return {
+      numero: task.numero,
+      titulo: task.titulo,
+      descripcion: task.descripcion || '',
+      estado: task.estado,
+      tecnicos,
+      fechaEjecucion: toFechaEjecucionYmd(task.fechaEjecucion || null) || '',
+      franja_horaria: task.franja_horaria || '',
+      cliente: task.cliente || '',
+      cuentaCliente: task.cuentaCliente || '',
+      numeroTitular: task.numeroTitular || '',
+      direccion: task.direccion || '',
+      direccionExtra: task.direccionExtra || '',
+      entreCalles: task.entreCalles || '',
+      especialidad: especialidadIdOf(task.especialidad) || null,
+      origen,
+      ...(task.ubicacionMapa?.lat != null && task.ubicacionMapa?.lng != null
+        ? {
+            ubicacionMapa: {
+              lat: task.ubicacionMapa.lat,
+              lng: task.ubicacionMapa.lng,
+              fuente: task.ubicacionMapa.fuente || 'direccion',
+            },
+          }
+        : {}),
+    };
+  };
+
+  const assignTecnicoToLoadedTask = async (tecnicoId: string, tecnicoNombre: string) => {
+    if (!tareaCargadaId) return;
+    setAssigningId(tecnicoId);
+    try {
+      const res = await api.get<{ success: boolean; data: Task }>(`/tareas/${tareaCargadaId}`);
+      const task = res.data.data;
+      const existing = Array.isArray(task.tecnicos)
+        ? task.tecnicos.map((t) => (typeof t === 'string' ? t : t._id)).filter(Boolean)
+        : [];
+      if (existing.includes(tecnicoId)) {
+        showSuccess(`${tecnicoNombre} ya está asignado a esta tarea`);
+        return;
+      }
+      const tecnicos = [...existing, tecnicoId];
+      await dispatch(
+        updateTask({ id: tareaCargadaId, data: buildUpdateFromTask(task, tecnicos) })
+      ).unwrap();
+      showSuccess(`Asignado ${tecnicoNombre} a ${tareaCargadaLabel || 'la tarea'}`);
+    } catch (err: any) {
+      showError(typeof err === 'string' ? err : err?.message || 'No se pudo asignar el técnico');
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
+  const openCreateTaskWithTecnico = (tecnicoId: string) => {
+    const prefill: RecommendCreatePrefill = {
+      direccion: direccion.trim(),
+      especialidadId: especialidadId || '',
+      fechaEjecucion: fecha,
+      horaInicio,
+      horaFin,
+      tecnicoId,
+      coords: coords || undefined,
+    };
+    navigate('/tasks', { state: { createFromRecommend: prefill } });
+  };
+
+  const especialidadLabel = (esp: Recomendacion['tecnico']['especialidad']) => {
+    if (!esp) return null;
+    if (typeof esp === 'object') return esp.nombre || null;
+    return String(esp);
   };
 
   const loadFromTaskNumber = async () => {
@@ -114,6 +203,14 @@ const TecnicoRecommendPage: React.FC = () => {
       const task = res.data.data;
       const missing: string[] = [];
 
+      // Reset completo para no mezclar con una carga anterior
+      setDireccion('');
+      setCoords(null);
+      setEspecialidadId('');
+      setHoraInicio('10:00');
+      setHoraFin('12:00');
+      setFecha(format(new Date(), 'yyyy-MM-dd'));
+
       const dir = (task.direccion || '').trim();
       if (dir) {
         setDireccion(dir);
@@ -121,8 +218,15 @@ const TecnicoRecommendPage: React.FC = () => {
         missing.push('dirección');
       }
 
-      if (task.ubicacionMapa?.lat != null && task.ubicacionMapa?.lng != null) {
-        setCoords({ lat: task.ubicacionMapa.lat, lng: task.ubicacionMapa.lng });
+      const fuente = task.ubicacionMapa?.fuente;
+      const lat = task.ubicacionMapa?.lat;
+      const lng = task.ubicacionMapa?.lng;
+      const coordsDireccion =
+        typeof lat === 'number' &&
+        typeof lng === 'number' &&
+        (fuente === 'direccion' || fuente == null || fuente === '');
+      if (coordsDireccion) {
+        setCoords({ lat, lng });
       } else {
         setCoords(null);
         if (dir) missing.push('coordenadas (se intentará geocodificar)');
@@ -144,6 +248,7 @@ const TecnicoRecommendPage: React.FC = () => {
       if (espId) setEspecialidadId(espId);
       else missing.push('especialidad');
 
+      setTareaCargadaId(task._id);
       setTareaCargadaLabel(`#${task.numero}${task.titulo ? ` · ${task.titulo}` : ''}`);
       setAutoWarnings(missing);
       if (missing.length) {
@@ -152,6 +257,7 @@ const TecnicoRecommendPage: React.FC = () => {
         showSuccess('Tarea cargada con todos los datos');
       }
     } catch (err: any) {
+      setTareaCargadaId(null);
       setTareaCargadaLabel(null);
       showError(err.response?.data?.message || 'No se encontró la tarea');
     } finally {
@@ -176,6 +282,7 @@ const TecnicoRecommendPage: React.FC = () => {
           horaFin,
           priorizarCercania,
           ...(especialidadId ? { especialidadId } : {}),
+          ...(tareaCargadaId ? { excludeTareaId: tareaCargadaId } : {}),
           ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
         }
       );
@@ -201,10 +308,10 @@ const TecnicoRecommendPage: React.FC = () => {
       />
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-        <strong>Cómo funciona:</strong> podés cargar por número de tarea (autocompleta
-        dirección, franja, fecha y especialidad). Si falta algo, te avisa pero igual podés
-        calcular. Sin tareas ese día → distancia a su base; con recorrido → cercanía al
-        terminar la tarea anterior.
+        <strong>Cómo funciona:</strong> con <em>número de tarea</em> podés asignar el técnico
+        sugerido a esa tarea. Sin número (solo dirección/filtro) podés abrir el alta de
+        tarea con esos datos y el técnico ya elegido. Si falta algo al autocompletar, te
+        avisa pero igual podés calcular.
       </div>
 
       <form
@@ -241,8 +348,23 @@ const TecnicoRecommendPage: React.FC = () => {
             </button>
           </div>
           {tareaCargadaLabel && (
-            <p className="text-xs text-emerald-700 dark:text-emerald-300">
-              Cargada: {tareaCargadaLabel}
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                Cargada: {tareaCargadaLabel} · modo asignar técnico
+              </p>
+              <button
+                type="button"
+                onClick={clearTareaCargada}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              >
+                <X className="h-3 w-3" />
+                Quitar
+              </button>
+            </div>
+          )}
+          {!tareaCargadaId && (
+            <p className="text-[11px] text-slate-500">
+              Sin tarea cargada · modo crear tarea nueva desde el filtro
             </p>
           )}
           {autoWarnings.length > 0 && (
@@ -383,25 +505,55 @@ const TecnicoRecommendPage: React.FC = () => {
 
           {top && (
             <div className="rounded-2xl border-2 border-emerald-400/70 bg-emerald-50/80 dark:bg-emerald-950/20 dark:border-emerald-700 p-4">
-              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-200 text-sm font-semibold mb-2">
-                <Sparkles className="h-4 w-4" />
-                Mejor opción sugerida
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-200 text-sm font-semibold mb-2">
+                    <Sparkles className="h-4 w-4" />
+                    Mejor opción sugerida
+                  </div>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">
+                    {top.tecnico.nombre}
+                    {top.distanciaKm != null ? (
+                      <span className="ml-2 text-base font-semibold text-emerald-700 dark:text-emerald-300">
+                        ~{top.distanciaKm} km
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{top.motivo}</p>
+                  {top.conflictoFranja && (
+                    <p className="mt-2 text-xs text-amber-800 dark:text-amber-200 inline-flex items-center gap-1">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Tiene solapamiento de franja ese día
+                    </p>
+                  )}
+                </div>
+                {modoAsignar ? (
+                  <button
+                    type="button"
+                    disabled={assigningId === top.tecnico._id}
+                    onClick={() =>
+                      assignTecnicoToLoadedTask(top.tecnico._id, top.tecnico.nombre)
+                    }
+                    className="inline-flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 shrink-0"
+                  >
+                    {assigningId === top.tecnico._id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    Asignar a tarea
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openCreateTaskWithTecnico(top.tecnico._id)}
+                    className="inline-flex items-center justify-center gap-1.5 text-sm px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shrink-0"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Crear tarea
+                  </button>
+                )}
               </div>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">
-                {top.tecnico.nombre}
-                {top.distanciaKm != null ? (
-                  <span className="ml-2 text-base font-semibold text-emerald-700 dark:text-emerald-300">
-                    ~{top.distanciaKm} km
-                  </span>
-                ) : null}
-              </p>
-              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{top.motivo}</p>
-              {top.conflictoFranja && (
-                <p className="mt-2 text-xs text-amber-800 dark:text-amber-200 inline-flex items-center gap-1">
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Tiene solapamiento de franja ese día
-                </p>
-              )}
             </div>
           )}
 
@@ -477,6 +629,32 @@ const TecnicoRecommendPage: React.FC = () => {
                       )}
                     </div>
                     <div className="flex flex-col gap-2 shrink-0">
+                      {modoAsignar ? (
+                        <button
+                          type="button"
+                          disabled={assigningId === r.tecnico._id}
+                          onClick={() =>
+                            assignTecnicoToLoadedTask(r.tecnico._id, r.tecnico.nombre)
+                          }
+                          className="inline-flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          {assigningId === r.tecnico._id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <UserPlus className="h-3.5 w-3.5" />
+                          )}
+                          Asignar a tarea
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openCreateTaskWithTecnico(r.tecnico._id)}
+                          className="inline-flex items-center justify-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Crear tarea
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() =>

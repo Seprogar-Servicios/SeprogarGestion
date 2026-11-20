@@ -174,8 +174,20 @@ export interface TaskFilters {
   fechaDesde?: string;
   fechaHasta?: string;
   fechaEjecucion?: string;
-  upcomingFilter?: 'past' | 'next24h' | 'next48h' | 'nextWeek' | 'nextMonth' | 'custom';
+  /** Ventana operativa / presets de UpcomingTasksFilter */
+  upcomingFilter?:
+    | 'opsWindow'
+    | 'today'
+    | 'past'
+    | 'current'
+    | 'next24h'
+    | 'next48h'
+    | 'nextWeek'
+    | 'nextMonth'
+    | 'custom';
   usuario?: string;
+  /** Búsqueda texto (número, título, cliente, dirección) — histórico sin acotar fechas */
+  q?: string;
 }
 
 // TareaConsorcio types

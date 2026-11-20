@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTasks, createTask, updateTask, deleteTask, deleteMultipleTasks, setFilters } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
@@ -20,6 +20,7 @@ import { CUENTAS_CLIENTE } from '../../utils/cuentaCliente';
 import { compareTasksBySchedule, parseFranjaHoraria } from '../../utils/franjaHoraria';
 import { formatTaskLocationWhatsApp } from '../../utils/whatsappTasks';
 import type { CuentaCliente } from '../../types';
+import type { RecommendCreatePrefill } from '../../types/recommendPrefill';
 
 const especialidadIdOf = (esp: Task['especialidad']) => {
   if (!esp) return '';
@@ -31,6 +32,8 @@ const especialidadIdOf = (esp: Task['especialidad']) => {
 
 const TaskList: React.FC = () => {
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { tasks, loading, filters } = useAppSelector((state) => state.tasks);
   const { users } = useAppSelector((state) => state.users);
   const { especialidades } = useAppSelector((state) => state.especialidades);
@@ -156,27 +159,78 @@ const TaskList: React.FC = () => {
     return '';
   };
 
-  // Initialize filters on component mount
+  // Initialize filters on component mount — ventana operativa por defecto
   useEffect(() => {
     if (!initialFiltersLoaded) {
-      const initialFilters: TaskFilters = {};
-      
-      // If user is not admin, filter only their tasks
+      const initialFilters: TaskFilters = {
+        upcomingFilter: 'opsWindow',
+      };
+
       if (user && !isAdminRole(user)) {
         initialFilters.tecnico = user._id;
       }
-      
+
       dispatch(setFilters(initialFilters));
       dispatch(fetchTasks(initialFilters));
       setInitialFiltersLoaded(true);
     }
-    
-    // Load users if admin
+
     if (isAdminRole(user)) {
       dispatch(fetchUsers());
       dispatch(fetchEspecialidades());
     }
   }, [dispatch, user?._id, user?.rol, initialFiltersLoaded]);
+
+  const filtersRef = React.useRef(filters);
+  filtersRef.current = filters;
+
+  // Búsqueda: a partir de 2 chars consulta API (histórico sin ventana de fechas)
+  useEffect(() => {
+    if (!initialFiltersLoaded) return;
+    const handle = window.setTimeout(() => {
+      const nextQ = searchTerm.trim().length >= 2 ? searchTerm.trim() : '';
+      const prevQ = (filtersRef.current.q || '').trim();
+      if (prevQ === nextQ) return;
+      const nextFilters: TaskFilters = { ...filtersRef.current };
+      if (nextQ) nextFilters.q = nextQ;
+      else delete nextFilters.q;
+      dispatch(setFilters(nextFilters));
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [searchTerm, initialFiltersLoaded, dispatch]);
+
+  // Prefill desde Recomendación de técnico (modo crear tarea nueva)
+  useEffect(() => {
+    const prefill = (location.state as { createFromRecommend?: RecommendCreatePrefill } | null)
+      ?.createFromRecommend;
+    if (!prefill || !isAdminRole(user)) return;
+
+    const horaInicio = prefill.horaInicio || '';
+    const horaFin = prefill.horaFin || '';
+    setEditingTask(null);
+    setFormData({
+      numero: '',
+      titulo: '',
+      descripcion: '',
+      cliente: '',
+      cuentaCliente: '',
+      numeroTitular: '',
+      direccion: prefill.direccion || '',
+      direccionExtra: '',
+      entreCalles: '',
+      especialidad: prefill.especialidadId || '',
+      fechaEjecucion: prefill.fechaEjecucion || '',
+      horaInicio,
+      horaFin,
+      franja_horaria:
+        horaInicio && horaFin ? `${horaInicio}-${horaFin}` : '',
+      tecnicos: prefill.tecnicoId ? [prefill.tecnicoId] : [],
+      estado: 'pendiente',
+    });
+    setUbicacionCoords(prefill.coords || null);
+    setShowCreateModal(true);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigate, user]);
   
   // Handle filter changes
   useEffect(() => {
@@ -838,9 +892,12 @@ const TaskList: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-blue-500 dark:text-blue-400" />
             <input
               type="text"
-              placeholder="Buscar tareas..."
+              placeholder="Buscar por número, título, cliente o dirección (histórico)..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full pl-10 pr-3 h-10 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
             />
           </div>

@@ -51,6 +51,8 @@ const AddressAutocomplete: React.FC<Props> = ({
   const menuRef = useRef<HTMLUListElement>(null);
   const debounceRef = useRef<number | null>(null);
   const skipFetchRef = useRef(false);
+  /** Evita pedir sugerencias al abrir un modal con dirección ya cargada. */
+  const [interactive, setInteractive] = useState(false);
 
   const updateMenuPos = () => {
     const el = inputRef.current;
@@ -91,6 +93,7 @@ const AddressAutocomplete: React.FC<Props> = ({
   }, []);
 
   useEffect(() => {
+    if (!interactive) return;
     if (skipFetchRef.current) {
       skipFetchRef.current = false;
       return;
@@ -117,7 +120,8 @@ const AddressAutocomplete: React.FC<Props> = ({
         const list = res.data.data || [];
         setSuggestions(list);
         setActiveIndex(list.length > 0 ? 0 : -1);
-        setOpen(list.length > 0);
+        const focused = document.activeElement === inputRef.current;
+        setOpen(list.length > 0 && focused);
         if (list.length === 0) {
           setErrorHint(
             mode === 'localidad'
@@ -143,7 +147,7 @@ const AddressAutocomplete: React.FC<Props> = ({
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
-  }, [value, mode]);
+  }, [value, mode, interactive]);
 
   const pick = (s: AddressSuggestion) => {
     skipFetchRef.current = true;
@@ -244,9 +248,13 @@ const AddressAutocomplete: React.FC<Props> = ({
           aria-expanded={open}
           aria-autocomplete="list"
           placeholder={placeholder || defaultPlaceholder}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            setInteractive(true);
+            onChange(e.target.value);
+          }}
           onKeyDown={onKeyDown}
           onFocus={() => {
+            setInteractive(true);
             if (suggestions.length > 0) {
               updateMenuPos();
               setOpen(true);

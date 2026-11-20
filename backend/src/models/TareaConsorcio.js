@@ -90,7 +90,7 @@ const tareaConsorcioSchema = new mongoose.Schema({
 });
 
 // Índices para mejor rendimiento
-tareaConsorcioSchema.index({ numero: 1 });
+// numero ya es unique en el campo
 tareaConsorcioSchema.index({ administradorConsorcio: 1 });
 tareaConsorcioSchema.index({ estado: 1 });
 tareaConsorcioSchema.index({ creadoPor: 1 });

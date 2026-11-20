@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { fetchTasks, setFilters } from '../../store/slices/tasksSlice';
+import { fetchTasks, fetchTasksResumen, setFilters } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
@@ -23,6 +23,15 @@ import {
   Tag
 } from 'lucide-react';
 
+type TasksResumen = {
+  total: number;
+  pendiente: number;
+  'en progreso': number;
+  completada: number;
+  cancelada: number;
+  hoy: number;
+};
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -33,6 +42,7 @@ const Dashboard: React.FC = () => {
   
   // Estado para tareas de consorcio
   const [tareasConsorcio, setTareasConsorcio] = useState<any[]>([]);
+  const [resumen, setResumen] = useState<TasksResumen | null>(null);
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -58,7 +68,9 @@ const Dashboard: React.FC = () => {
     return taskDateStr === todayStr;
   }) || [];
   
-  const [currentFilters, setCurrentFilters] = useState<TaskFilters>({});
+  const [currentFilters, setCurrentFilters] = useState<TaskFilters>({
+    upcomingFilter: 'opsWindow',
+  });
 
   // Función para obtener tareas de consorcio
   const fetchTareasConsorcio = async () => {
@@ -90,6 +102,10 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchTasks(currentFilters));
+    dispatch(fetchTasksResumen({}))
+      .unwrap()
+      .then((data) => setResumen(data))
+      .catch(() => setResumen(null));
     if (isAdminRole(user)) {
       dispatch(fetchUsers());
       dispatch(fetchEspecialidades());
@@ -110,17 +126,18 @@ const Dashboard: React.FC = () => {
     dispatch(setFilters(mergedFilters));
   };
 
-  const completedTasks = tasks?.filter(task => task.estado === 'completada').length || 0;
-  const pendingTasks = tasks?.filter(task => task.estado === 'pendiente').length || 0;
-  const inProgressTasks = tasks?.filter(task => task.estado === 'en progreso').length || 0;
-  const canceledTasks = tasks?.filter(task => task.estado === 'cancelada').length || 0;
+  const completedTasks = resumen?.completada ?? (tasks?.filter(task => task.estado === 'completada').length || 0);
+  const pendingTasks = resumen?.pendiente ?? (tasks?.filter(task => task.estado === 'pendiente').length || 0);
+  const inProgressTasks = resumen?.['en progreso'] ?? (tasks?.filter(task => task.estado === 'en progreso').length || 0);
+  const canceledTasks = resumen?.cancelada ?? (tasks?.filter(task => task.estado === 'cancelada').length || 0);
   const myTasks = tasks?.filter(task => 
     task.creadoPor?._id === user?._id || 
     task.tecnicos?.some(tecnico => tecnico._id === user?._id)
   ) || [];
 
-  // Calculate real percentage changes based on task completion rates
-  const totalTasks = tasks?.length || 0;
+  // KPIs globales desde /tareas/resumen (no dependen de la ventana cargada)
+  const totalTasks = resumen?.total ?? (tasks?.length || 0);
+  const todayCount = resumen?.hoy ?? todayTasks.length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const progressRate = totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
   const pendingRate = totalTasks > 0 ? Math.round((pendingTasks / totalTasks) * 100) : 0;
@@ -181,7 +198,7 @@ const Dashboard: React.FC = () => {
   // Add today's tasks card for all users
   stats.push({
     name: 'Tareas del Día',
-    value: todayTasks.length,
+    value: todayCount,
     icon: Calendar,
     color: 'bg-cyan-500',
     change: 'Ver tareas de hoy',

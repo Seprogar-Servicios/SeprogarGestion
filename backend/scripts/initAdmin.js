@@ -17,10 +17,7 @@ async function initAdmin() {
     }
 
     console.log('Connecting to MongoDB...');
-    await mongoose.connect(config.mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(config.mongoUri);
 
     console.log('✅ Connected to MongoDB');
 

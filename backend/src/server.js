@@ -98,19 +98,23 @@ const limiter = rateLimit({
 
 app.use('/api', limiter);
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
+// MongoDB connection (opciones legacy useNewUrlParser/useUnifiedTopology ya no aplican)
+mongoose.connect(process.env.MONGODB_URI).then(() => {
   console.log('MongoDB connected');
 }).catch((err) => {
   console.error('MongoDB connection error:', err);
 });
 
-// Health check route
+// Health check (también en / para probes HEAD/GET de Render)
+const healthPayload = () => ({ status: 'ok', time: new Date() });
+app.get('/', (req, res) => {
+  res.json(healthPayload());
+});
+app.head('/', (req, res) => {
+  res.status(200).end();
+});
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date() });
+  res.json(healthPayload());
 });
 
 // IP check route para obtener la IP de Render

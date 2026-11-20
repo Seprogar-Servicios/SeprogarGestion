@@ -20,8 +20,7 @@ const tareaLiquidacionSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Índice único para evitar duplicados
-tareaLiquidacionSchema.index({ tarea: 1 }, { unique: true });
+// tarea ya es unique en el campo — no duplicar índice
 
 // Middleware para calcular automáticamente materiales y excedente desde los materialesTarea
 tareaLiquidacionSchema.pre('save', async function(next) {
