@@ -121,7 +121,7 @@ const RecibosAdmin: React.FC = () => {
       {/* Create/Edit Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-300 animate-fadeIn">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] flex flex-col transform transition-all duration-300 animate-scaleIn">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[95vh] flex flex-col transform transition-all duration-300 animate-scaleIn">
             {/* Modal Header */}
             <div className="flex-shrink-0 px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-800 rounded-t-2xl flex justify-between items-center">
               <div className="flex items-center">

@@ -885,8 +885,8 @@ const TareaConsorcioManagement: React.FC = () => {
 
       {/* Modal de Creación de Tarea */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-6 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-blue-700 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
@@ -1130,8 +1130,8 @@ const TareaConsorcioManagement: React.FC = () => {
 
       {/* Modal de Edición de Tarea */}
       {editingTask && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto scroll-smooth">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-6 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-y-auto scroll-smooth">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-orange-500 to-amber-600 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
@@ -1487,8 +1487,8 @@ const TareaConsorcioManagement: React.FC = () => {
 
       {/* Modal de Visualización de Tarea */}
       {viewingTask && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto scroll-smooth">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-6 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl max-h-[90vh] overflow-y-auto scroll-smooth">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-blue-700 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">
@@ -1700,7 +1700,7 @@ const TareaConsorcioManagement: React.FC = () => {
       {/* Modal de Confirmación de Eliminación */}
       {showDeleteModal && taskToDelete && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md lg:max-w-lg xl:max-w-xl mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">Confirmar Eliminación</h3>
               <button
@@ -1752,7 +1752,7 @@ const TareaConsorcioManagement: React.FC = () => {
       {/* Modal de Asignación de Técnicos */}
       {showAssignModal && taskToAssign && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">Asignar Técnicos</h3>
               <button
@@ -1836,8 +1836,8 @@ const TareaConsorcioManagement: React.FC = () => {
 
       {/* Submodal para Cambiar Técnicos */}
       {showEditTecnicosModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-6 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg lg:max-w-2xl xl:max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-blue-500 to-blue-700 p-4 -mx-6 -mt-6 rounded-t-xl">
                 <div className="flex items-center space-x-3">

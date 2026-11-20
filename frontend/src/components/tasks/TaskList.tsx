@@ -1035,8 +1035,8 @@ const TaskList: React.FC = () => {
       
       {/* Status Change Modal */}
       {showStatusChangeModal && (
-        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-6 bg-gray-900/70 backdrop-blur-sm">
+          <div className="relative w-full max-w-md lg:max-w-lg xl:max-w-xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
             <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-800">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">
@@ -1592,8 +1592,8 @@ const TaskList: React.FC = () => {
 
       {/* Create/Edit Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="relative w-full max-w-3xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden my-4">
             <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
@@ -1624,8 +1624,8 @@ const TaskList: React.FC = () => {
               </div>
             </div>
             
-            <div className="p-6 max-h-[80vh] overflow-y-auto">
-              <form onSubmit={editingTask ? handleUpdateTask : handleCreateTask} onKeyDown={preventEnterSubmit} className="space-y-6">
+            <div className="p-5 sm:p-6 max-h-[85vh] overflow-y-auto">
+              <form onSubmit={editingTask ? handleUpdateTask : handleCreateTask} onKeyDown={preventEnterSubmit} className="space-y-5">
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Número de Tarea <span className="text-red-500">*</span>
@@ -1675,7 +1675,8 @@ const TaskList: React.FC = () => {
                     <textarea
                       value={formData.descripcion}
                       onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                      className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 min-h-[120px]"
+                      rows={8}
+                      className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 min-h-[180px] resize-y"
                       placeholder="Descripción detallada de la tarea"
                     />
                   </div>
@@ -1757,18 +1758,41 @@ const TaskList: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    id="task-vip"
-                    type="checkbox"
-                    checked={Boolean(formData.vip)}
-                    onChange={(e) => setFormData({ ...formData, vip: e.target.checked })}
-                    className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
-                  />
-                  <label htmlFor="task-vip" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                    VIP
-                  </label>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, vip: !formData.vip })}
+                  className={`w-full flex items-center justify-between gap-3 rounded-xl border-2 px-4 py-3 text-left transition-colors cursor-pointer ${
+                    formData.vip
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 shadow-sm shadow-amber-500/20'
+                      : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/40 hover:border-amber-400'
+                  }`}
+                >
+                  <span>
+                    <span
+                      className={`block text-sm font-bold tracking-wide ${
+                        formData.vip
+                          ? 'text-amber-800 dark:text-amber-200'
+                          : 'text-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      VIP
+                    </span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Cliente prioritario · se muestra junto al número
+                    </span>
+                  </span>
+                  <span
+                    className={`shrink-0 inline-flex h-7 w-12 items-center rounded-full p-0.5 transition-colors ${
+                      formData.vip ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'
+                    }`}
+                  >
+                    <span
+                      className={`h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                        formData.vip ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </span>
+                </button>
 
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

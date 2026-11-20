@@ -533,7 +533,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
       {/* Modal de Creación */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto scroll-smooth">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-4 max-h-[90vh] overflow-y-auto scroll-smooth">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Crear Nueva Tarea de Consorcio
@@ -649,7 +649,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
       {/* Modal de Detalles */}
       {showDetailsModal && selectedTask && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto scroll-smooth">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-4 max-h-[90vh] overflow-y-auto scroll-smooth">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Detalles de la Tarea
@@ -822,7 +822,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
       {/* Modal de Confirmación */}
       {showConfirmModal && taskToConfirm && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md lg:max-w-lg xl:max-w-xl mx-4">
             <div className="p-6">
               <div className="flex items-center mb-4">
                 <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg mr-3">
@@ -873,7 +873,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
       {/* Modal de Rechazo */}
       {showRejectModal && taskToReject && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md lg:max-w-lg xl:max-w-xl mx-4">
             <div className="p-6">
               <div className="flex items-center mb-4">
                 <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg mr-3">
@@ -924,7 +924,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
       {/* Modal de Carga de Comprobante */}
       {showComprobanteModal && taskForComprobante && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md lg:max-w-lg xl:max-w-xl mx-4">
             <div className="p-6">
               <div className="flex items-center mb-4">
                 <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg mr-3">

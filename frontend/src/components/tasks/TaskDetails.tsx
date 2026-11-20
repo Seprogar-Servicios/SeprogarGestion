@@ -787,10 +787,10 @@ const TaskDetails: React.FC = () => {
         )}
       </div>
 
-      {/* Modal de edición */}
+      {/* Modal de edición — ancho adaptable a pantallas grandes */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto pt-20">
-          <div className="relative w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-50 flex items-start justify-center p-3 sm:p-6 overflow-y-auto pt-10 sm:pt-14">
+          <div className="relative w-full max-w-3xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden my-4">
             <div className="px-6 py-5 bg-gradient-to-r from-blue-600 to-blue-800">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white">Editar Tarea #{currentTask?.numero || ''}</h3>
@@ -803,9 +803,9 @@ const TaskDetails: React.FC = () => {
               </div>
             </div>
             
-            <form onSubmit={handleUpdateTask} onKeyDown={preventEnterSubmit} className="p-6">
+            <form onSubmit={handleUpdateTask} onKeyDown={preventEnterSubmit} className="p-5 sm:p-6 max-h-[85vh] overflow-y-auto">
               <div className="space-y-5">
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Número de Tarea <span className="text-red-500">*</span>
@@ -819,7 +819,7 @@ const TaskDetails: React.FC = () => {
                     />
                   </div>
                   
-                  <div className="space-y-1">
+                  <div className="space-y-1 sm:col-span-1 xl:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Título <span className="text-red-500">*</span>
                     </label>
@@ -887,15 +887,41 @@ const TaskDetails: React.FC = () => {
                     </select>
                   </div>
 
-                  <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(formData.vip)}
-                      onChange={(e) => setFormData({ ...formData, vip: e.target.checked })}
-                      className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
-                    />
-                    VIP
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, vip: !formData.vip })}
+                    className={`sm:col-span-2 xl:col-span-1 flex items-center justify-between gap-3 rounded-xl border-2 px-4 py-3 text-left transition-colors cursor-pointer ${
+                      formData.vip
+                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 shadow-sm shadow-amber-500/20'
+                        : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/40 hover:border-amber-400'
+                    }`}
+                  >
+                    <span>
+                      <span
+                        className={`block text-sm font-bold tracking-wide ${
+                          formData.vip
+                            ? 'text-amber-800 dark:text-amber-200'
+                            : 'text-gray-700 dark:text-gray-200'
+                        }`}
+                      >
+                        VIP
+                      </span>
+                      <span className="block text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Cliente prioritario · se muestra junto al número
+                      </span>
+                    </span>
+                    <span
+                      className={`shrink-0 inline-flex h-7 w-12 items-center rounded-full p-0.5 transition-colors ${
+                        formData.vip ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-600'
+                      }`}
+                    >
+                      <span
+                        className={`h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                          formData.vip ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </span>
+                  </button>
                   
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -961,7 +987,7 @@ const TaskDetails: React.FC = () => {
                     </select>
                   </div>
                   
-                  <div className="space-y-1 sm:col-span-2">
+                  <div className="space-y-1 sm:col-span-2 xl:col-span-3">
                     <AddressAutocomplete
                       label="Dirección"
                       value={formData.direccion || ''}
@@ -1012,7 +1038,7 @@ const TaskDetails: React.FC = () => {
                     />
                   </div>
 
-                  <div className="space-y-1 sm:col-span-2">
+                  <div className="space-y-1 sm:col-span-2 xl:col-span-3">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Especialidad de la tarea
                     </label>
@@ -1030,7 +1056,7 @@ const TaskDetails: React.FC = () => {
                     </select>
                   </div>
 
-                  <div className="space-y-1 sm:col-span-2">
+                  <div className="space-y-1 sm:col-span-2 xl:col-span-3">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Técnicos Asignados
                     </label>
@@ -1048,7 +1074,7 @@ const TaskDetails: React.FC = () => {
                           .filter((u): u is UserType => u !== undefined);
                         setFormData((prev) => ({ ...prev, tecnicos: selectedUsers }));
                       }}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 min-h-[96px]"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 min-h-[120px]"
                     >
                       {users
                         .filter((u) => u.rol === 'usuario' || u.rol === 'tecnico')
@@ -1064,15 +1090,15 @@ const TaskDetails: React.FC = () => {
                     </p>
                   </div>
                   
-                  <div className="space-y-1 sm:col-span-2">
+                  <div className="space-y-1 sm:col-span-2 xl:col-span-3">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Descripción
                     </label>
                     <textarea
                       value={formData.descripcion || ''}
                       onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
-                      rows={3}
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={8}
+                      className="w-full min-h-[180px] rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                     />
                   </div>
                   </div>
