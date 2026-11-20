@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import type { CategoriaMaterial } from '../../types';
+import { toast } from 'react-toastify';
 import EmptyCrudState from '../common/EmptyCrudState';
 import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
@@ -108,7 +109,6 @@ const CategoriaMaterialManagement: React.FC<Props> = ({ embedded = false }) => {
       </div>
     );
   
-    const { toast } = await import('react-toastify');
     toast(<CustomToast />, {
       position: "top-center",
       autoClose: false,

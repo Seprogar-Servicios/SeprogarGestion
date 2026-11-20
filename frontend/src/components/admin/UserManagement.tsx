@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import api from '../../config/api';
 import type { User } from '../../types';
+import { toast } from 'react-toastify';
 import { showSuccess, showError, showInfo } from '../../utils/toastUtils';
 import EmptyCrudState from '../common/EmptyCrudState';
 import AdminPageHeader from '../common/AdminPageHeader';
@@ -302,8 +303,6 @@ const UserManagement: React.FC = () => {
   };
 
   const handleDeleteUser = async (userId: string, userName: string) => {
-    const { toast } = await import('react-toastify');
-  
     const ConfirmToast = ({ closeToast }: { closeToast?: () => void }) => (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
         <div className="p-6">

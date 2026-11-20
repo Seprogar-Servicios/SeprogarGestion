@@ -5,6 +5,7 @@ import { fetchTaskById, clearCurrentTask, deleteTask, updateTask } from '../../s
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import { fetchProveedores } from '../../store/slices/proveedoresSlice';
+import { toast } from 'react-toastify';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import { format } from 'date-fns';
@@ -293,8 +294,7 @@ const TaskDetails: React.FC = () => {
   const handleDelete = () => {
     if (!currentTask) return;
     
-    import('react-toastify').then(({ toast }) => {
-      const CustomToast: React.FC<{closeToast?: () => void}> = ({ closeToast }) => (
+    const CustomToast: React.FC<{closeToast?: () => void}> = ({ closeToast }) => (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
           <div className="p-6">
             <div className="flex items-start">
@@ -341,15 +341,14 @@ const TaskDetails: React.FC = () => {
         </div>
       );
 
-      toast(<CustomToast />, {
-        position: "top-center",
-        autoClose: false,
-        closeOnClick: false,
-        draggable: false,
-        closeButton: false,
-        className: '!bg-transparent !p-0 !shadow-none',
-        bodyClassName: '!p-0',
-      });
+    toast(<CustomToast />, {
+      position: "top-center",
+      autoClose: false,
+      closeOnClick: false,
+      draggable: false,
+      closeButton: false,
+      className: '!bg-transparent !p-0 !shadow-none',
+      bodyClassName: '!p-0',
     });
   };
 

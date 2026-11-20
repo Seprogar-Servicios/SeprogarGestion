@@ -9,6 +9,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import type { Especialidad } from '../../types';
 import EmptyCrudState from '../common/EmptyCrudState';
@@ -119,7 +120,6 @@ const SpecialtyManagement: React.FC = () => {
       </div>
     );
   
-    const { toast } = await import('react-toastify');
     toast(<CustomToast />, {
       position: "top-center",
       autoClose: false,

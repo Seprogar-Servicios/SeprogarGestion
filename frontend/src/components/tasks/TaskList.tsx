@@ -12,6 +12,7 @@ import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPi
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
+import { toast } from 'react-toastify';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AdminPageHeader from '../common/AdminPageHeader';
@@ -347,66 +348,64 @@ const TaskList: React.FC = () => {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    import('react-toastify').then(({ toast }) => {
-      const CustomToast = ({ closeToast }: { closeToast?: () => void }) => (
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
-          <div className="p-6">
-            <div className="flex items-start">
-              <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-                <Trash2 className="h-6 w-6" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Eliminar tarea
-                </h3>
-                <div className="mt-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    ¿Estás seguro de que deseas eliminar esta tarea? Esta acción no
-                    se puede deshacer.
-                  </p>
-                </div>
-              </div>
+    const CustomToast = ({ closeToast }: { closeToast?: () => void }) => (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
+        <div className="p-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+              <Trash2 className="h-6 w-6" />
             </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={closeToast}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  closeToast?.();
-                  try {
-                    await dispatch(deleteTask(taskId)).unwrap();
-                    showSuccess('Tarea eliminada correctamente', { autoClose: 3000 });
-                    dispatch(fetchTasks(filters));
-                  } catch (error) {
-                    console.error('Error deleting task:', error);
-                    showError('Error al eliminar la tarea');
-                  }
-                }}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
-              >
-                <Trash2 className="-ml-1 mr-2 h-4 w-4 inline" />
-                Eliminar
-              </button>
+            <div className="ml-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Eliminar tarea
+              </h3>
+              <div className="mt-2">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  ¿Estás seguro de que deseas eliminar esta tarea? Esta acción no
+                  se puede deshacer.
+                </p>
+              </div>
             </div>
           </div>
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={closeToast}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                closeToast?.();
+                try {
+                  await dispatch(deleteTask(taskId)).unwrap();
+                  showSuccess('Tarea eliminada correctamente', { autoClose: 3000 });
+                  dispatch(fetchTasks(filters));
+                } catch (error) {
+                  console.error('Error deleting task:', error);
+                  showError('Error al eliminar la tarea');
+                }
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-150"
+            >
+              <Trash2 className="-ml-1 mr-2 h-4 w-4 inline" />
+              Eliminar
+            </button>
+          </div>
         </div>
-      );
+      </div>
+    );
 
-      toast(<CustomToast />, {
-        position: "top-center",
-        autoClose: false,
-        closeButton: false,
-        closeOnClick: false,
-        draggable: false,
-        className: '!bg-transparent !shadow-none !p-0 !m-0 !w-auto',
-        bodyClassName: '!p-0 !m-0',
-      });
+    toast(<CustomToast />, {
+      position: "top-center",
+      autoClose: false,
+      closeButton: false,
+      closeOnClick: false,
+      draggable: false,
+      className: '!bg-transparent !shadow-none !p-0 !m-0 !w-auto',
+      bodyClassName: '!p-0 !m-0',
     });
   };
   
@@ -575,60 +574,45 @@ const TaskList: React.FC = () => {
   // Eliminar múltiples tareas seleccionadas
   const handleDeleteMultipleTasks = async () => {
     if (selectedTasks.length === 0) return;
-    
-    import('react-toastify').then(({ toast }) => {
-      const CustomToast = ({ closeToast }: { closeToast?: () => void }) => (
-        <div>
-          <p>¿Estás seguro de que quieres eliminar {selectedTasks.length} tareas?</p>
-          <div className="flex justify-end mt-2 space-x-2">
-            <button 
-              onClick={async () => {
-                try {
-                  await dispatch(deleteMultipleTasks(selectedTasks)).unwrap();
-                  setSelectedTasks([]);
-                  toast.success(`${selectedTasks.length} tareas eliminadas correctamente`, {
-                    position: "top-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true
-                  });
-                } catch (error) {
-                  console.error('Error deleting tasks:', error);
-                  toast.error('Error al eliminar las tareas', {
-                    position: "top-right",
-                    autoClose: 3000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true
-                  });
-                }
-                closeToast?.();
-              }}
-              className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600 cursor-pointer"
-            >
-              Eliminar
-            </button>
-            <button 
-              onClick={() => closeToast?.()}
-              className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      );
+    const count = selectedTasks.length;
 
-      toast(<CustomToast />, {
-        position: "top-center",
-        autoClose: false,
-        closeButton: false,
-        closeOnClick: false,
-        draggable: true,
-        className: 'w-full max-w-md'
-      });
+    const CustomToast = ({ closeToast }: { closeToast?: () => void }) => (
+      <div>
+        <p>¿Estás seguro de que quieres eliminar {count} tareas?</p>
+        <div className="flex justify-end mt-2 space-x-2">
+          <button
+            onClick={async () => {
+              try {
+                await dispatch(deleteMultipleTasks(selectedTasks)).unwrap();
+                setSelectedTasks([]);
+                showSuccess(`${count} tareas eliminadas correctamente`);
+              } catch (error) {
+                console.error('Error deleting tasks:', error);
+                showError('Error al eliminar las tareas');
+              }
+              closeToast?.();
+            }}
+            className="px-3 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600 cursor-pointer"
+          >
+            Eliminar
+          </button>
+          <button
+            onClick={() => closeToast?.()}
+            className="px-3 py-1 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300 cursor-pointer"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    );
+
+    toast(<CustomToast />, {
+      position: "top-center",
+      autoClose: false,
+      closeButton: false,
+      closeOnClick: false,
+      draggable: true,
+      className: 'w-full max-w-md',
     });
   };
   

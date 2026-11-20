@@ -17,9 +17,11 @@ import {
 } from 'lucide-react';
 import type { Material } from '../../types';
 import ExcelJS from 'exceljs';
+import { toast } from 'react-toastify';
 import EmptyCrudState from '../common/EmptyCrudState';
 import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
+import { showSuccess, showError } from '../../utils/toastUtils';
 
 type Props = { embedded?: boolean };
 
@@ -76,17 +78,10 @@ const MaterialManagement: React.FC<Props> = ({ embedded = false }) => {
       setShowCreateModal(false);
       resetForm();
 
-      const { toast } = await import('react-toastify');
-      toast.success('Material actualizado correctamente', {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
+      showSuccess('Material actualizado correctamente');
     } catch (error) {
       console.error('Error updating material:', error);
+      showError('Error al actualizar el material');
     }
   };
 
@@ -263,27 +258,14 @@ const MaterialManagement: React.FC<Props> = ({ embedded = false }) => {
           }
         }
 
-        const { toast } = await import('react-toastify');
-        toast.success(
-          `Importación completada:\n` +
-          `• ${successCount} materiales creados\n` +
-          `• ${updateCount} materiales actualizados\n` +
-          `• ${categoriaCreadaCount} categorías creadas\n` +
-          `• ${errorCount} errores`,
-          {
-            position: "top-right",
-            autoClose: 5000,
-          }
+        showSuccess(
+          `Importación: ${successCount} creados, ${updateCount} actualizados, ${categoriaCreadaCount} categorías, ${errorCount} errores`
         );
 
         await dispatch(fetchMaterials());
       } catch (error) {
         console.error('Error processing file:', error);
-        const { toast } = await import('react-toastify');
-        toast.error('Error al procesar el archivo. Por favor, verifica el formato.', {
-          position: "top-right",
-          autoClose: 5000,
-        });
+        showError('Error al procesar el archivo. Por favor, verifica el formato.');
       }
     };
 
@@ -342,7 +324,6 @@ const MaterialManagement: React.FC<Props> = ({ embedded = false }) => {
       </div>
     );
 
-    const { toast } = await import('react-toastify');
     toast(<CustomToast />, {
       position: "top-center",
       autoClose: false,
