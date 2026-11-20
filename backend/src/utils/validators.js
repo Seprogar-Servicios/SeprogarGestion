@@ -33,6 +33,13 @@ const especialidadSchema = Joi.object({
   descripcion: Joi.string().allow('').optional(),
 });
 
+const proveedorSchema = Joi.object({
+  // Texto libre (mayoría letras; números permitidos)
+  nombre: Joi.string().trim().min(1).max(120).required(),
+  descripcion: Joi.string().allow('').optional(),
+  activo: Joi.boolean().optional(),
+});
+
 const categoriaMaterialSchema = Joi.object({
   nombre: Joi.string().required(),
   descripcion: Joi.string().allow('').optional(),
@@ -70,6 +77,10 @@ const tareaSchema = Joi.object({
   direccionExtra: Joi.string().allow('').optional(),
   entreCalles: Joi.string().allow('').optional(),
   especialidad: Joi.string().optional().allow(null, ''),
+  /** Proveedor (catálogo ABM). Opcional; no rompe históricas. */
+  proveedor: Joi.string().optional().allow(null, ''),
+  /** Cliente VIP. Opcional; default false en modelo. */
+  vip: Joi.boolean().optional(),
   origen: Joi.string().valid('whatsapp', 'sistema', 'web').default('sistema'),
   grupoOrigen: Joi.string().allow('').optional(),
   mensajeOriginal: Joi.string().allow('').optional(),
@@ -180,6 +191,7 @@ module.exports = {
   userRegisterSchema,
   userUpdateSchema,
   especialidadSchema,
+  proveedorSchema,
   categoriaMaterialSchema,
   materialSchema,
   tareaSchema,

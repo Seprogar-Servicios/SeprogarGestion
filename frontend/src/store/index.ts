@@ -5,6 +5,7 @@ import tasksReducer from './slices/tasksSlice';
 import usersReducer from './slices/usersSlice';
 import materialsReducer from './slices/materialsSlice';
 import especialidadesReducer from './slices/especialidadesSlice';
+import proveedoresReducer from './slices/proveedoresSlice';
 import observationsReducer from './slices/observationsSlice';
 import recibosReducer from './slices/recibosSlice';
 import categoriaMaterialReducer from './slices/categoriaMaterialSlice';
@@ -19,6 +20,7 @@ export const store = configureStore({
     users: usersReducer,
     materials: materialsReducer,
     especialidades: especialidadesReducer,
+    proveedores: proveedoresReducer,
     observations: observationsReducer,
     recibos: recibosReducer,
     categoriaMaterial: categoriaMaterialReducer,

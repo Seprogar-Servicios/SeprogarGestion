@@ -3,7 +3,11 @@ import { useAppSelector } from '../../store';
 import type { Task, User } from '../../types';
 import { CheckSquare, Square, Send } from 'lucide-react';
 import { isAdminRole } from '../../utils/roles';
-import { formatTaskLocationWhatsApp } from '../../utils/whatsappTasks';
+import {
+  formatTaskLocationWhatsApp,
+  formatTaskNumeroWhatsApp,
+  proveedorNombreOf,
+} from '../../utils/whatsappTasks';
 
 interface WhatsAppMessageGeneratorProps {
   tasks: Task[];
@@ -97,7 +101,9 @@ const WhatsAppMessageGenerator: React.FC<WhatsAppMessageGeneratorProps> = ({ tas
     let message = `Hola, aquí tienes el resumen de tus tareas asignadas:\n\n`;
     
     selectedTasksForTecnico.forEach((task, index) => {
-      message += `${index + 1}. *${task.titulo}* (${task.numero})\n`;
+      message += `${index + 1}. *${task.titulo}* (${formatTaskNumeroWhatsApp(task)})\n`;
+      const proveedor = proveedorNombreOf(task.proveedor);
+      if (proveedor) message += `   Proveedor: ${proveedor}\n`;
       if (task.descripcion) message += `   ${task.descripcion}\n`;
       if (task.cliente) message += `   Cliente: ${task.cliente}\n`;
       message += formatTaskLocationWhatsApp(task);
@@ -183,7 +189,16 @@ const WhatsAppMessageGenerator: React.FC<WhatsAppMessageGeneratorProps> = ({ tas
                     </button>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {task.titulo} <span className="text-xs text-gray-500">({task.numero})</span>
+                        {task.titulo}{' '}
+                        <span className="text-xs text-gray-500">
+                          (
+                          {task.vip ? (
+                            <span className="font-bold text-amber-700 dark:text-amber-300">
+                              VIP{' '}
+                            </span>
+                          ) : null}
+                          {task.numero})
+                        </span>
                       </div>
                       <div className="flex flex-wrap text-xs text-gray-500 dark:text-gray-400 gap-x-2">
                         {task.direccion && (

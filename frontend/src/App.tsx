@@ -11,6 +11,7 @@ import TaskCalendar from './components/tasks/TaskCalendar';
 import TaskDetails from './components/tasks/TaskDetails';
 import UserManagement from './components/admin/UserManagement';
 import SpecialtyManagement from './components/admin/SpecialtyManagement';
+import ProveedorManagement from './components/admin/ProveedorManagement';
 import TareaConsorcioManagement from './components/admin/TareaConsorcioManagement';
 import DataImportExport from './components/admin/DataImportExport';
 import Liquidaciones from './components/admin/Liquidaciones';
@@ -84,6 +85,11 @@ const AppRoutes = () => {
         } />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/specialties" element={<SpecialtyManagement />} />
+        <Route path="/admin/proveedores" element={
+          <ProtectedRoute requiredRole="admin">
+            <ProveedorManagement />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/tareas-consorcio" element={<TareaConsorcioManagement />} />
         <Route path="/admin/importar-exportar" element={<DataImportExport />} />
         <Route path="/admin/recibos" element={

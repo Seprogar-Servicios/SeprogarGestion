@@ -30,6 +30,7 @@ import {
   Sun,
   Moon,
   AlertTriangle,
+  Building2,
 } from 'lucide-react';
 import { isAdminRole, roleLabel } from '../../utils/roles';
 import { useTheme } from '../../hooks/useTheme';
@@ -213,6 +214,7 @@ const Layout: React.FC = () => {
         items: [
           { name: 'Catálogo', href: '/admin/catalogo', icon: Package },
           { name: 'Especialidades', href: '/admin/specialties', icon: Briefcase },
+          { name: 'Proveedores', href: '/admin/proveedores', icon: Building2 },
         ],
       },
       {

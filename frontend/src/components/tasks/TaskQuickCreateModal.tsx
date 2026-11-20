@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { createTask, fetchCalendarTasks } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
+import { fetchProveedores } from '../../store/slices/proveedoresSlice';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AddressAutocomplete from '../common/AddressAutocomplete';
@@ -33,6 +34,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
   const dispatch = useAppDispatch();
   const { users } = useAppSelector((s) => s.users);
   const { especialidades } = useAppSelector((s) => s.especialidades);
+  const { proveedores } = useAppSelector((s) => s.proveedores);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     numero: '',
@@ -43,6 +45,8 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
     direccionExtra: '',
     entreCalles: '',
     especialidad: '',
+    proveedor: '',
+    vip: false,
     descripcion: '',
     fechaEjecucion: defaults.fechaEjecucion,
     horaInicio: defaults.horaInicio || '09:00',
@@ -55,6 +59,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
   useEffect(() => {
     dispatch(fetchUsers());
     dispatch(fetchEspecialidades());
+    dispatch(fetchProveedores());
   }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -80,6 +85,8 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           direccionExtra: form.direccionExtra.trim(),
           entreCalles: form.entreCalles.trim(),
           ...(form.especialidad ? { especialidad: form.especialidad } : {}),
+          ...(form.proveedor ? { proveedor: form.proveedor } : {}),
+          vip: Boolean(form.vip),
           descripcion: form.descripcion.trim(),
           fechaEjecucion: form.fechaEjecucion,
           franja_horaria,
@@ -246,7 +253,27 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
 
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Proveedor / Cuenta
+              Proveedor
+            </label>
+            <select
+              value={form.proveedor}
+              onChange={(e) => setForm({ ...form, proveedor: e.target.value })}
+              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+            >
+              <option value="">Sin proveedor</option>
+              {proveedores
+                .filter((p) => p.activo !== false)
+                .map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.nombre}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+              Cuenta
             </label>
             <select
               value={form.cuentaCliente}
@@ -263,6 +290,16 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
               ))}
             </select>
           </div>
+
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.vip}
+              onChange={(e) => setForm({ ...form, vip: e.target.checked })}
+              className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+            />
+            VIP
+          </label>
 
           <AddressAutocomplete
             label="Dirección"

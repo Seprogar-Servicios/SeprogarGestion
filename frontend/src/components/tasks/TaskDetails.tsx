@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTaskById, clearCurrentTask, deleteTask, updateTask } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
+import { fetchProveedores } from '../../store/slices/proveedoresSlice';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import { format } from 'date-fns';
@@ -35,12 +36,22 @@ import AddressAutocomplete from '../common/AddressAutocomplete';
 import type { RootState } from '../../store';
 import { isAdminRole } from '../../utils/roles';
 import { formatTaskToMapsUrl } from '../../utils/mapsUtils';
+import { proveedorNombreOf } from '../../utils/whatsappTasks';
 
 const especialidadIdOf = (esp: unknown): string => {
   if (!esp) return '';
   if (typeof esp === 'string') return esp;
   if (typeof esp === 'object' && esp && '_id' in esp) {
     return String((esp as { _id: string })._id || '');
+  }
+  return '';
+};
+
+const proveedorIdOf = (p: unknown): string => {
+  if (!p) return '';
+  if (typeof p === 'string') return p;
+  if (typeof p === 'object' && p && '_id' in p) {
+    return String((p as { _id: string })._id || '');
   }
   return '';
 };
@@ -70,6 +81,7 @@ const TaskDetails: React.FC = () => {
   const error = useAppSelector((state: RootState) => state.tasks.error);
   const users = useAppSelector((state: RootState) => state.users.users);
   const especialidades = useAppSelector((state: RootState) => state.especialidades.especialidades);
+  const proveedores = useAppSelector((state: RootState) => state.proveedores.proveedores);
   const user = useAppSelector((state: RootState) => state.auth.user);
   const [showEditModal, setShowEditModal] = useState(false);
   const [activeTab, setActiveTab] = useState('detalles');
@@ -84,6 +96,8 @@ const TaskDetails: React.FC = () => {
     direccionExtra: '',
     entreCalles: '',
     especialidad: '',
+    proveedor: '',
+    vip: false,
     fechaEjecucion: '',
     horaInicio: '',
     horaFin: '',
@@ -100,6 +114,7 @@ const TaskDetails: React.FC = () => {
     }
     dispatch(fetchUsers());
     dispatch(fetchEspecialidades());
+    dispatch(fetchProveedores());
     
     return () => {
       dispatch(clearCurrentTask());
@@ -135,6 +150,8 @@ const TaskDetails: React.FC = () => {
         direccionExtra: currentTask.direccionExtra || '',
         entreCalles: currentTask.entreCalles || '',
         especialidad: especialidadIdOf(currentTask.especialidad),
+        proveedor: proveedorIdOf(currentTask.proveedor),
+        vip: Boolean(currentTask.vip),
         fechaEjecucion,
         horaInicio: currentTask.franja_horaria?.split('-')[0]?.trim() || '',
         horaFin: currentTask.franja_horaria?.split('-')[1]?.trim() || '',
@@ -183,6 +200,8 @@ const TaskDetails: React.FC = () => {
         direccionExtra: formData.direccionExtra,
         entreCalles: formData.entreCalles,
         especialidad: formData.especialidad || null,
+        proveedor: formData.proveedor || null,
+        vip: Boolean(formData.vip),
         numeroTitular: formData.numeroTitular,
         fechaEjecucion: formData.fechaEjecucion,
         franja_horaria: franjaHoraria,
@@ -453,11 +472,21 @@ const TaskDetails: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {currentTask.titulo || 'Tarea sin título'}
             </h2>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               {renderStatusBadge(currentTask.estado)}
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Tarea #{currentTask.numero || 'N/A'}
+              <span className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                {currentTask.vip ? (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                    VIP
+                  </span>
+                ) : null}
+                <span>#{currentTask.numero || 'N/A'}</span>
               </span>
+              {proveedorNombreOf(currentTask.proveedor) ? (
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  · {proveedorNombreOf(currentTask.proveedor)}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -817,8 +846,29 @@ const TaskDetails: React.FC = () => {
 
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Proveedor / Cuenta{' '}
-                      <span className="text-slate-400 font-normal">(opcional)</span>
+                      Proveedor <span className="text-slate-400 font-normal">(opcional)</span>
+                    </label>
+                    <select
+                      value={formData.proveedor || ''}
+                      onChange={(e) =>
+                        setFormData({ ...formData, proveedor: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Sin proveedor</option>
+                      {proveedores
+                        .filter((p) => p.activo !== false || p._id === formData.proveedor)
+                        .map((p) => (
+                          <option key={p._id} value={p._id}>
+                            {p.nombre}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Cuenta <span className="text-slate-400 font-normal">(opcional)</span>
                     </label>
                     <select
                       value={formData.cuentaCliente || ''}
@@ -836,6 +886,16 @@ const TaskDetails: React.FC = () => {
                       <option value="Otro">Otro</option>
                     </select>
                   </div>
+
+                  <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formData.vip)}
+                      onChange={(e) => setFormData({ ...formData, vip: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    VIP
+                  </label>
                   
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

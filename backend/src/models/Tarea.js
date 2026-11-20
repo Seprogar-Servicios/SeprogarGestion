@@ -63,6 +63,10 @@ const tareaSchema = new mongoose.Schema({
   entreCalles: { type: String, default: '' },
   /** Especialidad requerida para la tarea (opcional; no rompe históricas). */
   especialidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Especialidad', default: null },
+  /** Proveedor del catálogo ABM (opcional; no rompe históricas). */
+  proveedor: { type: mongoose.Schema.Types.ObjectId, ref: 'Proveedor', default: null },
+  /** Marca VIP (opcional; default false — no afecta tareas existentes). */
+  vip: { type: Boolean, default: false },
   // Ubicación en mapa (coords de la dirección principal)
   ubicacionMapa: {
     lat: { type: Number },

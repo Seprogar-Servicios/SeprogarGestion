@@ -57,6 +57,23 @@ export const formatFechaEjecucionWa = (
 
 const digitsPhone = (phone: string) => phone.replace(/\D/g, '');
 
+export const proveedorNombreOf = (
+  proveedor: Task['proveedor']
+): string => {
+  if (!proveedor) return '';
+  if (typeof proveedor === 'string') return '';
+  return proveedor.nombre || '';
+};
+
+/**
+ * Número con VIP siempre a la izquierda (lista / WhatsApp / UI).
+ * Ej: "VIP 12345" o "12345"
+ */
+export const formatTaskNumeroWhatsApp = (task: Task): string => {
+  const num = String(task.numero || '').trim();
+  return task.vip ? `VIP ${num}` : num;
+};
+
 /** Bloque de ubicación prolijo para WhatsApp (dirección + extras + Maps). */
 export const formatTaskLocationWhatsApp = (task: Task): string => {
   let block = '';
@@ -76,7 +93,9 @@ export const buildAdminTasksWhatsAppMessage = (tasks: Task[]): string => {
   ordered.forEach((task, index) => {
     message += `*TAREA ${index + 1}: ${String(task.titulo || '').toUpperCase()}*\n`;
     message += `--------------------------------\n`;
-    message += `• *Numero:* ${task.numero}\n`;
+    message += `• *Numero:* ${formatTaskNumeroWhatsApp(task)}\n`;
+    const proveedor = proveedorNombreOf(task.proveedor);
+    if (proveedor) message += `• *Proveedor:* ${proveedor}\n`;
     if (task.descripcion) message += `• *Descripcion:* ${task.descripcion}\n`;
     if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
     if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
@@ -108,6 +127,9 @@ export const buildUserTasksWhatsAppMessage = (
 
   ordered.forEach((task, index) => {
     message += `*Tarea ${index + 1}: ${task.titulo}*\n`;
+    message += `• *Numero:* ${formatTaskNumeroWhatsApp(task)}\n`;
+    const proveedor = proveedorNombreOf(task.proveedor);
+    if (proveedor) message += `• *Proveedor:* ${proveedor}\n`;
     if (task.descripcion) message += `• *Descripción:* ${task.descripcion}\n`;
     if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
     if (task.numeroTitular) message += `• *Teléfono:* ${task.numeroTitular}\n`;

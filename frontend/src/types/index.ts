@@ -61,6 +61,10 @@ export interface Task {
   entreCalles?: string;
   /** Especialidad requerida para la tarea */
   especialidad?: string | { _id: string; nombre: string } | null;
+  /** Proveedor del catálogo ABM (opcional) */
+  proveedor?: string | { _id: string; nombre: string } | null;
+  /** Cliente / tarea VIP */
+  vip?: boolean;
   origen?: 'manual' | 'whatsapp' | string;
   observaciones?: Observation[];
   ubicacionMapa?: {
@@ -128,6 +132,15 @@ export interface Especialidad {
   _id: string;
   nombre: string;
   descripcion?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Proveedor {
+  _id: string;
+  nombre: string;
+  descripcion?: string;
+  activo?: boolean;
   createdAt: string;
   updatedAt: string;
 }

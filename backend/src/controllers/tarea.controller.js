@@ -128,6 +128,12 @@ exports.createTarea = async (req, res) => {
     if (datosAjustados.especialidad === '' || datosAjustados.especialidad == null) {
       datosAjustados.especialidad = null;
     }
+    if (datosAjustados.proveedor === '' || datosAjustados.proveedor == null) {
+      datosAjustados.proveedor = null;
+    }
+    if (typeof datosAjustados.vip !== 'boolean') {
+      datosAjustados.vip = Boolean(datosAjustados.vip);
+    }
 
     // Ubicación: coords del autocomplete o geocode de la dirección
     const incomingMap = datosAjustados.ubicacionMapa;
@@ -246,7 +252,7 @@ exports.createTarea = async (req, res) => {
 
 /** Campos de listado (sin materiales / mensaje WhatsApp / blobs pesados). */
 const TAREA_LIST_SELECT =
-  'numero titulo descripcion estado tecnicos fechaCreacion fechaModificacion fechaEjecucion franja_horaria creadoPor cliente cuentaCliente fechaCompletado numeroTitular direccion direccionExtra entreCalles especialidad ubicacionMapa origen';
+  'numero titulo descripcion estado tecnicos fechaCreacion fechaModificacion fechaEjecucion franja_horaria creadoPor cliente cuentaCliente fechaCompletado numeroTitular direccion direccionExtra entreCalles especialidad proveedor vip ubicacionMapa origen';
 
 // Listar tareas con filtros (usuario, estado, fecha, cliente, q)
 exports.getTareas = async (req, res) => {
@@ -318,6 +324,7 @@ exports.getTareas = async (req, res) => {
         populate: { path: 'especialidad', select: 'nombre' },
       })
       .populate('especialidad', 'nombre')
+      .populate('proveedor', 'nombre')
       .populate('creadoPor', 'nombre email')
       .sort({ fechaEjecucion: 1 })
       .lean();
@@ -389,6 +396,7 @@ exports.getTareaById = async (req, res) => {
         populate: { path: 'especialidad', select: 'nombre' },
       })
       .populate('especialidad', 'nombre')
+      .populate('proveedor', 'nombre')
       .populate('creadoPor', 'nombre email');
     if (!tarea) return res.status(404).json({ message: 'Tarea no encontrada' });
 
@@ -468,6 +476,12 @@ exports.updateTarea = async (req, res) => {
       (datosActualizados.especialidad === '' || datosActualizados.especialidad == null)
     ) {
       datosActualizados.especialidad = null;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(datosActualizados, 'proveedor') &&
+      (datosActualizados.proveedor === '' || datosActualizados.proveedor == null)
+    ) {
+      datosActualizados.proveedor = null;
     }
 
     // Si el front mandó coords del autocomplete, persistirlas
@@ -596,6 +610,7 @@ exports.updateTarea = async (req, res) => {
     const populated = await Tarea.findById(tarea._id)
       .populate('tecnicos', 'nombre telefono direccion')
       .populate('especialidad', 'nombre')
+      .populate('proveedor', 'nombre')
       .populate('creadoPor', 'nombre');
 
     res.json({ success: true, data: populated, message: 'Tarea actualizada' });
@@ -646,6 +661,7 @@ exports.getTareaByNumero = async (req, res) => {
 
     const tarea = await Tarea.findOne({ numero })
       .populate('especialidad', 'nombre')
+      .populate('proveedor', 'nombre')
       .populate('creadoPor', 'nombre email')
       .populate({
         path: 'tecnicos',
@@ -1092,7 +1108,7 @@ exports.getTareasCalendario = async (req, res) => {
     
     const tareas = await Tarea.find(filtro)
       .select(
-        'titulo estado fechaEjecucion fechaCompletado franja_horaria tecnicos cliente cuentaCliente descripcion numero direccion direccionExtra entreCalles especialidad ubicacionMapa numeroTitular origen'
+        'titulo estado fechaEjecucion fechaCompletado franja_horaria tecnicos cliente cuentaCliente descripcion numero direccion direccionExtra entreCalles especialidad proveedor vip ubicacionMapa numeroTitular origen'
       )
       .populate({
         path: 'tecnicos',
@@ -1100,6 +1116,7 @@ exports.getTareasCalendario = async (req, res) => {
         populate: { path: 'especialidad', select: 'nombre' },
       })
       .populate('especialidad', 'nombre')
+      .populate('proveedor', 'nombre')
       .populate('creadoPor', 'nombre')
       .sort({ fechaEjecucion: 1 })
       .lean();

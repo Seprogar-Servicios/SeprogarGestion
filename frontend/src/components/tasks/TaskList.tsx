@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTasks, createTask, updateTask, deleteTask, deleteMultipleTasks, setFilters } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
+import { fetchProveedores } from '../../store/slices/proveedoresSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
 import TasksFilter from '../filters/TasksFilter';
 import TaskTextExportModal from './TaskTextExportModal';
@@ -18,7 +19,11 @@ import AddressAutocomplete from '../common/AddressAutocomplete';
 import { isAdminRole } from '../../utils/roles';
 import { CUENTAS_CLIENTE } from '../../utils/cuentaCliente';
 import { compareTasksBySchedule, parseFranjaHoraria } from '../../utils/franjaHoraria';
-import { formatTaskLocationWhatsApp } from '../../utils/whatsappTasks';
+import {
+  formatTaskLocationWhatsApp,
+  formatTaskNumeroWhatsApp,
+  proveedorNombreOf,
+} from '../../utils/whatsappTasks';
 import type { CuentaCliente } from '../../types';
 import type { RecommendCreatePrefill } from '../../types/recommendPrefill';
 
@@ -26,6 +31,12 @@ const especialidadIdOf = (esp: Task['especialidad']) => {
   if (!esp) return '';
   if (typeof esp === 'string') return esp;
   return esp._id || '';
+};
+
+const proveedorIdOf = (p: Task['proveedor']) => {
+  if (!p) return '';
+  if (typeof p === 'string') return p;
+  return p._id || '';
 };
 
 // Las clases de botones se definen directamente en los componentes
@@ -37,6 +48,7 @@ const TaskList: React.FC = () => {
   const { tasks, loading, filters } = useAppSelector((state) => state.tasks);
   const { users } = useAppSelector((state) => state.users);
   const { especialidades } = useAppSelector((state) => state.especialidades);
+  const { proveedores } = useAppSelector((state) => state.proveedores);
   const { user } = useAppSelector((state) => state.auth);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -138,6 +150,8 @@ const TaskList: React.FC = () => {
     direccionExtra: '',
     entreCalles: '',
     especialidad: '',
+    proveedor: '',
+    vip: false,
     fechaEjecucion: '',
     horaInicio: '',
     horaFin: '',
@@ -178,6 +192,7 @@ const TaskList: React.FC = () => {
     if (isAdminRole(user)) {
       dispatch(fetchUsers());
       dispatch(fetchEspecialidades());
+      dispatch(fetchProveedores());
     }
   }, [dispatch, user?._id, user?.rol, initialFiltersLoaded]);
 
@@ -219,6 +234,8 @@ const TaskList: React.FC = () => {
       direccionExtra: '',
       entreCalles: '',
       especialidad: prefill.especialidadId || '',
+      proveedor: '',
+      vip: false,
       fechaEjecucion: prefill.fechaEjecucion || '',
       horaInicio,
       horaFin,
@@ -406,6 +423,8 @@ const TaskList: React.FC = () => {
       direccionExtra: '',
       entreCalles: '',
       especialidad: '',
+      proveedor: '',
+      vip: false,
       fechaEjecucion: '',
       horaInicio: '',
       horaFin: '',
@@ -434,6 +453,8 @@ const TaskList: React.FC = () => {
       direccionExtra: task.direccionExtra || '',
       entreCalles: task.entreCalles || '',
       especialidad: especialidadIdOf(task.especialidad),
+      proveedor: proveedorIdOf(task.proveedor),
+      vip: Boolean(task.vip),
       fechaEjecucion: task.fechaEjecucion ? new Date(task.fechaEjecucion).toISOString().split('T')[0] : '',
       horaInicio,
       horaFin,
@@ -686,7 +707,9 @@ const TaskList: React.FC = () => {
     selectedTasksForTecnico.forEach((task, index) => {
       message += `*TAREA ${index + 1}: ${task.titulo.toUpperCase()}*\n`;
       message += `--------------------------------\n`;
-      message += `• *Numero:* ${task.numero}\n`;
+      message += `• *Numero:* ${formatTaskNumeroWhatsApp(task)}\n`;
+      const proveedorWa = proveedorNombreOf(task.proveedor);
+      if (proveedorWa) message += `• *Proveedor:* ${proveedorWa}\n`;
       if (task.descripcion) message += `• *Descripcion:* ${task.descripcion}\n`;
       if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
       if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
@@ -807,6 +830,9 @@ const TaskList: React.FC = () => {
     
     userSelectedTasks.forEach((task, index) => {
       message += `*Tarea ${index + 1}: ${task.titulo}*\n`;
+      message += `• *Numero:* ${formatTaskNumeroWhatsApp(task)}\n`;
+      const proveedorWa = proveedorNombreOf(task.proveedor);
+      if (proveedorWa) message += `• *Proveedor:* ${proveedorWa}\n`;
       if (task.descripcion) {
         message += `• *Descripción:* ${task.descripcion}\n`;
       }
@@ -1206,6 +1232,11 @@ const TaskList: React.FC = () => {
                                         )}
                                         <span className="min-w-0">
                                           <span className="block text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                                            {task.vip ? (
+                                              <span className="text-amber-700 dark:text-amber-300 mr-1">
+                                                VIP
+                                              </span>
+                                            ) : null}
                                             #{task.numero} · {task.titulo}
                                           </span>
                                           <span className="block text-[11px] text-slate-500 truncate">
@@ -1404,8 +1435,15 @@ const TaskList: React.FC = () => {
                         <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
                           {task.titulo}
                         </h3>
-                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 shadow-sm whitespace-nowrap">
-                          #{task.numero}
+                        <span className="inline-flex items-center gap-1.5">
+                          {task.vip ? (
+                            <span className="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 shadow-sm whitespace-nowrap border border-amber-300 dark:border-amber-700">
+                              VIP
+                            </span>
+                          ) : null}
+                          <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 shadow-sm whitespace-nowrap">
+                            #{task.numero}
+                          </span>
                         </span>
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm whitespace-nowrap ${
@@ -1663,7 +1701,37 @@ const TaskList: React.FC = () => {
 
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Proveedor / Cuenta
+                    Proveedor
+                  </label>
+                  <div className="relative rounded-lg shadow-sm">
+                    <select
+                      value={formData.proveedor || ''}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          proveedor: e.target.value,
+                        })
+                      }
+                      className="block w-full pl-3 pr-10 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 appearance-none"
+                    >
+                      <option value="">Sin proveedor</option>
+                      {proveedores
+                        .filter((p) => p.activo !== false || p._id === formData.proveedor)
+                        .map((p) => (
+                          <option key={p._id} value={p._id}>
+                            {p.nombre}
+                          </option>
+                        ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Cuenta
                   </label>
                   <div className="relative rounded-lg shadow-sm">
                     <select
@@ -1687,6 +1755,19 @@ const TaskList: React.FC = () => {
                       <ChevronDown className="h-4 w-4 text-gray-400" />
                     </div>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <input
+                    id="task-vip"
+                    type="checkbox"
+                    checked={Boolean(formData.vip)}
+                    onChange={(e) => setFormData({ ...formData, vip: e.target.checked })}
+                    className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                  <label htmlFor="task-vip" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                    VIP
+                  </label>
                 </div>
 
                 <div className="space-y-1">
