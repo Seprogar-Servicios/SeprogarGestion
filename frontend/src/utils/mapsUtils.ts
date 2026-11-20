@@ -155,6 +155,27 @@ export const formatDireccionToMapsUrl = (direccion: string): string => {
   return `https://maps.google.com/?q=${encodedDireccion},Buenos+Aires`;
 };
 
+/** Link de Maps por coordenadas (más fiable si la dirección ya se geocodificó). */
+export const formatCoordsToMapsUrl = (lat: number, lng: number): string => {
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return '';
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+};
+
+type TaskLocationLike = {
+  direccion?: string | null;
+  ubicacionMapa?: { lat?: number | null; lng?: number | null } | null;
+};
+
+/** Prefiere coords guardadas; si no, arma link por texto de dirección. */
+export const formatTaskToMapsUrl = (task: TaskLocationLike): string => {
+  const lat = task.ubicacionMapa?.lat;
+  const lng = task.ubicacionMapa?.lng;
+  if (typeof lat === 'number' && typeof lng === 'number') {
+    return formatCoordsToMapsUrl(lat, lng);
+  }
+  return formatDireccionToMapsUrl(task.direccion || '');
+};
+
 /**
  * URL de Google Maps embebible en un iframe (sin API key).
  */

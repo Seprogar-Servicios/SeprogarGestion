@@ -3,6 +3,7 @@ import { useAppSelector } from '../../store';
 import type { Task, User } from '../../types';
 import { CheckSquare, Square, Send } from 'lucide-react';
 import { isAdminRole } from '../../utils/roles';
+import { formatTaskLocationWhatsApp } from '../../utils/whatsappTasks';
 
 interface WhatsAppMessageGeneratorProps {
   tasks: Task[];
@@ -99,7 +100,7 @@ const WhatsAppMessageGenerator: React.FC<WhatsAppMessageGeneratorProps> = ({ tas
       message += `${index + 1}. *${task.titulo}* (${task.numero})\n`;
       if (task.descripcion) message += `   ${task.descripcion}\n`;
       if (task.cliente) message += `   Cliente: ${task.cliente}\n`;
-      if (task.direccion) message += `   Dirección: ${task.direccion}\n`;
+      message += formatTaskLocationWhatsApp(task);
       if (task.fechaEjecucion) message += `   Fecha: ${new Date(task.fechaEjecucion).toLocaleDateString()}\n`;
       message += '\n';
     });

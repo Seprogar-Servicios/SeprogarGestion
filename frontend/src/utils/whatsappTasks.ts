@@ -1,5 +1,6 @@
 import type { Task } from '../types';
 import { compareTasksBySchedule, toFechaEjecucionYmd } from './franjaHoraria';
+import { formatTaskToMapsUrl } from './mapsUtils';
 
 /** Límite práctico de URL wa.me + texto (varía por dispositivo). */
 const WA_URL_SAFE_LEN = 1800;
@@ -56,6 +57,17 @@ export const formatFechaEjecucionWa = (
 
 const digitsPhone = (phone: string) => phone.replace(/\D/g, '');
 
+/** Bloque de ubicación prolijo para WhatsApp (dirección + extras + Maps). */
+export const formatTaskLocationWhatsApp = (task: Task): string => {
+  let block = '';
+  if (task.direccion) block += `• *Dirección:* ${task.direccion}\n`;
+  if (task.direccionExtra) block += `• *Datos extras:* ${task.direccionExtra}\n`;
+  if (task.entreCalles) block += `• *Entre calles:* ${task.entreCalles}\n`;
+  const mapsUrl = formatTaskToMapsUrl(task);
+  if (mapsUrl) block += `• *Maps:* ${mapsUrl}\n`;
+  return block;
+};
+
 /** Mensaje admin → técnico (mismo formato que usan hoy). */
 export const buildAdminTasksWhatsAppMessage = (tasks: Task[]): string => {
   const ordered = [...tasks].sort(compareTasksBySchedule);
@@ -68,7 +80,7 @@ export const buildAdminTasksWhatsAppMessage = (tasks: Task[]): string => {
     if (task.descripcion) message += `• *Descripcion:* ${task.descripcion}\n`;
     if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
     if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
-    if (task.direccion) message += `• *Direccion:* ${task.direccion}\n`;
+    message += formatTaskLocationWhatsApp(task);
 
     if (task.fechaEjecucion) {
       message += `• *Fecha de Ejecución:* ${formatFechaEjecucionWa(task.fechaEjecucion, 'long')}`;
@@ -99,7 +111,7 @@ export const buildUserTasksWhatsAppMessage = (
     if (task.descripcion) message += `• *Descripción:* ${task.descripcion}\n`;
     if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
     if (task.numeroTitular) message += `• *Teléfono:* ${task.numeroTitular}\n`;
-    if (task.direccion) message += `• *Dirección:* ${task.direccion}\n`;
+    message += formatTaskLocationWhatsApp(task);
 
     if (task.fechaEjecucion) {
       message += `• *Fecha de Ejecución:* ${formatFechaEjecucionWa(task.fechaEjecucion, 'short')}`;

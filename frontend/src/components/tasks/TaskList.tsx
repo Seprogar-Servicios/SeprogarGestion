@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTasks, createTask, updateTask, deleteTask, deleteMultipleTasks, setFilters } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
+import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
 import TasksFilter from '../filters/TasksFilter';
 import TaskTextExportModal from './TaskTextExportModal';
-import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPin, CheckCircle, Hash, CheckSquare, Square, Send, Download, XCircle, Edit, Clock, ChevronDown, RefreshCw } from 'lucide-react';
+import { Plus, Search, Filter, X, Calendar, Trash2, FileText, User, Phone, MapPin, CheckCircle, Hash, CheckSquare, Square, Send, Download, XCircle, Edit, Clock, ChevronDown, RefreshCw, Briefcase } from 'lucide-react';
 import type { User as UserType } from '../../types';
 import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
@@ -17,7 +18,14 @@ import AddressAutocomplete from '../common/AddressAutocomplete';
 import { isAdminRole } from '../../utils/roles';
 import { CUENTAS_CLIENTE } from '../../utils/cuentaCliente';
 import { compareTasksBySchedule, parseFranjaHoraria } from '../../utils/franjaHoraria';
+import { formatTaskLocationWhatsApp } from '../../utils/whatsappTasks';
 import type { CuentaCliente } from '../../types';
+
+const especialidadIdOf = (esp: Task['especialidad']) => {
+  if (!esp) return '';
+  if (typeof esp === 'string') return esp;
+  return esp._id || '';
+};
 
 // Las clases de botones se definen directamente en los componentes
 
@@ -25,6 +33,7 @@ const TaskList: React.FC = () => {
   const dispatch = useAppDispatch();
   const { tasks, loading, filters } = useAppSelector((state) => state.tasks);
   const { users } = useAppSelector((state) => state.users);
+  const { especialidades } = useAppSelector((state) => state.especialidades);
   const { user } = useAppSelector((state) => state.auth);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -123,6 +132,9 @@ const TaskList: React.FC = () => {
     cuentaCliente: '' as '' | CuentaCliente,
     numeroTitular: '',
     direccion: '',
+    direccionExtra: '',
+    entreCalles: '',
+    especialidad: '',
     fechaEjecucion: '',
     horaInicio: '',
     horaFin: '',
@@ -162,6 +174,7 @@ const TaskList: React.FC = () => {
     // Load users if admin
     if (isAdminRole(user)) {
       dispatch(fetchUsers());
+      dispatch(fetchEspecialidades());
     }
   }, [dispatch, user?._id, user?.rol, initialFiltersLoaded]);
   
@@ -336,6 +349,9 @@ const TaskList: React.FC = () => {
       cuentaCliente: '',
       numeroTitular: '',
       direccion: '',
+      direccionExtra: '',
+      entreCalles: '',
+      especialidad: '',
       fechaEjecucion: '',
       horaInicio: '',
       horaFin: '',
@@ -361,6 +377,9 @@ const TaskList: React.FC = () => {
       cuentaCliente: (task.cuentaCliente as '' | CuentaCliente) || '',
       numeroTitular: task.numeroTitular || '',
       direccion: task.direccion || '',
+      direccionExtra: task.direccionExtra || '',
+      entreCalles: task.entreCalles || '',
+      especialidad: especialidadIdOf(task.especialidad),
       fechaEjecucion: task.fechaEjecucion ? new Date(task.fechaEjecucion).toISOString().split('T')[0] : '',
       horaInicio,
       horaFin,
@@ -617,12 +636,7 @@ const TaskList: React.FC = () => {
       if (task.descripcion) message += `• *Descripcion:* ${task.descripcion}\n`;
       if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
       if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
-      if (task.direccion) {
-        // Temporalmente comentado el link de Google Maps
-        // const mapsUrl = formatDireccionToMapsUrl(task.direccion);
-        message += `• *Direccion:* ${task.direccion}\n`;
-        // message += `  *Ver en Google Maps:* ${mapsUrl}\n`;
-      }
+      message += formatTaskLocationWhatsApp(task);
       // Siempre mostrar información sobre la fecha de ejecución
       if (task.fechaEjecucion) {
         // Obtener la fecha original
@@ -748,12 +762,7 @@ const TaskList: React.FC = () => {
       if (task.numeroTitular) {
         message += `• *Teléfono:* ${task.numeroTitular}\n`;
       }
-      if (task.direccion) {
-        // Temporalmente comentado el link de Google Maps
-        // const mapsUrl = formatDireccionToMapsUrl(task.direccion);
-        message += `• *Dirección:* ${task.direccion}\n`;
-        // message += `  🗺️ *Ver en Google Maps:* ${mapsUrl}\n`;
-      }
+      message += formatTaskLocationWhatsApp(task);
       
       if (task.fechaEjecucion) {
         // Obtener la fecha original
@@ -1666,6 +1675,54 @@ const TaskList: React.FC = () => {
                   }}
                   inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
                 />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Datos extras (piso, depto…)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.direccionExtra}
+                      onChange={(e) => setFormData({ ...formData, direccionExtra: e.target.value })}
+                      placeholder="Ej. Piso 2D, timbre B"
+                      className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Entre calles
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.entreCalles}
+                      onChange={(e) => setFormData({ ...formData, entreCalles: e.target.value })}
+                      placeholder="Ej. entre San Martín y Belgrano"
+                      className="block w-full px-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Especialidad de la tarea
+                  </label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <select
+                      value={formData.especialidad}
+                      onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })}
+                      className="block w-full pl-10 pr-3 py-3 border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Sin especialidad</option>
+                      {especialidades.map((esp) => (
+                        <option key={esp._id} value={esp._id}>
+                          {esp.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

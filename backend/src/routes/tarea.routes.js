@@ -13,6 +13,7 @@ router.get('/calendario', tareaCtrl.getTareasCalendario);
 router.get('/mapa-vivo', tareaCtrl.getMapaVivo);
 router.get('/mapa-dia', tareaCtrl.getMapaDia);
 router.post('/recomendar-tecnicos', tareaCtrl.recomendarTecnicos);
+router.get('/numero/:numero', tareaCtrl.getTareaByNumero);
 router.get('/:id', tareaCtrl.getTareaById);
 router.put('/:id', tareaCtrl.updateTarea);
 router.delete('/:id', tareaCtrl.deleteTarea);

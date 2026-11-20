@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { fetchTaskById, clearCurrentTask, deleteTask, updateTask } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
+import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import { showSuccess, showError } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import { format } from 'date-fns';
@@ -25,6 +26,7 @@ import {
   Eye,
   Package,
   DollarSign,
+  Briefcase,
 } from 'lucide-react';
 import ObservationsList from '../observations/ObservationsList';
 import TaskMaterials from './TaskMaterials';
@@ -32,6 +34,25 @@ import TaskLiquidacion from './TaskLiquidacion';
 import AddressAutocomplete from '../common/AddressAutocomplete';
 import type { RootState } from '../../store';
 import { isAdminRole } from '../../utils/roles';
+import { formatTaskToMapsUrl } from '../../utils/mapsUtils';
+
+const especialidadIdOf = (esp: unknown): string => {
+  if (!esp) return '';
+  if (typeof esp === 'string') return esp;
+  if (typeof esp === 'object' && esp && '_id' in esp) {
+    return String((esp as { _id: string })._id || '');
+  }
+  return '';
+};
+
+const especialidadNombreOf = (esp: unknown): string => {
+  if (!esp) return '';
+  if (typeof esp === 'string') return esp;
+  if (typeof esp === 'object' && esp && 'nombre' in esp) {
+    return String((esp as { nombre?: string }).nombre || '');
+  }
+  return '';
+};
 
 type RouteParams = {
   id: string;
@@ -48,6 +69,7 @@ const TaskDetails: React.FC = () => {
   const loading = useAppSelector((state: RootState) => state.tasks.loading);
   const error = useAppSelector((state: RootState) => state.tasks.error);
   const users = useAppSelector((state: RootState) => state.users.users);
+  const especialidades = useAppSelector((state: RootState) => state.especialidades.especialidades);
   const user = useAppSelector((state: RootState) => state.auth.user);
   const [showEditModal, setShowEditModal] = useState(false);
   const [activeTab, setActiveTab] = useState('detalles');
@@ -59,6 +81,9 @@ const TaskDetails: React.FC = () => {
     cuentaCliente: '' as '' | 'IKE' | 'VAITTY' | 'MDO' | 'Particular' | 'Consorcio' | 'Otro',
     numeroTitular: '',
     direccion: '',
+    direccionExtra: '',
+    entreCalles: '',
+    especialidad: '',
     fechaEjecucion: '',
     horaInicio: '',
     horaFin: '',
@@ -74,6 +99,7 @@ const TaskDetails: React.FC = () => {
       dispatch(fetchTaskById(id));
     }
     dispatch(fetchUsers());
+    dispatch(fetchEspecialidades());
     
     return () => {
       dispatch(clearCurrentTask());
@@ -106,6 +132,9 @@ const TaskDetails: React.FC = () => {
         cuentaCliente: currentTask.cuentaCliente || '',
         numeroTitular: currentTask.numeroTitular || '',
         direccion: currentTask.direccion || '',
+        direccionExtra: currentTask.direccionExtra || '',
+        entreCalles: currentTask.entreCalles || '',
+        especialidad: especialidadIdOf(currentTask.especialidad),
         fechaEjecucion,
         horaInicio: currentTask.franja_horaria?.split('-')[0]?.trim() || '',
         horaFin: currentTask.franja_horaria?.split('-')[1]?.trim() || '',
@@ -151,6 +180,9 @@ const TaskDetails: React.FC = () => {
         ...(formData.cuentaCliente ? { cuentaCliente: formData.cuentaCliente } : { cuentaCliente: '' }),
         descripcion: formData.descripcion,
         direccion: formData.direccion,
+        direccionExtra: formData.direccionExtra,
+        entreCalles: formData.entreCalles,
+        especialidad: formData.especialidad || null,
         numeroTitular: formData.numeroTitular,
         fechaEjecucion: formData.fechaEjecucion,
         franja_horaria: franjaHoraria,
@@ -553,8 +585,46 @@ const TaskDetails: React.FC = () => {
                           <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
                             {currentTask.direccion || 'Sin dirección'}
                           </dd>
+                          {currentTask.direccionExtra && (
+                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                              {currentTask.direccionExtra}
+                            </p>
+                          )}
+                          {currentTask.entreCalles && (
+                            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                              Entre calles: {currentTask.entreCalles}
+                            </p>
+                          )}
+                          {formatTaskToMapsUrl(currentTask) && (
+                            <a
+                              href={formatTaskToMapsUrl(currentTask)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block mt-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              Abrir en Google Maps
+                            </a>
+                          )}
                         </div>
                       </div>
+
+                      {especialidadNombreOf(currentTask.especialidad) && (
+                        <div className="px-6 py-4 flex items-center transition-all duration-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/10">
+                          <dt className="w-10 flex-shrink-0">
+                            <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                              <Briefcase className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                          </dt>
+                          <div className="ml-4 flex-1">
+                            <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                              Especialidad
+                            </dt>
+                            <dd className="mt-1 text-base font-medium text-gray-900 dark:text-white">
+                              {especialidadNombreOf(currentTask.especialidad)}
+                            </dd>
+                          </div>
+                        </div>
+                      )}
                     </dl>
                   </div>
                 </div>
@@ -854,6 +924,50 @@ const TaskDetails: React.FC = () => {
                         })
                       }
                     />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Datos extras (piso, depto…)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.direccionExtra}
+                      onChange={(e) => setFormData({ ...formData, direccionExtra: e.target.value })}
+                      placeholder="Ej. Piso 2D, timbre B"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Entre calles
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.entreCalles}
+                      onChange={(e) => setFormData({ ...formData, entreCalles: e.target.value })}
+                      placeholder="Ej. entre San Martín y Belgrano"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                    />
+                  </div>
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Especialidad de la tarea
+                    </label>
+                    <select
+                      value={formData.especialidad}
+                      onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2"
+                    >
+                      <option value="">Sin especialidad</option>
+                      {especialidades.map((esp) => (
+                        <option key={esp._id} value={esp._id}>
+                          {esp.nombre}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="space-y-1 sm:col-span-2">

@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 import type { Task, User as AppUser } from '../../types';
 import {
-  formatDireccionToMapsUrl,
   formatDireccionToMapsEmbedUrl,
+  formatTaskToMapsUrl,
 } from '../../utils/mapsUtils';
 import { parseFranjaHoraria } from '../../utils/franjaHoraria';
 
@@ -63,8 +63,12 @@ const tecnicoNombre = (t: AppUser | string) => {
 
 const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) => {
   const navigate = useNavigate();
-  const mapsUrl = task.direccion ? formatDireccionToMapsUrl(task.direccion) : '';
-  const embedUrl = task.direccion ? formatDireccionToMapsEmbedUrl(task.direccion) : '';
+  const mapsUrl = formatTaskToMapsUrl(task);
+  const embedUrl = task.direccion
+    ? formatDireccionToMapsEmbedUrl(task.direccion)
+    : mapsUrl
+      ? `${mapsUrl}&output=embed`
+      : '';
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -161,11 +165,21 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) =>
           </div>
 
           <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
-              <MapPin className="h-4 w-4 text-red-500" />
-              <p className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                {task.direccion || 'Sin dirección cargada'}
-              </p>
+            <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 space-y-0.5">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-red-500 shrink-0" />
+                <p className="text-sm text-gray-800 dark:text-gray-200 truncate">
+                  {task.direccion || 'Sin dirección cargada'}
+                </p>
+              </div>
+              {task.direccionExtra && (
+                <p className="pl-6 text-xs text-gray-600 dark:text-gray-300">{task.direccionExtra}</p>
+              )}
+              {task.entreCalles && (
+                <p className="pl-6 text-xs text-gray-500 dark:text-gray-400">
+                  Entre calles: {task.entreCalles}
+                </p>
+              )}
             </div>
             {embedUrl ? (
               <iframe

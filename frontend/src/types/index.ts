@@ -55,6 +55,12 @@ export interface Task {
   fechaCompletado?: string | null;
   numeroTitular?: string;
   direccion?: string;
+  /** Piso, depto, timbre, etc. (no se geocodifica) */
+  direccionExtra?: string;
+  /** Referencia entre calles */
+  entreCalles?: string;
+  /** Especialidad requerida para la tarea */
+  especialidad?: string | { _id: string; nombre: string } | null;
   origen?: 'manual' | 'whatsapp' | string;
   observaciones?: Observation[];
   ubicacionMapa?: {

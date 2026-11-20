@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { X, Calendar, Clock, User, Hash } from 'lucide-react';
+import { X, Calendar, Clock, User, Hash, Briefcase } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { createTask, fetchCalendarTasks } from '../../store/slices/tasksSlice';
 import { fetchUsers } from '../../store/slices/usersSlice';
+import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AddressAutocomplete from '../common/AddressAutocomplete';
@@ -31,6 +32,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
 }) => {
   const dispatch = useAppDispatch();
   const { users } = useAppSelector((s) => s.users);
+  const { especialidades } = useAppSelector((s) => s.especialidades);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     numero: '',
@@ -38,6 +40,9 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
     cliente: '',
     cuentaCliente: '' as '' | CuentaCliente,
     direccion: '',
+    direccionExtra: '',
+    entreCalles: '',
+    especialidad: '',
     descripcion: '',
     fechaEjecucion: defaults.fechaEjecucion,
     horaInicio: defaults.horaInicio || '09:00',
@@ -49,6 +54,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
 
   useEffect(() => {
     dispatch(fetchUsers());
+    dispatch(fetchEspecialidades());
   }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +77,9 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           cliente: form.cliente.trim(),
           ...(form.cuentaCliente ? { cuentaCliente: form.cuentaCliente } : {}),
           direccion: form.direccion.trim(),
+          direccionExtra: form.direccionExtra.trim(),
+          entreCalles: form.entreCalles.trim(),
+          ...(form.especialidad ? { especialidad: form.especialidad } : {}),
           descripcion: form.descripcion.trim(),
           fechaEjecucion: form.fechaEjecucion,
           franja_horaria,
@@ -267,6 +276,54 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
               setUbicacionCoords({ lat: s.lat, lng: s.lng });
             }}
           />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                Datos extras
+              </label>
+              <input
+                type="text"
+                value={form.direccionExtra}
+                onChange={(e) => setForm({ ...form, direccionExtra: e.target.value })}
+                placeholder="Piso 2D, timbre…"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+                Entre calles
+              </label>
+              <input
+                type="text"
+                value={form.entreCalles}
+                onChange={(e) => setForm({ ...form, entreCalles: e.target.value })}
+                placeholder="Entre X y Y"
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+              Especialidad
+            </label>
+            <div className="relative">
+              <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <select
+                value={form.especialidad}
+                onChange={(e) => setForm({ ...form, especialidad: e.target.value })}
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
+              >
+                <option value="">Sin especialidad</option>
+                {especialidades.map((esp) => (
+                  <option key={esp._id} value={esp._id}>
+                    {esp.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">

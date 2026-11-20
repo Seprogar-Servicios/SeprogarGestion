@@ -57,7 +57,13 @@ const tareaSchema = new mongoose.Schema({
   fechaCompletado: { type: Date, default: null },
   numeroTitular: { type: String, default: '' },
   direccion: { type: String, default: '' },
-  // Ubicación en mapa mientras la tarea está "en progreso"
+  /** Datos de acceso / piso / depto (no se geocodifica). Opcional. */
+  direccionExtra: { type: String, default: '' },
+  /** Referencia entre calles. Opcional. */
+  entreCalles: { type: String, default: '' },
+  /** Especialidad requerida para la tarea (opcional; no rompe históricas). */
+  especialidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Especialidad', default: null },
+  // Ubicación en mapa (coords de la dirección principal)
   ubicacionMapa: {
     lat: { type: Number },
     lng: { type: Number },

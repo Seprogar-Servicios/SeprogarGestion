@@ -119,6 +119,15 @@ exports.createTarea = async (req, res) => {
     if (datosAjustados.direccion) {
       datosAjustados.direccion = normalizeAddress(datosAjustados.direccion);
     }
+    if (typeof datosAjustados.direccionExtra === 'string') {
+      datosAjustados.direccionExtra = datosAjustados.direccionExtra.trim();
+    }
+    if (typeof datosAjustados.entreCalles === 'string') {
+      datosAjustados.entreCalles = datosAjustados.entreCalles.trim();
+    }
+    if (datosAjustados.especialidad === '' || datosAjustados.especialidad == null) {
+      datosAjustados.especialidad = null;
+    }
 
     // Ubicación: coords del autocomplete o geocode de la dirección
     const incomingMap = datosAjustados.ubicacionMapa;
@@ -290,6 +299,7 @@ exports.getTareas = async (req, res) => {
         select: 'nombre email telefono color especialidad porcentajeTecnico localidad',
         populate: { path: 'especialidad', select: 'nombre' },
       })
+      .populate('especialidad', 'nombre')
       .populate('creadoPor', 'nombre email')
       .sort({ fechaEjecucion: 1 });
 
@@ -315,6 +325,7 @@ exports.getTareaById = async (req, res) => {
         select: 'nombre email telefono color especialidad porcentajeTecnico localidad',
         populate: { path: 'especialidad', select: 'nombre' },
       })
+      .populate('especialidad', 'nombre')
       .populate('creadoPor', 'nombre email');
     if (!tarea) return res.status(404).json({ message: 'Tarea no encontrada' });
 
@@ -372,6 +383,9 @@ exports.updateTarea = async (req, res) => {
         cliente: tarea.cliente,
         numeroTitular: tarea.numeroTitular,
         direccion: tarea.direccion,
+        direccionExtra: tarea.direccionExtra,
+        entreCalles: tarea.entreCalles,
+        especialidad: tarea.especialidad,
         origen: tarea.origen,
         ...(req.body.ubicacionMapa ? { ubicacionMapa: req.body.ubicacionMapa } : {}),
       };
@@ -379,6 +393,18 @@ exports.updateTarea = async (req, res) => {
 
     if (datosActualizados.direccion) {
       datosActualizados.direccion = normalizeAddress(datosActualizados.direccion);
+    }
+    if (typeof datosActualizados.direccionExtra === 'string') {
+      datosActualizados.direccionExtra = datosActualizados.direccionExtra.trim();
+    }
+    if (typeof datosActualizados.entreCalles === 'string') {
+      datosActualizados.entreCalles = datosActualizados.entreCalles.trim();
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(datosActualizados, 'especialidad') &&
+      (datosActualizados.especialidad === '' || datosActualizados.especialidad == null)
+    ) {
+      datosActualizados.especialidad = null;
     }
 
     // Si el front mandó coords del autocomplete, persistirlas
@@ -518,8 +544,41 @@ const franjaStartMinutes = (franja) => {
 };
 
 /**
- * Recomendación de técnico (pantalla de prueba).
- * Body/query: direccion, fecha, horaInicio, horaFin (HH:mm), lat/lng opcionales.
+ * Buscar tarea por número exacto (recomendación / operación).
+ */
+exports.getTareaByNumero = async (req, res) => {
+  try {
+    const numero = String(req.params.numero || '').trim();
+    if (!numero) {
+      return res.status(400).json({ success: false, message: 'Número requerido' });
+    }
+
+    const tarea = await Tarea.findOne({ numero })
+      .populate('especialidad', 'nombre')
+      .populate({
+        path: 'tecnicos',
+        select: 'nombre telefono color especialidad localidad',
+        populate: { path: 'especialidad', select: 'nombre' },
+      })
+      .lean();
+
+    if (!tarea) {
+      return res.status(404).json({ success: false, message: 'Tarea no encontrada' });
+    }
+
+    res.json({ success: true, data: tarea });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Error al buscar tarea',
+      error: err.message,
+    });
+  }
+};
+
+/**
+ * Recomendación de técnico.
+ * Body/query: direccion, fecha, horaInicio, horaFin (HH:mm), especialidadId opcional, lat/lng opcionales.
  */
 exports.recomendarTecnicos = async (req, res) => {
   try {
@@ -539,6 +598,7 @@ exports.recomendarTecnicos = async (req, res) => {
       src.priorizarCercania === true ||
       src.priorizarCercania === 'true' ||
       src.priorizarCercania === '1';
+    const especialidadId = String(src.especialidadId || src.especialidad || '').trim();
 
     const proposedStart = parseHmToMinutes(horaInicio);
     const proposedEndRaw = parseHmToMinutes(horaFin);
@@ -570,10 +630,15 @@ exports.recomendarTecnicos = async (req, res) => {
       });
     }
 
-    const tecnicos = await Usuario.find({
+    const tecnicoQuery = {
       rol: 'usuario',
       aprobado: true,
-    })
+    };
+    if (especialidadId && mongoose.Types.ObjectId.isValid(especialidadId)) {
+      tecnicoQuery.especialidad = especialidadId;
+    }
+
+    const tecnicos = await Usuario.find(tecnicoQuery)
       .select('nombre telefono localidad direccion ubicacionBase color especialidad')
       .populate('especialidad', 'nombre')
       .lean();
@@ -636,11 +701,13 @@ exports.recomendarTecnicos = async (req, res) => {
         direccion: direccion || null,
         franja: { inicio: horaInicio, fin: horaFin },
         priorizarCercania,
+        especialidadId: especialidadId || null,
         destino: targetCoords,
         recomendaciones,
         meta: {
           tecnicosEvaluados: tecnicos.length,
           tareasDelDia: tareasDia.length,
+          filtroEspecialidad: Boolean(especialidadId && mongoose.Types.ObjectId.isValid(especialidadId)),
         },
       },
     });
