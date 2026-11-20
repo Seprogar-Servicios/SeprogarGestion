@@ -48,20 +48,13 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Configuración de multer
+// Configuración de multer (Multer 2.x exige fileSize entero, no función)
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: (req, file) => {
-      if (file.fieldname === 'fotos') {
-        return 5 * 1024 * 1024; // 5MB por foto
-      } else if (file.fieldname === 'comprobante') {
-        return 10 * 1024 * 1024; // 10MB para comprobante
-      }
-      return 5 * 1024 * 1024; // Default 5MB
-    }
-  }
+    fileSize: 10 * 1024 * 1024, // 10MB (cubre fotos y comprobantes)
+  },
 });
 
 // Middleware para manejar errores de multer
