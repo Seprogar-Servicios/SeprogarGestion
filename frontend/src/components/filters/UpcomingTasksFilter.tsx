@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Calendar, List, Filter, AlertCircle, Zap } from 'lucide-react';
+import { Clock, Calendar, List, Filter, AlertCircle, Zap, Sun } from 'lucide-react';
 import type { TaskFilters } from '../../types';
 
 type FilterOption = {
@@ -18,14 +18,10 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
   filters,
   onFiltersChange,
 }) => {
+  // Orden: día → semana → resto → Todas al final (mejor carga por defecto)
   const filterOptions: FilterOption[] = [
-    {
-      value: 'opsWindow',
-      label: 'Operación (semana ±1)',
-      icon: Zap,
-      default: true,
-    },
-    { value: '', label: 'Todas las tareas', icon: List },
+    { value: 'day', label: 'Hoy', icon: Sun, default: true },
+    { value: 'opsWindow', label: 'Esta semana (±1)', icon: Zap },
     { value: 'today', label: 'Creadas hoy', icon: Calendar },
     { value: 'past', label: 'Tareas antiguas', icon: Clock },
     { value: 'current', label: 'Tareas actuales', icon: Calendar },
@@ -33,6 +29,7 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
     { value: 'next48h', label: 'Próximas 48h', icon: Clock },
     { value: 'nextWeek', label: 'Próxima semana', icon: Calendar },
     { value: 'nextMonth', label: 'Próximo mes', icon: Calendar },
+    { value: '', label: 'Todas las tareas', icon: List },
   ];
 
   const handleUpcomingFilterChange = (upcomingFilter: string) => {
@@ -67,6 +64,8 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
   };
 
   const isAllActive = !filters.upcomingFilter;
+  const showHistoryHint =
+    filters.upcomingFilter === 'day' || filters.upcomingFilter === 'opsWindow';
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
@@ -109,7 +108,7 @@ const UpcomingTasksFilter: React.FC<UpcomingTasksFilterProps> = ({
           <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
           <span>
             <strong>Filtro activo:</strong> {getActiveFilterLabel()}
-            {filters.upcomingFilter === 'opsWindow' ? (
+            {showHistoryHint ? (
               <> · Histórico: buscá por número o elegí «Todas».</>
             ) : null}
           </span>

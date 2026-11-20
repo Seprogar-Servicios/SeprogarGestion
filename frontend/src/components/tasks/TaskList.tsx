@@ -163,7 +163,7 @@ const TaskList: React.FC = () => {
   useEffect(() => {
     if (!initialFiltersLoaded) {
       const initialFilters: TaskFilters = {
-        upcomingFilter: 'opsWindow',
+        upcomingFilter: 'day',
       };
 
       if (user && !isAdminRole(user)) {

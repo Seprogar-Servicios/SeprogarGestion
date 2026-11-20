@@ -176,6 +176,7 @@ export interface TaskFilters {
   fechaEjecucion?: string;
   /** Ventana operativa / presets de UpcomingTasksFilter */
   upcomingFilter?:
+    | 'day'
     | 'opsWindow'
     | 'today'
     | 'past'

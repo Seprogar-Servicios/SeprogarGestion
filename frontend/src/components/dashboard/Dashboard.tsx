@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
   }) || [];
   
   const [currentFilters, setCurrentFilters] = useState<TaskFilters>({
-    upcomingFilter: 'opsWindow',
+    upcomingFilter: 'day',
   });
 
   // Función para obtener tareas de consorcio

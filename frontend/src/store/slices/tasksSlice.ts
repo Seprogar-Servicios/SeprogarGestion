@@ -41,25 +41,34 @@ const getUpcomingDateRange = (filter: string) => {
   if (!filter) return {};
 
   switch (filter) {
-    case 'today': {
-      // Tareas creadas hoy
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-      
+    case 'day': {
+      // Tareas con ejecución hoy (carga mínima del día a día)
+      const ymd = getLocalDateString(today);
       return {
-        fechaDesde: getLocalDateString(today),
-        fechaHasta: getLocalDateString(tomorrow),
-        field: 'fechaCreacion',
-        useCreatedAt: 'true'  // Enviar como string para el query param
+        fechaDesde: ymd,
+        fechaHasta: ymd,
       };
     }
-    
+
+    case 'today': {
+      // Tareas creadas hoy
+      const createdToday = new Date();
+      createdToday.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(createdToday);
+      tomorrow.setDate(createdToday.getDate() + 1);
+
+      return {
+        fechaDesde: getLocalDateString(createdToday),
+        fechaHasta: getLocalDateString(tomorrow),
+        field: 'fechaCreacion',
+        useCreatedAt: 'true',
+      };
+    }
+
     case 'opsWindow': {
       // Semana anterior + actual + siguiente (lun–dom)
-      const day = today.getDay();
-      const diffToMon = day === 0 ? -6 : 1 - day;
+      const dayOfWeek = today.getDay();
+      const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
       const mondayThis = new Date(today);
       mondayThis.setDate(today.getDate() + diffToMon);
       const mondayPrev = new Date(mondayThis);
