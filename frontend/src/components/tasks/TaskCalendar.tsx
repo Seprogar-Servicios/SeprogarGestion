@@ -25,18 +25,26 @@ import './TaskCalendar.css';
 import { isAdminRole } from '../../utils/roles';
 import { normalizeColor, textColorForBg } from '../../utils/tecnicoColors';
 
-/** Fallback si la tarea no tiene técnico con color */
-const STATUS_COLORS: Record<string, { bg: string; border: string }> = {
-  pendiente: { bg: '#5f6368', border: '#5f6368' },
-  'en progreso': { bg: '#f9ab00', border: '#f9ab00' },
-  completada: { bg: '#1e8e3e', border: '#1e8e3e' },
-  cancelada: { bg: '#d93025', border: '#d93025' },
+/** Sin técnico → beige/taupe (como el bloque de referencia) */
+const UNASSIGNED_COLOR = { bg: '#BCAAA4', border: '#A1887F', text: '#3E2723' };
+
+/** Cancelada → gris (antes usado para sin asignar) */
+const CANCELLED_COLOR = { bg: '#9aa0a6', border: '#80868b', text: '#ffffff' };
+
+/** Técnico asignado pero sin color propio */
+const TECH_NO_COLOR = { bg: '#78909C', border: '#607D8B', text: '#ffffff' };
+
+const STATUS_LABELS: Record<string, string> = {
+  pendiente: 'Pendiente',
+  'en progreso': 'En progreso',
+  completada: 'Completada',
+  cancelada: 'Cancelada',
 };
 
-/** Sin técnico asignado → gris fijo en el calendario */
-const UNASSIGNED_COLOR = { bg: '#9aa0a6', border: '#80868b', text: '#ffffff' };
-
 const colorFromTask = (task: Task): { bg: string; border: string; text: string } => {
+  if (task.estado === 'cancelada') {
+    return CANCELLED_COLOR;
+  }
   const tecnicos = Array.isArray(task.tecnicos) ? task.tecnicos : [];
   if (tecnicos.length === 0) {
     return UNASSIGNED_COLOR;
@@ -49,8 +57,7 @@ const colorFromTask = (task: Task): { bg: string; border: string; text: string }
       }
     }
   }
-  // Técnico sin color propio: gris (no usar color de estado)
-  return UNASSIGNED_COLOR;
+  return TECH_NO_COLOR;
 };
 
 const techNamesFromTask = (task: Task): string[] => {
@@ -89,6 +96,8 @@ const taskToEvent = (task: Task): EventInput | null => {
       : 'Sin técnico';
   const title = task.numero ? `#${task.numero} · ${task.titulo}` : task.titulo;
   const franja = parseFranjaHoraria(task.franja_horaria);
+  const estadoLabel = STATUS_LABELS[task.estado] || task.estado;
+  const isVip = Boolean(task.vip);
 
   const base: EventInput = {
     id: task._id,
@@ -96,7 +105,12 @@ const taskToEvent = (task: Task): EventInput | null => {
     backgroundColor: colors.bg,
     borderColor: colors.border,
     textColor: colors.text,
-    extendedProps: { task, techLabel, techShort },
+    classNames: [
+      task.estado === 'cancelada' ? 'is-cancelled' : '',
+      isVip ? 'is-vip' : '',
+      `estado-${String(task.estado || '').replace(/\s+/g, '-')}`,
+    ].filter(Boolean),
+    extendedProps: { task, techLabel, techShort, estadoLabel, isVip, estado: task.estado },
   };
 
   if (franja) {
@@ -355,6 +369,8 @@ const TaskCalendar: React.FC = () => {
     const techLabel = String(arg.event.extendedProps.techLabel || 'Sin técnico');
     const techShort = String(arg.event.extendedProps.techShort || techLabel);
     const customTime = String(arg.event.extendedProps.timeLabel || '');
+    const estadoLabel = String(arg.event.extendedProps.estadoLabel || '');
+    const isVip = Boolean(arg.event.extendedProps.isVip);
     const fallbackTime =
       arg.event.start && arg.event.end
         ? `${toLocalHm(arg.event.start)} – ${toLocalHm(arg.event.end)}`
@@ -364,11 +380,21 @@ const TaskCalendar: React.FC = () => {
     const isList = arg.view.type.startsWith('list');
     const tech = isMonth ? techShort : techLabel;
 
+    const badges = (
+      <div className="fc-event-flags">
+        {isVip ? <span className="fc-event-flag fc-event-flag-vip">VIP</span> : null}
+        {estadoLabel ? (
+          <span className="fc-event-flag fc-event-flag-estado">{estadoLabel}</span>
+        ) : null}
+      </div>
+    );
+
     if (isList) {
       return (
         <div className="fc-event-tech-list">
           {timeLabel ? <span className="fc-event-tech-time">{timeLabel}</span> : null}
           <span className="fc-event-tech-badge">{tech}</span>
+          {badges}
           <span className="fc-event-tech-task">{arg.event.title}</span>
         </div>
       );
@@ -379,6 +405,7 @@ const TaskCalendar: React.FC = () => {
         <div className="fc-event-tech-name" title={techLabel}>
           {tech}
         </div>
+        {badges}
         <div className="fc-event-tech-meta">
           {timeLabel ? <span className="fc-event-tech-time">{timeLabel}</span> : null}
           <span className="fc-event-tech-task">{arg.event.title}</span>
@@ -391,7 +418,7 @@ const TaskCalendar: React.FC = () => {
     <>
       <div className="hidden sm:flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
         <span className="font-medium text-slate-600 dark:text-slate-300">
-          Color = técnico · gris = sin asignar
+          Color = técnico · beige = sin asignar · gris = cancelada
         </span>
       </div>
       {loading && (

@@ -304,6 +304,7 @@
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .task-calendar-shell .fc-event-tech-badge {
@@ -317,6 +318,68 @@
   text-transform: uppercase;
   background: rgba(0, 0, 0, 0.22);
   white-space: nowrap;
+}
+
+/* VIP + estado dentro del evento */
+.task-calendar-shell .fc-event-flags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  margin: 1px 0 2px;
+}
+
+.task-calendar-shell .fc-event-flag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-calendar-shell .fc-event-flag-vip {
+  background: #f9ab00;
+  color: #1a1a1a;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.task-calendar-shell .fc-event-flag-estado {
+  background: rgba(0, 0, 0, 0.28);
+  color: inherit;
+}
+
+.task-calendar-shell .fc-event.is-cancelled .fc-event-flag-estado {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.task-calendar-shell .fc-event-tech-wrap.is-month .fc-event-flags {
+  display: inline-flex;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.task-calendar-shell .fc-event-tech-wrap.is-month .fc-event-flag {
+  font-size: 0.55rem;
+  padding: 0 0.28rem;
+}
+
+.task-calendar-shell .fc-event.is-vip {
+  box-shadow:
+    0 0 0 1px rgba(249, 171, 0, 0.55),
+    0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.task-calendar-shell .fc-event.is-cancelled {
+  opacity: 0.88;
 }
 
 .task-calendar-shell .fc-event-tech-list .fc-event-tech-task {
