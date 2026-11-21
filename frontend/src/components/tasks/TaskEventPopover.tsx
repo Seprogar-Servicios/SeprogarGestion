@@ -24,6 +24,7 @@ import {
 import { parseFranjaHoraria } from '../../utils/franjaHoraria';
 import { useAppDispatch } from '../../store';
 import { updateTask } from '../../store/slices/tasksSlice';
+import { toast } from 'react-toastify';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { proveedorNombreOf } from '../../utils/whatsappTasks';
 
@@ -143,6 +144,62 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose, onUp
 
   const busy = Boolean(savingEstado);
 
+  const confirmCancelar = () => {
+    if (busy) return;
+    const CustomToast = ({ closeToast }: { closeToast?: () => void }) => (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-full">
+        <div className="p-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+              <XCircle className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                Cancelar tarea
+              </h3>
+              <div className="mt-2">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  ¿Confirmás cancelar{' '}
+                  {current.numero ? `#${current.numero}` : 'esta tarea'}
+                  {current.titulo ? ` · ${current.titulo}` : ''}?
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={closeToast}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600"
+            >
+              Volver
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                closeToast?.();
+                void changeEstado('cancelada');
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm"
+            >
+              Sí, cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+
+    toast(<CustomToast />, {
+      position: 'top-center',
+      autoClose: false,
+      closeButton: false,
+      closeOnClick: false,
+      draggable: false,
+      className: '!bg-transparent !shadow-none !p-0 !m-0 !w-auto',
+      bodyClassName: '!p-0 !m-0',
+    });
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-3 sm:p-6 bg-black/40 backdrop-blur-sm"
@@ -212,7 +269,7 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose, onUp
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => changeEstado('cancelada')}
+                    onClick={confirmCancelar}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-60"
                   >
                     {savingEstado === 'cancelada' ? (
@@ -243,7 +300,7 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose, onUp
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => changeEstado('cancelada')}
+                    onClick={confirmCancelar}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-60"
                   >
                     {savingEstado === 'cancelada' ? (
