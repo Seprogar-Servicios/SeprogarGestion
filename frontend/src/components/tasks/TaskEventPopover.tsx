@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   X,
@@ -9,6 +9,12 @@ import {
   ExternalLink,
   Calendar,
   FileText,
+  Play,
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
+  Loader2,
+  Briefcase,
 } from 'lucide-react';
 import type { Task, User as AppUser } from '../../types';
 import {
@@ -16,10 +22,17 @@ import {
   formatTaskToMapsUrl,
 } from '../../utils/mapsUtils';
 import { parseFranjaHoraria } from '../../utils/franjaHoraria';
+import { useAppDispatch } from '../../store';
+import { updateTask } from '../../store/slices/tasksSlice';
+import { showError, showSuccess } from '../../utils/toastUtils';
+import { proveedorNombreOf } from '../../utils/whatsappTasks';
+
+type TaskEstado = Task['estado'];
 
 interface TaskEventPopoverProps {
   task: Task;
   onClose: () => void;
+  onUpdated?: (task: Task) => void;
 }
 
 const estadoBadgeClass = (estado: string) => {
@@ -61,11 +74,19 @@ const tecnicoNombre = (t: AppUser | string) => {
   return t?.nombre || 'Sin nombre';
 };
 
-const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) => {
+const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose, onUpdated }) => {
   const navigate = useNavigate();
-  const mapsUrl = formatTaskToMapsUrl(task);
-  const embedUrl = task.direccion
-    ? formatDireccionToMapsEmbedUrl(task.direccion)
+  const dispatch = useAppDispatch();
+  const [current, setCurrent] = useState(task);
+  const [savingEstado, setSavingEstado] = useState<TaskEstado | null>(null);
+
+  useEffect(() => {
+    setCurrent(task);
+  }, [task]);
+
+  const mapsUrl = formatTaskToMapsUrl(current);
+  const embedUrl = current.direccion
+    ? formatDireccionToMapsEmbedUrl(current.direccion)
     : mapsUrl
       ? `${mapsUrl}&output=embed`
       : '';
@@ -78,7 +99,49 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) =>
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const tecnicos = Array.isArray(task.tecnicos) ? task.tecnicos : [];
+  const tecnicos = Array.isArray(current.tecnicos) ? current.tecnicos : [];
+  const proveedorNombre = proveedorNombreOf(current.proveedor);
+
+  const changeEstado = async (nuevoEstado: TaskEstado) => {
+    if (nuevoEstado === current.estado || savingEstado) return;
+    setSavingEstado(nuevoEstado);
+    try {
+      const updated = await dispatch(
+        updateTask({
+          id: current._id,
+          data: {
+            numero: current.numero,
+            titulo: current.titulo,
+            cliente: current.cliente || '',
+            direccion: current.direccion || '',
+            direccionExtra: current.direccionExtra || '',
+            entreCalles: current.entreCalles || '',
+            descripcion: current.descripcion || '',
+            numeroTitular: current.numeroTitular || '',
+            fechaEjecucion: current.fechaEjecucion || '',
+            franja_horaria: current.franja_horaria || '',
+            estado: nuevoEstado,
+            tecnicos: tecnicos.map((t) => (typeof t === 'string' ? t : t._id)),
+            vip: Boolean(current.vip),
+          },
+        })
+      ).unwrap();
+
+      setCurrent(updated);
+      onUpdated?.(updated);
+      showSuccess(
+        nuevoEstado === 'en progreso'
+          ? 'Tarea iniciada · visible en mapa de técnicos'
+          : `Estado: ${nuevoEstado}`
+      );
+    } catch (error: any) {
+      showError(error?.message || 'No se pudo cambiar el estado');
+    } finally {
+      setSavingEstado(null);
+    }
+  };
+
+  const busy = Boolean(savingEstado);
 
   return (
     <div
@@ -95,18 +158,23 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) =>
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 backdrop-blur">
           <div className="min-w-0">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              {task.numero ? `#${task.numero}` : 'Tarea'}
+              {current.numero ? `#${current.numero}` : 'Tarea'}
+              {current.vip ? (
+                <span className="ml-2 inline-flex px-1.5 py-0.5 rounded bg-amber-400 text-[10px] font-extrabold text-black tracking-wide">
+                  VIP
+                </span>
+              ) : null}
             </p>
             <h3
               id="task-event-title"
               className="text-lg font-semibold text-gray-900 dark:text-white leading-snug"
             >
-              {task.titulo}
+              {current.titulo}
             </h3>
             <span
-              className={`inline-flex mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${estadoBadgeClass(task.estado)}`}
+              className={`inline-flex mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${estadoBadgeClass(current.estado)}`}
             >
-              {task.estado}
+              {current.estado}
             </span>
           </div>
           <button
@@ -120,34 +188,159 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) =>
         </div>
 
         <div className="px-5 py-4 space-y-4">
+          {/* Cambio rápido de estado */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+              Estado rápido
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {current.estado === 'pendiente' && (
+                <>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => changeEstado('en progreso')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-60"
+                  >
+                    {savingEstado === 'en progreso' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    Iniciar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => changeEstado('cancelada')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-60"
+                  >
+                    {savingEstado === 'cancelada' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    Cancelar
+                  </button>
+                </>
+              )}
+
+              {current.estado === 'en progreso' && (
+                <>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => changeEstado('completada')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-60"
+                  >
+                    {savingEstado === 'completada' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    Finalizar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => changeEstado('cancelada')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-60"
+                  >
+                    {savingEstado === 'cancelada' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <XCircle className="h-4 w-4" />
+                    )}
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => changeEstado('pendiente')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    {savingEstado === 'pendiente' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4" />
+                    )}
+                    Volver a pendiente
+                  </button>
+                </>
+              )}
+
+              {(current.estado === 'completada' || current.estado === 'cancelada') && (
+                <>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => changeEstado('pendiente')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    {savingEstado === 'pendiente' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4" />
+                    )}
+                    Reabrir (pendiente)
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => changeEstado('en progreso')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-60"
+                  >
+                    {savingEstado === 'en progreso' ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    Poner en progreso
+                  </button>
+                </>
+              )}
+            </div>
+            {current.estado === 'en progreso' && (
+              <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                Al iniciar, la tarea aparece en el mapa en vivo de técnicos.
+              </p>
+            )}
+          </div>
+
           <div className="grid gap-3 text-sm">
             <div className="flex items-start gap-2.5 text-gray-700 dark:text-gray-200">
               <Calendar className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
-              <span className="capitalize">{formatFecha(task.fechaEjecucion)}</span>
+              <span className="capitalize">{formatFecha(current.fechaEjecucion)}</span>
             </div>
-            {task.franja_horaria && (
+            {current.franja_horaria && (
               <div className="flex items-start gap-2.5 text-gray-700 dark:text-gray-200">
                 <Clock className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
                 <span>
                   {(() => {
-                    const f = parseFranjaHoraria(task.franja_horaria);
+                    const f = parseFranjaHoraria(current.franja_horaria);
                     return f
                       ? `${f.startTime} – ${f.endTime}${f.crossesMidnight ? ' (+1 día)' : ''}`
-                      : task.franja_horaria;
+                      : current.franja_horaria;
                   })()}
                 </span>
               </div>
             )}
-            {task.cliente && (
+            {current.cliente && (
               <div className="flex items-start gap-2.5 text-gray-700 dark:text-gray-200">
                 <User className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
-                <span>{task.cliente}</span>
+                <span>{current.cliente}</span>
               </div>
             )}
-            {task.numeroTitular && (
+            {proveedorNombre && (
+              <div className="flex items-start gap-2.5 text-gray-700 dark:text-gray-200">
+                <Briefcase className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                <span>{proveedorNombre}</span>
+              </div>
+            )}
+            {current.numeroTitular && (
               <div className="flex items-start gap-2.5 text-gray-700 dark:text-gray-200">
                 <Phone className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
-                <span>{task.numeroTitular}</span>
+                <span>{current.numeroTitular}</span>
               </div>
             )}
             {tecnicos.length > 0 && (
@@ -156,10 +349,10 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) =>
                 <span>{tecnicos.map(tecnicoNombre).join(', ')}</span>
               </div>
             )}
-            {task.descripcion && (
+            {current.descripcion && (
               <div className="flex items-start gap-2.5 text-gray-700 dark:text-gray-200">
                 <FileText className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
-                <span className="whitespace-pre-wrap">{task.descripcion}</span>
+                <span className="whitespace-pre-wrap">{current.descripcion}</span>
               </div>
             )}
           </div>
@@ -169,21 +362,21 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) =>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-red-500 shrink-0" />
                 <p className="text-sm text-gray-800 dark:text-gray-200 truncate">
-                  {task.direccion || 'Sin dirección cargada'}
+                  {current.direccion || 'Sin dirección cargada'}
                 </p>
               </div>
-              {task.direccionExtra && (
-                <p className="pl-6 text-xs text-gray-600 dark:text-gray-300">{task.direccionExtra}</p>
+              {current.direccionExtra && (
+                <p className="pl-6 text-xs text-gray-600 dark:text-gray-300">{current.direccionExtra}</p>
               )}
-              {task.entreCalles && (
+              {current.entreCalles && (
                 <p className="pl-6 text-xs text-gray-500 dark:text-gray-400">
-                  Entre calles: {task.entreCalles}
+                  Entre calles: {current.entreCalles}
                 </p>
               )}
             </div>
             {embedUrl ? (
               <iframe
-                title={`Mapa de ${task.direccion}`}
+                title={`Mapa de ${current.direccion}`}
                 src={embedUrl}
                 className="w-full h-52 border-0 bg-gray-100 dark:bg-gray-900"
                 loading="lazy"
@@ -214,7 +407,7 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose }) =>
             type="button"
             onClick={() => {
               onClose();
-              navigate(`/tasks/${task._id}`);
+              navigate(`/tasks/${current._id}`);
             }}
             className="inline-flex flex-1 items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
           >

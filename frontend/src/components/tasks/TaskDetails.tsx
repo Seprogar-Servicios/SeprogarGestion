@@ -91,7 +91,6 @@ const TaskDetails: React.FC = () => {
     titulo: '',
     descripcion: '',
     cliente: '',
-    cuentaCliente: '' as '' | 'IKE' | 'VAITTY' | 'MDO' | 'Particular' | 'Consorcio' | 'Otro',
     numeroTitular: '',
     direccion: '',
     direccionExtra: '',
@@ -145,7 +144,6 @@ const TaskDetails: React.FC = () => {
         titulo: currentTask.titulo || '',
         descripcion: currentTask.descripcion || '',
         cliente: currentTask.cliente || '',
-        cuentaCliente: currentTask.cuentaCliente || '',
         numeroTitular: currentTask.numeroTitular || '',
         direccion: currentTask.direccion || '',
         direccionExtra: currentTask.direccionExtra || '',
@@ -191,11 +189,11 @@ const TaskDetails: React.FC = () => {
       );
       
       // Only include fields that are allowed to be updated
+      // No enviamos cuentaCliente: se conserva el valor histórico en DB
       const taskUpdate = {
         numero: formData.numero,
         titulo: formData.titulo,
         cliente: formData.cliente,
-        ...(formData.cuentaCliente ? { cuentaCliente: formData.cuentaCliente } : { cuentaCliente: '' }),
         descripcion: formData.descripcion,
         direccion: formData.direccion,
         direccionExtra: formData.direccionExtra,
@@ -862,27 +860,6 @@ const TaskDetails: React.FC = () => {
                             {p.nombre}
                           </option>
                         ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Cuenta <span className="text-slate-400 font-normal">(opcional)</span>
-                    </label>
-                    <select
-                      value={formData.cuentaCliente || ''}
-                      onChange={(e) =>
-                        setFormData({ ...formData, cuentaCliente: e.target.value as any })
-                      }
-                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Sin clasificar</option>
-                      <option value="IKE">IKE</option>
-                      <option value="VAITTY">VAITTY</option>
-                      <option value="MDO">MDO</option>
-                      <option value="Particular">Particular</option>
-                      <option value="Consorcio">Consorcio</option>
-                      <option value="Otro">Otro</option>
                     </select>
                   </div>
 

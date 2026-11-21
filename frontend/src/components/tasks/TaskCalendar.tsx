@@ -24,6 +24,7 @@ import { useTheme } from '../../hooks/useTheme';
 import './TaskCalendar.css';
 import { isAdminRole } from '../../utils/roles';
 import { normalizeColor, textColorForBg } from '../../utils/tecnicoColors';
+import { proveedorNombreOf } from '../../utils/whatsappTasks';
 
 /** Sin técnico → beige/taupe (como el bloque de referencia) */
 const UNASSIGNED_COLOR = { bg: '#BCAAA4', border: '#A1887F', text: '#3E2723' };
@@ -98,6 +99,7 @@ const taskToEvent = (task: Task): EventInput | null => {
   const franja = parseFranjaHoraria(task.franja_horaria);
   const estadoLabel = STATUS_LABELS[task.estado] || task.estado;
   const isVip = Boolean(task.vip);
+  const proveedorLabel = proveedorNombreOf(task.proveedor);
 
   const base: EventInput = {
     id: task._id,
@@ -110,7 +112,15 @@ const taskToEvent = (task: Task): EventInput | null => {
       isVip ? 'is-vip' : '',
       `estado-${String(task.estado || '').replace(/\s+/g, '-')}`,
     ].filter(Boolean),
-    extendedProps: { task, techLabel, techShort, estadoLabel, isVip, estado: task.estado },
+    extendedProps: {
+      task,
+      techLabel,
+      techShort,
+      estadoLabel,
+      isVip,
+      estado: task.estado,
+      proveedorLabel,
+    },
   };
 
   if (franja) {
@@ -371,6 +381,7 @@ const TaskCalendar: React.FC = () => {
     const customTime = String(arg.event.extendedProps.timeLabel || '');
     const estadoLabel = String(arg.event.extendedProps.estadoLabel || '');
     const isVip = Boolean(arg.event.extendedProps.isVip);
+    const proveedorLabel = String(arg.event.extendedProps.proveedorLabel || '');
     const fallbackTime =
       arg.event.start && arg.event.end
         ? `${toLocalHm(arg.event.start)} – ${toLocalHm(arg.event.end)}`
@@ -385,6 +396,11 @@ const TaskCalendar: React.FC = () => {
         {isVip ? <span className="fc-event-flag fc-event-flag-vip">VIP</span> : null}
         {estadoLabel ? (
           <span className="fc-event-flag fc-event-flag-estado">{estadoLabel}</span>
+        ) : null}
+        {proveedorLabel && !isMonth ? (
+          <span className="fc-event-flag fc-event-flag-proveedor" title={proveedorLabel}>
+            {proveedorLabel}
+          </span>
         ) : null}
       </div>
     );
@@ -408,6 +424,11 @@ const TaskCalendar: React.FC = () => {
         {badges}
         <div className="fc-event-tech-meta">
           {timeLabel ? <span className="fc-event-tech-time">{timeLabel}</span> : null}
+          {proveedorLabel && isMonth ? (
+            <span className="fc-event-proveedor" title={proveedorLabel}>
+              {proveedorLabel}
+            </span>
+          ) : null}
           <span className="fc-event-tech-task">{arg.event.title}</span>
         </div>
       </div>
@@ -536,7 +557,14 @@ const TaskCalendar: React.FC = () => {
       </div>
 
       {selectedTask && (
-        <TaskEventPopover task={selectedTask} onClose={() => setSelectedTask(null)} />
+        <TaskEventPopover
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdated={(updated) => {
+            setSelectedTask(updated);
+            loadCalendar();
+          }}
+        />
       )}
 
       {quickCreate && (

@@ -8,8 +8,6 @@ import { fetchProveedores } from '../../store/slices/proveedoresSlice';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AddressAutocomplete from '../common/AddressAutocomplete';
-import { CUENTAS_CLIENTE } from '../../utils/cuentaCliente';
-import type { CuentaCliente } from '../../types';
 
 export interface QuickCreateDefaults {
   fechaEjecucion: string; // YYYY-MM-DD
@@ -40,7 +38,6 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
     numero: '',
     titulo: '',
     cliente: '',
-    cuentaCliente: '' as '' | CuentaCliente,
     direccion: '',
     direccionExtra: '',
     entreCalles: '',
@@ -80,7 +77,6 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           numero: form.numero.trim(),
           titulo: form.titulo.trim(),
           cliente: form.cliente.trim(),
-          ...(form.cuentaCliente ? { cuentaCliente: form.cuentaCliente } : {}),
           direccion: form.direccion.trim(),
           direccionExtra: form.direccionExtra.trim(),
           entreCalles: form.entreCalles.trim(),
@@ -268,26 +264,6 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
                     {p.nombre}
                   </option>
                 ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Cuenta
-            </label>
-            <select
-              value={form.cuentaCliente}
-              onChange={(e) =>
-                setForm({ ...form, cuentaCliente: e.target.value as '' | CuentaCliente })
-              }
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm"
-            >
-              <option value="">Sin clasificar</option>
-              {CUENTAS_CLIENTE.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
             </select>
           </div>
 

@@ -357,6 +357,21 @@
   color: inherit;
 }
 
+.task-calendar-shell .fc-event-flag-proveedor {
+  background: rgba(255, 255, 255, 0.28);
+  color: inherit;
+  max-width: 9rem;
+}
+
+.task-calendar-shell .fc-event-proveedor {
+  font-size: 0.6rem;
+  font-weight: 700;
+  opacity: 0.95;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .task-calendar-shell .fc-event.is-cancelled .fc-event-flag-estado {
   background: rgba(255, 255, 255, 0.28);
 }
