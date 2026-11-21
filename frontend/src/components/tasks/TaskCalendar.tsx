@@ -497,7 +497,7 @@ const TaskCalendar: React.FC = () => {
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
+          initialView="timeGridDay"
           locale={esLocale}
           firstDay={0}
           headerToolbar={{
