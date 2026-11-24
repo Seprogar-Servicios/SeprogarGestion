@@ -23,8 +23,16 @@ async function throttleNominatim() {
   lastNominatimAt = Date.now();
 }
 
+/** CABA + AMBA (más estricto para precisión del técnico). */
 function inBaArea(lat, lng) {
-  return lat >= -36 && lat <= -33 && lng >= -60 && lng <= -57;
+  return lat >= -35.05 && lat <= -34.05 && lng >= -59.15 && lng <= -57.75;
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve([]), ms)),
+  ]);
 }
 
 /**
@@ -278,15 +286,16 @@ async function suggestAddresses(query, limit = 8) {
   }
 
   const q = query.trim();
-  // Siempre consultar las 3 fuentes en paralelo para maximizar coincidencias AMBA.
-  // USIG primero en el merge (prioridad GCBA).
-  const [usig, georef, photon] = await Promise.all([
-    suggestFromUsig(q, limit),
-    suggestFromGeoref(q, limit),
-    suggestFromPhoton(q, limit),
-  ]);
+  // Prioridad: USIG (GCBA) — más preciso y rápido para BA.
+  // Si alcanza, no esperamos las otras fuentes (menos demora al teclear).
+  const usig = await withTimeout(suggestFromUsig(q, limit), 2200);
+  if (usig.length >= Math.min(4, limit)) {
+    return dedupeSuggestions(usig, limit);
+  }
 
-  return dedupeSuggestions([...usig, ...georef, ...photon], limit);
+  // Fallback: Georef (CABA + Prov. BA). Sin Photon (más ruido / más lento).
+  const georef = await withTimeout(suggestFromGeoref(q, limit), 2200);
+  return dedupeSuggestions([...usig, ...georef], limit);
 }
 
 module.exports = {

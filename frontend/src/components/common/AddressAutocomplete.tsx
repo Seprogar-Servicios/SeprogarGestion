@@ -115,7 +115,7 @@ const AddressAutocomplete: React.FC<Props> = ({
     debounceRef.current = window.setTimeout(async () => {
       try {
         const res = await api.get<{ success: boolean; data: AddressSuggestion[] }>('/geo/suggest', {
-          params: { q, limit: 10 },
+          params: { q, limit: 8 },
         });
         const list = res.data.data || [];
         setSuggestions(list);
@@ -125,8 +125,8 @@ const AddressAutocomplete: React.FC<Props> = ({
         if (list.length === 0) {
           setErrorHint(
             mode === 'localidad'
-              ? 'Sin coincidencias. Probá barrio, partido o localidad (AMBA).'
-              : 'Sin coincidencias. Probá calle + altura y partido (ej. Av. Corrientes 1234, CABA).'
+              ? 'Sin coincidencias. Probá barrio o partido (CABA / AMBA).'
+              : 'Sin coincidencias. Probá calle + altura (ej. Av. Corrientes 1234) y elegí de la lista.'
           );
         }
       } catch (err: any) {
@@ -142,7 +142,7 @@ const AddressAutocomplete: React.FC<Props> = ({
       } finally {
         setLoading(false);
       }
-    }, 280);
+    }, 220);
 
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
@@ -272,7 +272,9 @@ const AddressAutocomplete: React.FC<Props> = ({
           <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{errorHint}</p>
         ) : (
           <p className="mt-1 text-[11px] text-slate-400">
-            Elegí una sugerencia cuando aparezca (USIG + Georef). También podés escribir texto libre.
+            {mode === 'localidad'
+              ? 'Elegí una sugerencia (CABA / AMBA) para ubicar mejor al técnico.'
+              : 'Elegí una sugerencia de la lista para punto exacto en Maps (solo Buenos Aires).'}
           </p>
         ))}
     </div>

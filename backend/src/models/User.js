@@ -5,7 +5,10 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   rol: { type: String, enum: ['super_admin', 'admin', 'usuario', 'adminConsorcio'], required: true },
+  /** Legacy: primera especialidad (compatibilidad / UI vieja) */
   especialidad: { type: mongoose.Schema.Types.ObjectId, ref: 'Especialidad', default: null },
+  /** Especialidades del técnico (recomendación y filtros) */
+  especialidades: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Especialidad' }],
   aprobado: { type: Boolean, default: false },
   notificationToken: { type: String, default: null },
   telefono: { type: String, default: null },

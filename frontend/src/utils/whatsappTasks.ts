@@ -1,5 +1,5 @@
 import type { Task } from '../types';
-import { compareTasksBySchedule, toFechaEjecucionYmd } from './franjaHoraria';
+import { toFechaEjecucionYmd } from './franjaHoraria';
 import { formatTaskToMapsUrl } from './mapsUtils';
 
 /** Límite práctico de URL wa.me + texto (varía por dispositivo). */
@@ -85,9 +85,9 @@ export const formatTaskLocationWhatsApp = (task: Task): string => {
   return block;
 };
 
-/** Mensaje admin → técnico (mismo formato que usan hoy). */
+/** Mensaje admin → técnico. Respeta el orden del array (orden de selección). */
 export const buildAdminTasksWhatsAppMessage = (tasks: Task[]): string => {
-  const ordered = [...tasks].sort(compareTasksBySchedule);
+  const ordered = [...tasks];
   let message = `*=== TAREAS ASIGNADAS ===*\n\n`;
 
   ordered.forEach((task, index) => {
@@ -115,12 +115,12 @@ export const buildAdminTasksWhatsAppMessage = (tasks: Task[]): string => {
   return message;
 };
 
-/** Mensaje técnico → a sí mismo. */
+/** Mensaje técnico → a sí mismo. Respeta el orden del array (orden de selección). */
 export const buildUserTasksWhatsAppMessage = (
   tasks: Task[],
   userName: string
 ): string => {
-  const ordered = [...tasks].sort(compareTasksBySchedule);
+  const ordered = [...tasks];
   let message = `*Recordatorio de Tareas Pendientes*\n\n`;
   message += `Hola ${userName},\n\n`;
   message += `Aquí tienes un resumen de tus tareas pendientes:\n\n`;

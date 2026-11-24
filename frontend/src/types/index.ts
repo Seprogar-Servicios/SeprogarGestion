@@ -6,6 +6,8 @@ export interface User {
   email: string;
   rol: 'super_admin' | 'admin' | 'usuario' | 'tecnico' | 'adminConsorcio';
   especialidad?: string | { _id: string; nombre: string } | null;
+  /** Varias especialidades (recomendación). Si falta, se usa especialidad. */
+  especialidades?: Array<string | { _id: string; nombre: string }> | null;
   aprobado: boolean;
   telefono?: string;
   direccion?: string;

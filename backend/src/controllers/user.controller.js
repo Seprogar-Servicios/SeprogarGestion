@@ -6,6 +6,25 @@ const { isSuperAdmin, isPrivilegedAdmin, MAX_SUPER_ADMINS } = require('../utils/
 const { geocodeAddress } = require('../utils/geocode');
 const { normalizeColor, nextAvailableColor } = require('../utils/tecnicoColors');
 
+/** Normaliza especialidades[] + especialidad (legacy = primera). */
+const applyEspecialidadesPayload = (payload) => {
+  if (!payload || typeof payload !== 'object') return payload;
+  const hasArr = Object.prototype.hasOwnProperty.call(payload, 'especialidades');
+  const hasOne = Object.prototype.hasOwnProperty.call(payload, 'especialidad');
+  if (!hasArr && !hasOne) return payload;
+
+  let ids = [];
+  if (hasArr && Array.isArray(payload.especialidades)) {
+    ids = payload.especialidades.map((x) => String(x || '').trim()).filter(Boolean);
+  } else if (hasOne && payload.especialidad) {
+    ids = [String(payload.especialidad).trim()].filter(Boolean);
+  }
+  ids = [...new Set(ids.filter((id) => id && id !== 'null' && id !== 'undefined'))];
+  payload.especialidades = ids;
+  payload.especialidad = ids[0] || null;
+  return payload;
+};
+
 const collectUsedColors = async (excludeUserId = null) => {
   const filtro = { color: { $type: 'string', $ne: '' } };
   if (excludeUserId) filtro._id = { $ne: excludeUserId };
@@ -114,7 +133,7 @@ exports.createUser = async (req, res) => {
     const exists = await Usuario.findOne({ email: req.body.email });
     if (exists) return res.status(409).json({ message: 'Email ya registrado' });
     const hash = await bcrypt.hash(req.body.password, 10);
-    const payload = { ...req.body, password: hash, aprobado: true };
+    const payload = applyEspecialidadesPayload({ ...req.body, password: hash, aprobado: true });
 
     // Color único solo para técnicos (rol usuario)
     if (requestedRol === 'usuario') {
@@ -157,7 +176,9 @@ exports.createUser = async (req, res) => {
 // Listar usuarios (admin / super_admin)
 exports.getUsers = async (req, res) => {
   try {
-    let usuarios = await Usuario.find().populate('especialidad');
+    let usuarios = await Usuario.find()
+      .populate('especialidad', 'nombre')
+      .populate('especialidades', 'nombre');
     // Un admin normal no ve cuentas super_admin
     if (!isSuperAdmin(req.user)) {
       usuarios = usuarios.filter((u) => u.rol !== 'super_admin');
@@ -211,7 +232,7 @@ exports.updateUser = async (req, res) => {
       }
     }
 
-    const updatePayload = { ...req.body };
+    const updatePayload = applyEspecialidadesPayload({ ...req.body });
     if (updatePayload.password) {
       updatePayload.password = await bcrypt.hash(updatePayload.password, 10);
     }
@@ -334,7 +355,9 @@ exports.approveUser = async (req, res) => {
 // Listar usuarios pendientes
 exports.getPendingUsers = async (req, res) => {
   try {
-    const usuarios = await Usuario.find({ aprobado: false }).populate('especialidad');
+    const usuarios = await Usuario.find({ aprobado: false })
+      .populate('especialidad', 'nombre')
+      .populate('especialidades', 'nombre');
     res.json({ success: true, data: usuarios });
   } catch (err) {
     res.status(500).json({ message: 'Error al obtener usuarios pendientes', error: err.message });

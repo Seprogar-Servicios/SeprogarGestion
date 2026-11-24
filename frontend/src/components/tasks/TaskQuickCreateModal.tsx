@@ -8,6 +8,7 @@ import { fetchProveedores } from '../../store/slices/proveedoresSlice';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AddressAutocomplete from '../common/AddressAutocomplete';
+import TecnicoMultiSelect from '../common/TecnicoMultiSelect';
 
 export interface QuickCreateDefaults {
   fechaEjecucion: string; // YYYY-MM-DD
@@ -338,34 +339,13 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Técnicos
-            </label>
-            <select
-              multiple
-              value={form.tecnicos}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  tecnicos: Array.from(e.target.selectedOptions, (o) => o.value),
-                })
-              }
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm py-1.5 min-h-[88px]"
-            >
-              {(Array.isArray(users) ? users : [])
-                .filter((u) => u.rol === 'usuario' || u.rol === 'tecnico')
-                .map((u) => (
-                  <option key={u._id} value={u._id}>
-                    {u.nombre}
-                    {u.localidad ? ` · ${u.localidad}` : ''}
-                  </option>
-                ))}
-            </select>
-            <p className="mt-1 text-[11px] text-gray-400">
-              Opcional. Sin técnico = gris en el calendario. Ctrl/Cmd + clic para varios.
-            </p>
-          </div>
+          <TecnicoMultiSelect
+            users={Array.isArray(users) ? users : []}
+            value={form.tecnicos}
+            onChange={(tecnicos) => setForm({ ...form, tecnicos })}
+            label="Técnicos"
+            hint="Opcional. Buscá por nombre y asigná uno o varios."
+          />
 
           <div className="flex justify-end gap-2 pt-2">
             <button

@@ -761,12 +761,17 @@ exports.recomendarTecnicos = async (req, res) => {
       aprobado: true,
     };
     if (especialidadId && mongoose.Types.ObjectId.isValid(especialidadId)) {
-      tecnicoQuery.especialidad = especialidadId;
+      // Match especialidad legacy o cualquiera de especialidades[]
+      tecnicoQuery.$or = [
+        { especialidad: especialidadId },
+        { especialidades: especialidadId },
+      ];
     }
 
     const tecnicos = await Usuario.find(tecnicoQuery)
-      .select('nombre telefono localidad direccion ubicacionBase color especialidad')
+      .select('nombre telefono localidad direccion ubicacionBase color especialidad especialidades')
       .populate('especialidad', 'nombre')
+      .populate('especialidades', 'nombre')
       .lean();
 
     const tareasDiaQuery = {

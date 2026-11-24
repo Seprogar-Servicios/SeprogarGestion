@@ -27,8 +27,24 @@ import AdminPageHeader from '../common/AdminPageHeader';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import { isAdminRole, isSuperAdmin, roleLabel, MAX_SUPER_ADMINS } from '../../utils/roles';
 import AddressAutocomplete from '../common/AddressAutocomplete';
+import EspecialidadesMultiSelect from '../common/EspecialidadesMultiSelect';
 import TecnicoColorPicker from './TecnicoColorPicker';
 import { nextAvailableColor } from '../../utils/tecnicoColors';
+
+const especialidadIdsOf = (u: User | null | undefined): string[] => {
+  if (!u) return [];
+  const fromArr = Array.isArray(u.especialidades)
+    ? u.especialidades
+        .map((e) => (typeof e === 'string' ? e : e?._id || ''))
+        .filter(Boolean)
+    : [];
+  if (fromArr.length) return [...new Set(fromArr)];
+  if (u.especialidad) {
+    const one = typeof u.especialidad === 'string' ? u.especialidad : u.especialidad._id;
+    return one ? [one] : [];
+  }
+  return [];
+};
 
 const UserManagement: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -83,6 +99,7 @@ const UserManagement: React.FC = () => {
     confirmPassword?: string;
     porcentajeTecnico?: number;
     color?: string | null;
+    especialidades: string[];
   }
 
   const takenColors = users
@@ -100,6 +117,7 @@ const UserManagement: React.FC = () => {
     confirmPassword: '',
     porcentajeTecnico: 0,
     color: null,
+    especialidades: [],
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -112,7 +130,7 @@ const UserManagement: React.FC = () => {
     password: '',
     confirmPassword: '',
     rol: 'usuario' as 'super_admin' | 'admin' | 'usuario' | 'adminConsorcio',
-    especialidad: '',
+    especialidades: [] as string[],
     porcentajeTecnico: 0,
     color: '' as string,
   });
@@ -172,17 +190,24 @@ const UserManagement: React.FC = () => {
       }
       
       // Only send the fields that have changed
-      const updatedFields: Partial<User> = {};
+      const updatedFields: Record<string, unknown> = {};
       Object.entries(formData).forEach(([key, value]) => {
         // Excluir campos de contraseña si están vacíos (no se deben enviar al backend)
         if ((key === 'password' || key === 'confirmPassword') && (!value || value === '')) {
           return;
         }
-        
+        if (key === 'especialidades') return;
+
         if (editingUser[key as keyof User] !== value) {
-          updatedFields[key as keyof User] = value;
+          updatedFields[key] = value;
         }
       });
+
+      const prevEsp = especialidadIdsOf(editingUser).slice().sort().join(',');
+      const nextEsp = [...formData.especialidades].slice().sort().join(',');
+      if (prevEsp !== nextEsp) {
+        updatedFields.especialidades = formData.especialidades;
+      }
       
       if (Object.keys(updatedFields).length === 0) {
         showInfo('No se realizaron cambios en el usuario');
@@ -191,7 +216,7 @@ const UserManagement: React.FC = () => {
 
       const resultAction = await dispatch(updateUser({ 
         id: editingUser._id, 
-        data: updatedFields 
+        data: updatedFields as any
       }));
       
       if (updateUser.fulfilled.match(resultAction)) {
@@ -223,6 +248,7 @@ const UserManagement: React.FC = () => {
       confirmPassword: '',
       porcentajeTecnico: 0,
       color: null,
+      especialidades: [],
     });
   };
 
@@ -236,7 +262,7 @@ const UserManagement: React.FC = () => {
       password: '',
       confirmPassword: '',
       rol: 'usuario' as 'admin' | 'usuario' | 'adminConsorcio',
-      especialidad: '',
+      especialidades: [],
       porcentajeTecnico: 0,
       color: nextAvailableColor(takenColors) || '',
     });
@@ -265,7 +291,8 @@ const UserManagement: React.FC = () => {
         localidad: createFormData.localidad || undefined,
         password: createFormData.password,
         rol: createFormData.rol,
-        especialidad: createFormData.especialidad || undefined,
+        especialidades:
+          createFormData.rol === 'usuario' ? createFormData.especialidades : [],
         porcentajeTecnico: createFormData.rol === 'usuario' ? createFormData.porcentajeTecnico : undefined,
         color: createFormData.rol === 'usuario' ? createFormData.color : undefined,
       };
@@ -298,6 +325,7 @@ const UserManagement: React.FC = () => {
       confirmPassword: '',
       porcentajeTecnico: target.porcentajeTecnico || 0,
       color: target.color || nextAvailableColor(takenColors) || '',
+      especialidades: especialidadIdsOf(target),
     });
     setShowEditModal(true);
   };
@@ -1026,6 +1054,19 @@ const UserManagement: React.FC = () => {
 
                 {formData.rol === 'usuario' && (
                   <div className="space-y-1 sm:col-span-2">
+                    <EspecialidadesMultiSelect
+                      options={especialidades || []}
+                      value={formData.especialidades}
+                      onChange={(especialidades) =>
+                        setFormData({ ...formData, especialidades })
+                      }
+                      hint="El técnico aparece en recomendaciones de cualquiera de estas especialidades."
+                    />
+                  </div>
+                )}
+
+                {formData.rol === 'usuario' && (
+                  <div className="space-y-1 sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                       Color en calendario
                     </label>
@@ -1367,31 +1408,15 @@ const UserManagement: React.FC = () => {
                   )}
 
                   {createFormData.rol === 'usuario' && (
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Especialidad
-                      </label>
-                      <div className="relative">
-                        <div className="relative">
-                          <select
-                            value={createFormData.especialidad}
-                            onChange={(e) => setCreateFormData({ ...createFormData, especialidad: e.target.value })}
-                            className="appearance-none block w-full pl-3 pr-10 py-3 text-base border-0 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                          >
-                            <option value="">Seleccionar</option>
-                            {especialidades.map((especialidad) => (
-                              <option key={especialidad._id} value={especialidad._id}>
-                                {especialidad.nombre}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                              <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <EspecialidadesMultiSelect
+                        options={especialidades || []}
+                        value={createFormData.especialidades}
+                        onChange={(especialidades) =>
+                          setCreateFormData({ ...createFormData, especialidades })
+                        }
+                        hint="Podés asignar varias; el técnico entra en recomendaciones de todas."
+                      />
                     </div>
                   )}
 
