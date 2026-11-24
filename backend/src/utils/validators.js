@@ -100,9 +100,15 @@ const tareaSchema = Joi.object({
   direccion: Joi.string().allow('').optional(),
   direccionExtra: Joi.string().allow('').optional(),
   entreCalles: Joi.string().allow('').optional(),
-  especialidad: Joi.string().optional().allow(null, ''),
+  especialidad: Joi.alternatives()
+    .try(Joi.string().hex().length(24), Joi.string().valid(''), Joi.valid(null))
+    .optional()
+    .allow(null, ''),
   /** Proveedor (catálogo ABM). Opcional; no rompe históricas. */
-  proveedor: Joi.string().optional().allow(null, ''),
+  proveedor: Joi.alternatives()
+    .try(Joi.string().hex().length(24), Joi.string().valid(''), Joi.valid(null))
+    .optional()
+    .allow(null, ''),
   /** Cliente VIP. Opcional; default false en modelo. */
   vip: Joi.boolean().optional(),
   origen: Joi.string().valid('whatsapp', 'sistema', 'web').default('sistema'),

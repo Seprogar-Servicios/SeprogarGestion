@@ -71,16 +71,106 @@ function cacheSet(key, data) {
   suggestCache.set(key, { at: Date.now(), data });
 }
 
-/** Normaliza query corta para USIG (Av. → Avenida, etc.). */
+/** Localidades / typos frecuentes AMBA → forma canónica para buscar. */
+const LOCALITY_FIXES = [
+  { re: /\bonzalez\s*catan\b/gi, to: 'Gonzalez Catan' },
+  { re: /\bgonzalez\s*catan\b/gi, to: 'Gonzalez Catan' },
+  { re: /\bgonzález\s*catán\b/gi, to: 'Gonzalez Catan' },
+  { re: /\bg\.?\s*catan\b/gi, to: 'Gonzalez Catan' },
+  { re: /\blomas\s*de\s*zamora\b/gi, to: 'Lomas de Zamora' },
+  { re: /\bquilmes\b/gi, to: 'Quilmes' },
+  { re: /\bmoron\b/gi, to: 'Moron' },
+  { re: /\bla\s*matanza\b/gi, to: 'La Matanza' },
+  { re: /\bsan\s*justo\b/gi, to: 'San Justo' },
+  { re: /\bramos\s*mejia\b/gi, to: 'Ramos Mejia' },
+  { re: /\bcapital\s*federal\b/gi, to: 'CABA' },
+  { re: /\bciudad\s*autonoma\s*de\s*buenos\s*aires\b/gi, to: 'CABA' },
+];
+
+/** Tokens de localidad en el query → boost en ranking. */
+const LOCALITY_HINTS = [
+  { tokens: ['catan', 'gonzalez', 'onzalez', 'matanza'], boost: ['matanza', 'catan', 'gonzalez'], penCaba: true },
+  { tokens: ['lomas', 'zamora'], boost: ['lomas', 'zamora'], penCaba: true },
+  { tokens: ['quilmes'], boost: ['quilmes'], penCaba: true },
+  { tokens: ['moron', 'morón'], boost: ['moron', 'morón'], penCaba: true },
+  { tokens: ['caba', 'capital'], boost: ['caba', 'comuna', 'ciudad'], penCaba: false },
+];
+
+/** Normaliza query corta para USIG/Georef (abrevs + typos + formato). */
 function normalizeQuery(raw) {
   let q = String(raw || '')
     .replace(/\s+/g, ' ')
     .trim();
   if (!q) return '';
-  q = q.replace(/\bav\.?\b/gi, 'Avenida');
-  q = q.replace(/\bpje\.?\b/gi, 'Pasaje');
-  q = q.replace(/\bc\.?\b(?=\s+\d)/gi, 'Calle');
-  return q;
+
+  // "Inca, 5328 onzalez catan" → "Inca 5328, onzalez catan"
+  q = q.replace(/^([^,]+),\s*(\d{1,5})\s+(.+)$/i, '$1 $2, $3');
+  // "Inca 5328 onzalez catan" (sin coma) se deja; locality fixes abajo
+
+  // Abreviaturas militares / calles (el punto no siempre hace \b)
+  q = q.replace(/\bmcal\.?\s*/gi, 'Mariscal ');
+  q = q.replace(/\bgral\.?\s*/gi, 'General ');
+  q = q.replace(/\bcnel\.?\s*/gi, 'Coronel ');
+  q = q.replace(/\bdr\.?\s*/gi, 'Doctor ');
+  q = q.replace(/\bav\.?\s*/gi, 'Avenida ');
+  q = q.replace(/\bpje\.?\s*/gi, 'Pasaje ');
+  q = q.replace(/\bc\.?\s*(?=\d)/gi, 'Calle ');
+
+  for (const { re, to } of LOCALITY_FIXES) {
+    q = q.replace(re, to);
+  }
+
+  return q.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Variantes de búsqueda para direcciones “sucias”.
+ * Ej: "Mcal. Sucre 1180 caba" → también "Antonio Jose de Sucre 1180", "Sucre 1180 CABA"
+ */
+function buildQueryVariants(raw) {
+  const primary = normalizeQuery(raw);
+  if (!primary) return [];
+
+  const variants = [primary];
+  const add = (v) => {
+    const t = String(v || '').replace(/\s+/g, ' ').trim();
+    if (t && t.length >= 3 && !variants.some((x) => x.toLowerCase() === t.toLowerCase())) {
+      variants.push(t);
+    }
+  };
+
+  // Sin "Mariscal/General" delante del apellido
+  add(primary.replace(/\b(Mariscal|General|Doctor|Coronel|Teniente)\s+/gi, ''));
+
+  // Solo "Apellido 1234" si hay nombre compuesto + número
+  const m = primary.match(
+    /(?:Mariscal|General|Doctor)?\s*(?:Antonio\s+Jos[eé]\s+de\s+)?(Sucre)\s+(\d{1,5})/i
+  );
+  if (m) add(`${m[1]} ${m[2]}`);
+
+  // Calle + número (sin localidad) para Georef/USIG
+  const streetNum = primary.match(/^(.+?)\s+(\d{1,5})(?:\s*,?\s*.*)?$/);
+  if (streetNum) {
+    add(`${streetNum[1].trim()} ${streetNum[2]}`);
+  }
+
+  // Forzar CABA si el usuario lo escribió
+  if (/\bcaba\b/i.test(raw) || /\bcapital\b/i.test(raw)) {
+    const base = primary.replace(/\b(caba|capital\s*federal)\b/gi, '').replace(/,\s*$/, '').trim();
+    add(`${base}, CABA`);
+    add(base);
+  }
+
+  // González Catán explícito
+  if (/catan|onzalez|gonzalez/i.test(raw)) {
+    const base = primary
+      .replace(/,?\s*(Gonzalez Catan|La Matanza)\b/gi, '')
+      .trim();
+    add(`${base}, Gonzalez Catan`);
+    add(`${base}, La Matanza`);
+  }
+
+  return variants.slice(0, 5);
 }
 
 function cacheKey(q, limit) {
@@ -91,9 +181,15 @@ function hasStreetNumber(label) {
   return /\b\d{1,5}\b/.test(String(label || ''));
 }
 
+function localityHintsFromQuery(query) {
+  const q = String(query || '').toLowerCase();
+  return LOCALITY_HINTS.filter((h) => h.tokens.some((t) => q.includes(t)));
+}
+
 function rankAndDedupe(items, query, limit) {
   const q = String(query || '').toLowerCase();
   const qNum = (q.match(/\b(\d{1,5})\b/) || [])[1] || '';
+  const hints = localityHintsFromQuery(query);
   const seen = new Set();
   const scored = [];
 
@@ -103,11 +199,26 @@ function rankAndDedupe(items, query, limit) {
     if (seen.has(key)) continue;
     seen.add(key);
 
+    const labelLow = key;
     let score = 0;
     if (hasStreetNumber(item.label)) score += 40;
-    if (qNum && String(item.label).includes(qNum)) score += 30;
-    if (/caba|capital|ciudad aut[oó]noma/i.test(item.label)) score += 8;
+    if (qNum && String(item.label).includes(qNum)) score += 35;
     if (item.source === 'usig') score += 15;
+
+    const isCaba = /caba|comuna|ciudad aut[oó]noma/i.test(labelLow);
+    // Bonus CABA solo si el usuario pidió CABA
+    if (isCaba && /\bcaba\b|capital/i.test(q)) score += 25;
+    // Preferir matches con "MCAL" / "Mariscal" / nombre completo si el query lo trae
+    if (/mariscal|mcal|sucre/i.test(q) && /sucre|mariscal|mcal/i.test(labelLow)) {
+      score += 20;
+    }
+    if (/antonio|jos[eé]/i.test(q) && /antonio|jos/i.test(labelLow)) score += 15;
+
+    for (const h of hints) {
+      if (h.boost.some((b) => labelLow.includes(b))) score += 50;
+      if (h.penCaba && isCaba) score -= 50;
+    }
+
     // Prefer shorter precise labels
     score += Math.max(0, 20 - Math.floor(item.label.length / 12));
 
@@ -129,13 +240,14 @@ function buildUsigLabel(d) {
   }
   if (
     partido &&
-    !/caba|capital|ciudad aut/i.test(partido) &&
     !base.toLowerCase().includes(partido.toLowerCase()) &&
     !extras.some((e) => e.toLowerCase() === partido.toLowerCase())
   ) {
     extras.push(partido);
   }
-  if (!/caba|buenos aires|capital|amba/i.test(base) && extras.length === 0) {
+  // Solo etiquetar CABA si el partido lo indica (no asumir CABA en GBA)
+  const isCabaPartido = /caba|capital|ciudad aut/i.test(partido || '');
+  if (isCabaPartido && !/caba|capital|ciudad aut/i.test(base)) {
     extras.push('CABA');
   }
   return extras.length ? `${base}, ${extras.join(', ')}` : base;
@@ -287,25 +399,32 @@ async function geocodeAddress(address) {
 
 /**
  * Sugerencias acotadas a BA / AMBA.
- * USIG + Georef en paralelo; ranking prioriza altura + USIG.
+ * Prueba variantes (typos/abrevs) en paralelo sobre USIG + Georef.
  */
 async function suggestAddresses(query, limit = 8) {
   if (!query || typeof query !== 'string' || query.trim().length < 3) {
     return [];
   }
 
-  const q = normalizeQuery(query);
-  const key = cacheKey(q, limit);
+  const variants = buildQueryVariants(query);
+  const primary = variants[0] || normalizeQuery(query);
+  const key = cacheKey(`v2:${variants.join('|')}`, limit);
   const cached = cacheGet(key);
   if (cached) return cached;
 
-  // Paralelo: USIG (preciso) + Georef (cobertura). Timeouts cortos.
-  const [usig, georef] = await Promise.all([
-    withTimeout(suggestFromUsig(q, limit), 1800),
-    withTimeout(suggestFromGeoref(q, limit), 1800),
-  ]);
+  // Consultar hasta 3 variantes en paralelo (cada una: USIG + Georef)
+  const toTry = variants.slice(0, 3);
+  const batches = await Promise.all(
+    toTry.map(async (q) => {
+      const [usig, georef] = await Promise.all([
+        withTimeout(suggestFromUsig(q, limit), 1800),
+        withTimeout(suggestFromGeoref(q, limit), 1800),
+      ]);
+      return [...usig, ...georef];
+    })
+  );
 
-  const merged = rankAndDedupe([...usig, ...georef], q, limit);
+  const merged = rankAndDedupe(batches.flat(), primary, limit);
   cacheSet(key, merged);
   return merged;
 }
@@ -314,4 +433,6 @@ module.exports = {
   geocodeAddress,
   suggestAddresses,
   haversineKm,
+  normalizeQuery,
+  buildQueryVariants,
 };

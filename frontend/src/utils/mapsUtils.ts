@@ -18,6 +18,12 @@ const ABREVIATURAS_DIRECCIONES: Record<string, string> = {
   'pje\.': 'Pasaje',
   'pje': 'Pasaje',
   'ptes\.': 'Pasajes',
+  'mcal\.': 'Mariscal',
+  'mcal': 'Mariscal',
+  'gral\.': 'General',
+  'gral': 'General',
+  'cnel\.': 'Coronel',
+  'dr\.': 'Doctor',
   'san\.': 'San',
   'sta\.': 'Santa',
   'sra\.': 'Señora',
@@ -54,6 +60,14 @@ const ABREVIATURAS_DIRECCIONES: Record<string, string> = {
   'bis': 'Bis',
 };
 
+const LOCALITY_TYPOS: Array<{ re: RegExp; to: string }> = [
+  { re: /\bonzalez\s*catan\b/gi, to: 'Gonzalez Catan' },
+  { re: /\bgonzalez\s*catan\b/gi, to: 'Gonzalez Catan' },
+  { re: /\bgonzález\s*catán\b/gi, to: 'Gonzalez Catan' },
+  { re: /\bg\.?\s*catan\b/gi, to: 'Gonzalez Catan' },
+  { re: /\bcapital\s*federal\b/gi, to: 'CABA' },
+];
+
 /**
  * Normaliza una dirección argentina para asegurar consistencia
  * @param direccion La dirección a normalizar
@@ -69,11 +83,18 @@ export const normalizeAddress = (direccion: string): string => {
   // Paso 1: Normalizar espacios múltiples
   normalized = normalized.replace(/\s+/g, ' ').trim();
 
+  // "Calle, 123 barrio" → "Calle 123, barrio"
+  normalized = normalized.replace(/^([^,]+),\s*(\d{1,5})\s+(.+)$/i, '$1 $2, $3');
+
   // Paso 2: Expandir abreviaturas comunes (case-insensitive)
   Object.entries(ABREVIATURAS_DIRECCIONES).forEach(([abbr, expansion]) => {
     const regex = new RegExp(`\\b${abbr}\\b`, 'gi');
     normalized = normalized.replace(regex, expansion);
   });
+
+  for (const { re, to } of LOCALITY_TYPOS) {
+    normalized = normalized.replace(re, to);
+  }
 
   // Paso 3: Normalizar formato de números (N°, No, etc.)
   normalized = normalized.replace(/\bN[º°]?\s*(\d+)/gi, 'N° $1');
@@ -147,12 +168,14 @@ export const formatDireccionToMapsUrl = (direccion: string): string => {
   // Usar el formato más corto posible de Google Maps
   const encodedDireccion = encodeURIComponent(normalizedAddress);
   
-  // Solo agregar Buenos Aires si no está presente
+  // Solo Buenos Aires / AMBA
   if (tieneBuenosAires) {
-    return `https://maps.google.com/?q=${encodedDireccion}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodedDireccion}`;
   }
-  
-  return `https://maps.google.com/?q=${encodedDireccion},Buenos+Aires`;
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    `${normalizedAddress}, Buenos Aires, Argentina`
+  )}`;
 };
 
 /** Link de Maps por coordenadas exactas (zoom alto para el técnico). */
@@ -176,13 +199,10 @@ type TaskLocationLike = {
 };
 
 /**
- * Prioridad para el técnico:
- * 1) ubicacionDireccion (autocomplete, no se pisa con GPS en vivo)
- * 2) ubicacionMapa con fuente dirección
- * 3) búsqueda por texto (menos precisa)
- * Nunca usa GPS del técnico como destino de la tarea.
+ * Solo link por coordenadas confirmadas (autocomplete).
+ * No usa búsqueda por texto: eso puede mandar al técnico lejos.
  */
-export const formatTaskToMapsUrl = (task: TaskLocationLike): string => {
+export const formatTaskToPreciseMapsUrl = (task: TaskLocationLike): string => {
   const dirLat = task.ubicacionDireccion?.lat;
   const dirLng = task.ubicacionDireccion?.lng;
   if (typeof dirLat === 'number' && typeof dirLng === 'number') {
@@ -195,10 +215,20 @@ export const formatTaskToMapsUrl = (task: TaskLocationLike): string => {
   if (
     typeof lat === 'number' &&
     typeof lng === 'number' &&
-    (fuente === 'direccion' || fuente == null || fuente === '')
+    fuente === 'direccion'
   ) {
     return formatCoordsToMapsUrl(lat, lng);
   }
+  return '';
+};
+
+/**
+ * Link para UI interna.
+ * Prefiere coords confirmadas; si no hay, cae a texto (solo pantallas admin, no WhatsApp).
+ */
+export const formatTaskToMapsUrl = (task: TaskLocationLike): string => {
+  const precise = formatTaskToPreciseMapsUrl(task);
+  if (precise) return precise;
   return formatDireccionToMapsUrl(task.direccion || '');
 };
 
@@ -210,9 +240,10 @@ export const formatDireccionToMapsEmbedUrl = (direccion: string): string => {
     return '';
   }
 
-  const openUrl = formatDireccionToMapsUrl(direccion);
-  if (!openUrl) return '';
-
-  const query = openUrl.split('?q=')[1] || encodeURIComponent(normalizeAddress(direccion));
-  return `https://www.google.com/maps?q=${query}&output=embed`;
+  const normalized = normalizeAddress(direccion);
+  if (!normalized) return '';
+  const q = /caba|buenos\s+aires|capital/i.test(normalized)
+    ? normalized
+    : `${normalized}, Buenos Aires, Argentina`;
+  return `https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`;
 };

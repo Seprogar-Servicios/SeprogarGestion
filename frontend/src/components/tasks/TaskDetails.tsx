@@ -38,7 +38,7 @@ import AddressAutocomplete from '../common/AddressAutocomplete';
 import TecnicoMultiSelect from '../common/TecnicoMultiSelect';
 import type { RootState } from '../../store';
 import { isAdminRole } from '../../utils/roles';
-import { formatTaskToMapsUrl } from '../../utils/mapsUtils';
+import { formatTaskToPreciseMapsUrl } from '../../utils/mapsUtils';
 import { proveedorNombreOf } from '../../utils/whatsappTasks';
 
 const especialidadIdOf = (esp: unknown): string => {
@@ -642,9 +642,9 @@ const TaskDetails: React.FC = () => {
                               Entre calles: {currentTask.entreCalles}
                             </p>
                           )}
-                          {formatTaskToMapsUrl(currentTask) && (
+                          {formatTaskToPreciseMapsUrl(currentTask) && (
                             <a
-                              href={formatTaskToMapsUrl(currentTask)}
+                              href={formatTaskToPreciseMapsUrl(currentTask)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-block mt-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"

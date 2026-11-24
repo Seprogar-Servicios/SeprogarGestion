@@ -331,7 +331,7 @@ const AddressAutocomplete: React.FC<Props> = ({
           <p className="mt-1 text-[11px] text-slate-400">
             {mode === 'localidad'
               ? 'Elegí una sugerencia (CABA / AMBA).'
-              : 'Escribí calle + altura y tocá la sugerencia correcta (solo Buenos Aires).'}
+              : 'Calle + altura (ej. Inca 5328 Gonzalez Catan). Elegí la sugerencia correcta.'}
           </p>
         ))}
     </div>

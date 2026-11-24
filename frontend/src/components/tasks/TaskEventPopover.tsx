@@ -19,7 +19,7 @@ import {
 import type { Task, User as AppUser } from '../../types';
 import {
   formatDireccionToMapsEmbedUrl,
-  formatTaskToMapsUrl,
+  formatTaskToPreciseMapsUrl,
 } from '../../utils/mapsUtils';
 import { parseFranjaHoraria } from '../../utils/franjaHoraria';
 import { useAppDispatch } from '../../store';
@@ -85,7 +85,8 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose, onUp
     setCurrent(task);
   }, [task]);
 
-  const mapsUrl = formatTaskToMapsUrl(current);
+  // En UI del calendario: solo link preciso (coords). Sin coords, no mostrar Maps engañoso.
+  const mapsUrl = formatTaskToPreciseMapsUrl(current);
   const embedUrl = current.direccion
     ? formatDireccionToMapsEmbedUrl(current.direccion)
     : mapsUrl
