@@ -1,7 +1,7 @@
 const Tarea = require('../models/Tarea');
 const Usuario = require('../models/User');
 const Material = require('../models/Material');
-const { tareaSchema } = require('../utils/validators');
+const { tareaSchema, sanitizeTareaBody } = require('../utils/validators');
 const mongoose = require('mongoose');
 const Subscription = require('../models/Subscription');
 const { sendNotification } = require('../utils/push');
@@ -98,11 +98,15 @@ const {
  */
 // Crear tarea
 exports.createTarea = async (req, res) => {
-  const { error } = tareaSchema.validate(req.body);
-  if (error) return res.status(400).json({ message: error.details[0].message });
+  const body = sanitizeTareaBody(req.body);
+  const { error, value } = tareaSchema.validate(body, { abortEarly: false });
+  if (error) {
+    const details = error.details.map((d) => d.message).join(' · ');
+    return res.status(400).json({ message: details, error: details });
+  }
   try {
     // Procesar la fecha de ejecución para evitar problemas de zona horaria
-    let datosAjustados = { ...req.body };
+    let datosAjustados = { ...value };
     
     if (datosAjustados.fechaEjecucion && typeof datosAjustados.fechaEjecucion === 'string') {
       // Si la fecha viene en formato YYYY-MM-DD (sin tiempo)
@@ -210,7 +214,21 @@ exports.createTarea = async (req, res) => {
 
     res.status(201).json({ success: true, data: tarea, message: 'Tarea creada' });
   } catch (err) {
-    res.status(500).json({ message: 'Error al crear tarea', error: err.message });
+    const msg = err?.message || 'Error al crear tarea';
+    // CastError de ObjectId (técnico / especialidad / proveedor)
+    if (err?.name === 'CastError') {
+      return res.status(400).json({
+        message: `Dato inválido en ${err.path || 'campo'}: revisá técnicos, especialidad o proveedor`,
+        error: msg,
+      });
+    }
+    if (err?.name === 'ValidationError') {
+      const details = Object.values(err.errors || {})
+        .map((e) => e.message)
+        .join(' · ');
+      return res.status(400).json({ message: details || msg, error: msg });
+    }
+    res.status(500).json({ message: `Error al crear tarea: ${msg}`, error: msg });
   }
 };
 
@@ -450,8 +468,12 @@ exports.getTareaById = async (req, res) => {
 
 // Actualizar tarea (admin, creador o técnico asignado)
 exports.updateTarea = async (req, res) => {
-  const { error } = tareaSchema.validate(req.body);
-  if (error) return res.status(400).json({ message: error.details[0].message });
+  const body = sanitizeTareaBody(req.body);
+  const { error, value } = tareaSchema.validate(body, { abortEarly: false });
+  if (error) {
+    const details = error.details.map((d) => d.message).join(' · ');
+    return res.status(400).json({ message: details, error: details });
+  }
   try {
     const tarea = await Tarea.findById(req.params.id);
     if (!tarea) return res.status(404).json({ message: 'Tarea no encontrada' });
@@ -464,7 +486,7 @@ exports.updateTarea = async (req, res) => {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    let datosActualizados = { ...req.body };
+    let datosActualizados = { ...value };
 
     // Técnico asignado: solo puede cambiar estado y ubicación en vivo
     if (!isAdmin && !isCreator && isAssigned) {
@@ -672,7 +694,20 @@ exports.updateTarea = async (req, res) => {
 
     res.json({ success: true, data: populated, message: 'Tarea actualizada' });
   } catch (err) {
-    res.status(500).json({ message: 'Error al actualizar tarea', error: err.message });
+    const msg = err?.message || 'Error al actualizar tarea';
+    if (err?.name === 'CastError') {
+      return res.status(400).json({
+        message: `Dato inválido en ${err.path || 'campo'}: revisá técnicos, especialidad o proveedor`,
+        error: msg,
+      });
+    }
+    if (err?.name === 'ValidationError') {
+      const details = Object.values(err.errors || {})
+        .map((e) => e.message)
+        .join(' · ');
+      return res.status(400).json({ message: details || msg, error: msg });
+    }
+    res.status(500).json({ message: `Error al actualizar tarea: ${msg}`, error: msg });
   }
 };
 

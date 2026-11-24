@@ -14,6 +14,7 @@ import type { Task, TaskFilters } from '../../types';
 import { downloadICSFile } from '../../utils/calendarUtils';
 import { toast } from 'react-toastify';
 import { showSuccess, showError } from '../../utils/toastUtils';
+import { getErrorMessage } from '../../utils/errorMessage';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AdminPageHeader from '../common/AdminPageHeader';
 import AddressAutocomplete from '../common/AddressAutocomplete';
@@ -299,7 +300,7 @@ const TaskList: React.FC = () => {
       showSuccess('Tarea creada correctamente', { autoClose: 3000 });
       dispatch(fetchTasks(filters));
     } catch (error: any) {
-      showError(`Error al crear la tarea: ${error.message || 'Error desconocido'}`);
+      showError(getErrorMessage(error, 'Error al crear la tarea'));
     }
   };
 
@@ -349,7 +350,7 @@ const TaskList: React.FC = () => {
       // Recargar las tareas
       dispatch(fetchTasks(filters));
     } catch (error: any) {
-      showError(`Error al actualizar la tarea: ${error.message || 'Error desconocido'}`);
+      showError(getErrorMessage(error, 'Error al actualizar la tarea'));
     }
   };
 
@@ -1953,7 +1954,7 @@ const TaskList: React.FC = () => {
                   users={users || []}
                   value={formData.tecnicos}
                   onChange={(tecnicos) => setFormData({ ...formData, tecnicos })}
-                  hint="Opcional. Sin técnico = beige en el calendario. Podés asignar varios."
+                  hint="Opcional: sin técnico, uno o varios. Sin técnico = beige en el calendario."
                 />
 
                 <div className="flex justify-end space-x-3 pt-5">

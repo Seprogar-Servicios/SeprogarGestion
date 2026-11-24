@@ -6,6 +6,7 @@ import { fetchUsers } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import { fetchProveedores } from '../../store/slices/proveedoresSlice';
 import { showError, showSuccess } from '../../utils/toastUtils';
+import { getErrorMessage } from '../../utils/errorMessage';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import AddressAutocomplete from '../common/AddressAutocomplete';
 import TecnicoMultiSelect from '../common/TecnicoMultiSelect';
@@ -116,7 +117,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
       onCreated?.();
       onClose();
     } catch (err: any) {
-      showError(typeof err === 'string' ? err : 'Error al crear la tarea');
+      showError(getErrorMessage(err, 'Error al crear la tarea'));
     } finally {
       setSaving(false);
     }
@@ -354,7 +355,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
             value={form.tecnicos}
             onChange={(tecnicos) => setForm({ ...form, tecnicos })}
             label="Técnicos"
-            hint="Opcional. Buscá por nombre y asigná uno o varios."
+            hint="Opcional: sin técnico, uno o varios."
           />
 
           <div className="flex justify-end gap-2 pt-2">

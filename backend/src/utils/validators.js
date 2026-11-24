@@ -58,15 +58,37 @@ const materialSchema = Joi.object({
 });
 
 const tareaSchema = Joi.object({
-  numero: Joi.string().required(),
-  titulo: Joi.string().required(),
+  numero: Joi.string().trim().min(1).required().messages({
+    'string.empty': 'El número de tarea es obligatorio',
+    'any.required': 'El número de tarea es obligatorio',
+  }),
+  titulo: Joi.string().trim().min(1).required().messages({
+    'string.empty': 'El título es obligatorio',
+    'any.required': 'El título es obligatorio',
+  }),
   descripcion: Joi.string().allow('').optional(),
-  estado: Joi.string().valid('pendiente', 'en progreso', 'completada', 'cancelada').default('pendiente'),
-  tecnicos: Joi.array().items(Joi.string()).default([]),
-  fechaEjecucion: Joi.alternatives().try(
-    Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
-    Joi.date()
-  ).optional(),
+  estado: Joi.string()
+    .valid('pendiente', 'en progreso', 'completada', 'cancelada')
+    .default('pendiente')
+    .messages({
+      'any.only': 'Estado inválido (pendiente, en progreso, completada o cancelada)',
+    }),
+  /** 0, 1 o N técnicos — nunca obligatorio */
+  tecnicos: Joi.array().items(Joi.string().hex().length(24)).default([]).messages({
+    'string.hex': 'Hay un técnico con ID inválido',
+    'string.length': 'Hay un técnico con ID inválido',
+  }),
+  fechaEjecucion: Joi.alternatives()
+    .try(
+      Joi.string().allow(''),
+      Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
+      Joi.date()
+    )
+    .optional()
+    .allow(null, '')
+    .messages({
+      'alternatives.match': 'Fecha de ejecución inválida (usá AAAA-MM-DD)',
+    }),
   franja_horaria: Joi.string().allow('').optional(),
   cliente: Joi.string().allow('').optional(),
   cuentaCliente: Joi.string()
@@ -100,6 +122,32 @@ const tareaSchema = Joi.object({
     actualizadoAt: Joi.date().optional(),
   }).optional().allow(null),
 }).unknown(false); // No permitir campos adicionales
+
+/** Normaliza body de tarea antes de Joi (vacíos / técnicos). */
+function sanitizeTareaBody(body = {}) {
+  const data = { ...(body || {}) };
+
+  if (Array.isArray(data.tecnicos)) {
+    data.tecnicos = data.tecnicos
+      .map((t) => (typeof t === 'string' ? t : t && t._id ? String(t._id) : ''))
+      .filter((id) => id && /^[a-fA-F0-9]{24}$/.test(id));
+  } else if (data.tecnicos == null) {
+    data.tecnicos = [];
+  }
+
+  if (data.fechaEjecucion === '' || data.fechaEjecucion == null) {
+    delete data.fechaEjecucion;
+  }
+  if (data.especialidad === '') data.especialidad = null;
+  if (data.proveedor === '') data.proveedor = null;
+  if (data.cuentaCliente == null) data.cuentaCliente = '';
+  if (data.origen === 'manual') data.origen = 'sistema';
+
+  delete data.horaInicio;
+  delete data.horaFin;
+
+  return data;
+}
 
 const reciboSchema = Joi.object({
   tecnico: Joi.string().required(),
@@ -203,6 +251,7 @@ module.exports = {
   categoriaMaterialSchema,
   materialSchema,
   tareaSchema,
+  sanitizeTareaBody,
   reciboSchema,
   firmaSchema,
   tareaLiquidacionSchema,

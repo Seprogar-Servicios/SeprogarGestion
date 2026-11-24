@@ -248,10 +248,13 @@ export const createTask = createAsyncThunk(
   'tasks/createTask',
   async (taskData: Partial<Task>, { rejectWithValue }) => {
     try {
-      const response = await api.post<ApiResponse<Task>>('/tareas', taskData);
+      const { sanitizeTaskPayload } = await import('../../utils/errorMessage');
+      const payload = sanitizeTaskPayload(taskData as Record<string, any>);
+      const response = await api.post<ApiResponse<Task>>('/tareas', payload);
       return response.data.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Error al crear tarea');
+      const { getErrorMessage } = await import('../../utils/errorMessage');
+      return rejectWithValue(getErrorMessage(error, 'Error al crear la tarea'));
     }
   }
 );
@@ -260,13 +263,9 @@ export const updateTask = createAsyncThunk(
   'tasks/updateTask',
   async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
     try {
-      // Ensure tecnicos is an array of strings (user IDs)
-      const taskData = { ...data };
-      if (Array.isArray(taskData.tecnicos)) {
-        taskData.tecnicos = taskData.tecnicos.map((t: any) => 
-          typeof t === 'string' ? t : t._id
-        );
-      }
+      const { sanitizeTaskPayload } = await import('../../utils/errorMessage');
+      // Ensure tecnicos is an array of strings (user IDs) — 0, 1 o N
+      const taskData = sanitizeTaskPayload({ ...data });
 
       // Si pasa a "en progreso", intentar GPS del dispositivo
       if (taskData.estado === 'en progreso' && !taskData.ubicacionMapa) {
@@ -288,7 +287,8 @@ export const updateTask = createAsyncThunk(
       const response = await api.put<ApiResponse<Task>>(`/tareas/${id}`, taskData);
       return response.data.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Error al actualizar tarea');
+      const { getErrorMessage } = await import('../../utils/errorMessage');
+      return rejectWithValue(getErrorMessage(error, 'Error al actualizar la tarea'));
     }
   }
 );

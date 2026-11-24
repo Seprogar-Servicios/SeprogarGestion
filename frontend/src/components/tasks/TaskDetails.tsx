@@ -7,6 +7,7 @@ import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import { fetchProveedores } from '../../store/slices/proveedoresSlice';
 import { toast } from 'react-toastify';
 import { showSuccess, showError } from '../../utils/toastUtils';
+import { getErrorMessage } from '../../utils/errorMessage';
 import { preventEnterSubmit } from '../../utils/formGuards';
 import { format } from 'date-fns';
 import type { User as UserType } from '../../types';
@@ -247,7 +248,7 @@ const TaskDetails: React.FC = () => {
       dispatch(fetchTaskById(currentTask._id)); // Refresh task data
     } catch (error) {
       console.error('Error updating task:', error);
-      showError('Error al actualizar la tarea');
+      showError(getErrorMessage(error, 'Error al actualizar la tarea'));
     }
   };
 
@@ -1068,7 +1069,7 @@ const TaskDetails: React.FC = () => {
                           .filter((u): u is UserType => u !== undefined);
                         setFormData((prev) => ({ ...prev, tecnicos: selectedUsers }));
                       }}
-                      hint="Podés buscar por nombre y asignar uno o varios técnicos."
+                      hint="Opcional: sin técnico, uno o varios."
                     />
                   </div>
                   
