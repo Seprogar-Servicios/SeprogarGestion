@@ -155,10 +155,11 @@ export const formatDireccionToMapsUrl = (direccion: string): string => {
   return `https://maps.google.com/?q=${encodedDireccion},Buenos+Aires`;
 };
 
-/** Link de Maps por coordenadas (más fiable si la dirección ya se geocodificó). */
+/** Link de Maps por coordenadas exactas (zoom alto para el técnico). */
 export const formatCoordsToMapsUrl = (lat: number, lng: number): string => {
   if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return '';
-  return `https://www.google.com/maps?q=${lat},${lng}`;
+  const q = `${lat},${lng}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 };
 
 type TaskLocationLike = {
@@ -168,13 +169,26 @@ type TaskLocationLike = {
     lng?: number | null;
     fuente?: 'gps' | 'direccion' | 'tecnico' | string | null;
   } | null;
+  ubicacionDireccion?: {
+    lat?: number | null;
+    lng?: number | null;
+  } | null;
 };
 
 /**
- * Prefiere coords solo si vienen de la dirección geocodificada.
- * Evita mandar a GPS del técnico/admin cuando la tarea está en progreso.
+ * Prioridad para el técnico:
+ * 1) ubicacionDireccion (autocomplete, no se pisa con GPS en vivo)
+ * 2) ubicacionMapa con fuente dirección
+ * 3) búsqueda por texto (menos precisa)
+ * Nunca usa GPS del técnico como destino de la tarea.
  */
 export const formatTaskToMapsUrl = (task: TaskLocationLike): string => {
+  const dirLat = task.ubicacionDireccion?.lat;
+  const dirLng = task.ubicacionDireccion?.lng;
+  if (typeof dirLat === 'number' && typeof dirLng === 'number') {
+    return formatCoordsToMapsUrl(dirLat, dirLng);
+  }
+
   const lat = task.ubicacionMapa?.lat;
   const lng = task.ubicacionMapa?.lng;
   const fuente = task.ubicacionMapa?.fuente;
@@ -183,7 +197,6 @@ export const formatTaskToMapsUrl = (task: TaskLocationLike): string => {
     typeof lng === 'number' &&
     (fuente === 'direccion' || fuente == null || fuente === '')
   ) {
-    // fuente vacía: coords históricas del autocomplete (sin pin en vivo)
     return formatCoordsToMapsUrl(lat, lng);
   }
   return formatDireccionToMapsUrl(task.direccion || '');

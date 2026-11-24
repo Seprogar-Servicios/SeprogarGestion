@@ -67,11 +67,20 @@ const tareaSchema = new mongoose.Schema({
   proveedor: { type: mongoose.Schema.Types.ObjectId, ref: 'Proveedor', default: null },
   /** Marca VIP (opcional; default false — no afecta tareas existentes). */
   vip: { type: Boolean, default: false },
-  // Ubicación en mapa (coords de la dirección principal)
+  // Ubicación en mapa (puede ser pin en vivo gps/tecnico o dirección)
   ubicacionMapa: {
     lat: { type: Number },
     lng: { type: Number },
     fuente: { type: String, enum: ['gps', 'direccion', 'tecnico'] },
+    actualizadoAt: { type: Date },
+  },
+  /**
+   * Coords fijas de la dirección (autocomplete). No se pisan con GPS en vivo.
+   * WhatsApp / Maps del técnico siempre preferir este punto.
+   */
+  ubicacionDireccion: {
+    lat: { type: Number },
+    lng: { type: Number },
     actualizadoAt: { type: Date },
   },
   // Nuevos campos para integración con WhatsApp

@@ -93,6 +93,12 @@ const tareaSchema = Joi.object({
     fuente: Joi.string().valid('gps', 'direccion', 'tecnico').optional(),
     actualizadoAt: Joi.date().optional(),
   }).optional().allow(null),
+  /** Coords fijas de la dirección (autocomplete); no se pisan con GPS en vivo */
+  ubicacionDireccion: Joi.object({
+    lat: Joi.number().min(-90).max(90).required(),
+    lng: Joi.number().min(-180).max(180).required(),
+    actualizadoAt: Joi.date().optional(),
+  }).optional().allow(null),
 }).unknown(false); // No permitir campos adicionales
 
 const reciboSchema = Joi.object({

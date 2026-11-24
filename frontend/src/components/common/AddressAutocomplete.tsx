@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import api from '../../config/api';
 
 export type AddressSuggestion = {
@@ -23,6 +23,13 @@ type Props = {
   mode?: 'address' | 'localidad';
   /** Oculta el texto de ayuda debajo del input */
   hideHint?: boolean;
+  /**
+   * Si true (default en direcciones de tarea), hay que elegir de la lista
+   * para confirmar el punto exacto (Maps / WhatsApp).
+   */
+  requireSelect?: boolean;
+  /** Estado externo: ya hay coords confirmadas */
+  confirmed?: boolean;
 };
 
 const AddressAutocomplete: React.FC<Props> = ({
@@ -37,6 +44,8 @@ const AddressAutocomplete: React.FC<Props> = ({
   inputClassName = '',
   mode = 'address',
   hideHint = false,
+  requireSelect = mode === 'address',
+  confirmed: confirmedProp,
 }) => {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -46,13 +55,24 @@ const AddressAutocomplete: React.FC<Props> = ({
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(
     null
   );
+  const [internalConfirmed, setInternalConfirmed] = useState(Boolean(confirmedProp));
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLUListElement>(null);
   const debounceRef = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const skipFetchRef = useRef(false);
   /** Evita pedir sugerencias al abrir un modal con dirección ya cargada. */
   const [interactive, setInteractive] = useState(false);
+
+  const confirmed =
+    typeof confirmedProp === 'boolean' ? confirmedProp : internalConfirmed;
+
+  useEffect(() => {
+    if (typeof confirmedProp === 'boolean') {
+      setInternalConfirmed(confirmedProp);
+    }
+  }, [confirmedProp]);
 
   const updateMenuPos = () => {
     const el = inputRef.current;
@@ -99,6 +119,7 @@ const AddressAutocomplete: React.FC<Props> = ({
       return;
     }
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    abortRef.current?.abort();
 
     const q = value.trim();
     if (q.length < 3) {
@@ -113,10 +134,16 @@ const AddressAutocomplete: React.FC<Props> = ({
     setLoading(true);
     setErrorHint(null);
     debounceRef.current = window.setTimeout(async () => {
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
       try {
-        const res = await api.get<{ success: boolean; data: AddressSuggestion[] }>('/geo/suggest', {
-          params: { q, limit: 8 },
-        });
+        const res = await api.get<{ success: boolean; data: AddressSuggestion[] }>(
+          '/geo/suggest',
+          {
+            params: { q, limit: 8 },
+            signal: ctrl.signal,
+          }
+        );
         const list = res.data.data || [];
         setSuggestions(list);
         setActiveIndex(list.length > 0 ? 0 : -1);
@@ -126,10 +153,11 @@ const AddressAutocomplete: React.FC<Props> = ({
           setErrorHint(
             mode === 'localidad'
               ? 'Sin coincidencias. Probá barrio o partido (CABA / AMBA).'
-              : 'Sin coincidencias. Probá calle + altura (ej. Av. Corrientes 1234) y elegí de la lista.'
+              : 'Sin coincidencias. Escribí calle + altura (ej. Corrientes 1234) y elegí de la lista.'
           );
         }
       } catch (err: any) {
+        if (err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return;
         setSuggestions([]);
         setOpen(false);
         setActiveIndex(-1);
@@ -142,15 +170,17 @@ const AddressAutocomplete: React.FC<Props> = ({
       } finally {
         setLoading(false);
       }
-    }, 220);
+    }, 150);
 
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
     };
   }, [value, mode, interactive]);
 
   const pick = (s: AddressSuggestion) => {
     skipFetchRef.current = true;
+    setInternalConfirmed(true);
     onChange(s.label);
     onSelect?.(s);
     setSuggestions([]);
@@ -189,7 +219,10 @@ const AddressAutocomplete: React.FC<Props> = ({
   const defaultPlaceholder =
     mode === 'localidad'
       ? 'Ej. Lomas de Zamora, Palermo, Quilmes…'
-      : 'Ej. Av. Corrientes 1234, CABA';
+      : 'Calle y altura — ej. Av. Corrientes 1234';
+
+  const hasText = value.trim().length > 0;
+  const needsConfirm = requireSelect && hasText && !confirmed;
 
   const menu =
     open && suggestions.length > 0 && menuPos
@@ -197,18 +230,21 @@ const AddressAutocomplete: React.FC<Props> = ({
           <ul
             ref={menuRef}
             role="listbox"
-            className="fixed z-[9999] max-h-56 overflow-auto rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-gray-800 shadow-xl"
+            className="fixed z-[9999] max-h-64 overflow-auto rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-gray-800 shadow-xl"
             style={{
               top: menuPos.top,
               left: menuPos.left,
               width: menuPos.width,
             }}
           >
+            <li className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-700 sticky top-0 bg-white dark:bg-gray-800">
+              Elegí una opción · Buenos Aires
+            </li>
             {suggestions.map((s, idx) => (
               <li key={`${s.label}-${s.lat}-${s.lng}`} role="option" aria-selected={idx === activeIndex}>
                 <button
                   type="button"
-                  className={`w-full text-left px-3 py-2 text-sm flex items-start gap-2 ${
+                  className={`w-full text-left px-3 py-2.5 text-sm flex items-start gap-2 ${
                     idx === activeIndex
                       ? 'bg-blue-100 dark:bg-slate-600 text-slate-900 dark:text-white'
                       : 'text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-slate-700'
@@ -218,7 +254,7 @@ const AddressAutocomplete: React.FC<Props> = ({
                   onClick={() => pick(s)}
                 >
                   <MapPin className="h-3.5 w-3.5 mt-0.5 text-blue-500 flex-shrink-0" />
-                  <span>{s.label}</span>
+                  <span className="leading-snug">{s.label}</span>
                 </button>
               </li>
             ))}
@@ -250,6 +286,7 @@ const AddressAutocomplete: React.FC<Props> = ({
           placeholder={placeholder || defaultPlaceholder}
           onChange={(e) => {
             setInteractive(true);
+            setInternalConfirmed(false);
             onChange(e.target.value);
           }}
           onKeyDown={onKeyDown}
@@ -260,21 +297,41 @@ const AddressAutocomplete: React.FC<Props> = ({
               setOpen(true);
             }
           }}
-          className={`w-full pl-9 pr-9 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed ${inputClassName}`}
+          className={`w-full pl-9 pr-10 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed ${
+            needsConfirm
+              ? 'border-amber-400 dark:border-amber-500'
+              : confirmed && hasText
+                ? 'border-emerald-400 dark:border-emerald-500'
+                : 'border-gray-300 dark:border-gray-600'
+          } ${inputClassName}`}
         />
-        {loading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 animate-spin" />
-        )}
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+          {loading ? (
+            <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
+          ) : confirmed && hasText ? (
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          ) : needsConfirm ? (
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          ) : null}
+        </span>
       </div>
       {menu}
       {!hideHint &&
         (errorHint ? (
           <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{errorHint}</p>
+        ) : needsConfirm ? (
+          <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            Elegí una sugerencia de la lista para fijar el punto exacto (WhatsApp / Maps).
+          </p>
+        ) : confirmed && hasText ? (
+          <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+            Ubicación confirmada · el técnico recibe el punto exacto.
+          </p>
         ) : (
           <p className="mt-1 text-[11px] text-slate-400">
             {mode === 'localidad'
-              ? 'Elegí una sugerencia (CABA / AMBA) para ubicar mejor al técnico.'
-              : 'Elegí una sugerencia de la lista para punto exacto en Maps (solo Buenos Aires).'}
+              ? 'Elegí una sugerencia (CABA / AMBA).'
+              : 'Escribí calle + altura y tocá la sugerencia correcta (solo Buenos Aires).'}
           </p>
         ))}
     </div>

@@ -162,13 +162,23 @@ const TaskDetails: React.FC = () => {
         estado: currentTask.estado || 'pendiente',
         origen: currentTask.origen || 'manual',
         ubicacionMapa:
-          currentTask.ubicacionMapa?.lat != null && currentTask.ubicacionMapa?.lng != null
+          currentTask.ubicacionDireccion?.lat != null &&
+          currentTask.ubicacionDireccion?.lng != null
             ? {
-                lat: currentTask.ubicacionMapa.lat,
-                lng: currentTask.ubicacionMapa.lng,
-                fuente: currentTask.ubicacionMapa.fuente || 'direccion',
+                lat: currentTask.ubicacionDireccion.lat,
+                lng: currentTask.ubicacionDireccion.lng,
+                fuente: 'direccion' as const,
               }
-            : null,
+            : currentTask.ubicacionMapa?.lat != null &&
+                currentTask.ubicacionMapa?.lng != null &&
+                (currentTask.ubicacionMapa.fuente === 'direccion' ||
+                  !currentTask.ubicacionMapa.fuente)
+              ? {
+                  lat: currentTask.ubicacionMapa.lat,
+                  lng: currentTask.ubicacionMapa.lng,
+                  fuente: 'direccion' as const,
+                }
+              : null,
       }));
     }
   }, [currentTask]);
@@ -190,6 +200,11 @@ const TaskDetails: React.FC = () => {
       );
       
       // Only include fields that are allowed to be updated
+      if (String(formData.direccion || '').trim() && !formData.ubicacionMapa) {
+        showError('Elegí la dirección de la lista para confirmar el punto exacto (WhatsApp / Maps).');
+        return;
+      }
+
       // No enviamos cuentaCliente: se conserva el valor histórico en DB
       const taskUpdate = {
         numero: formData.numero,
@@ -214,8 +229,12 @@ const TaskDetails: React.FC = () => {
                 lng: formData.ubicacionMapa.lng,
                 fuente: 'direccion' as const,
               },
+              ubicacionDireccion: {
+                lat: formData.ubicacionMapa.lat,
+                lng: formData.ubicacionMapa.lng,
+              },
             }
-          : {}),
+          : { ubicacionDireccion: null }),
       };
       
       await dispatch(updateTask({ 
@@ -968,6 +987,8 @@ const TaskDetails: React.FC = () => {
                     <AddressAutocomplete
                       label="Dirección"
                       value={formData.direccion || ''}
+                      requireSelect
+                      confirmed={Boolean(formData.ubicacionMapa)}
                       onChange={(direccion) =>
                         setFormData({
                           ...formData,

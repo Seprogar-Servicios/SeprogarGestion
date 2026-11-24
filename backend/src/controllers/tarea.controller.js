@@ -137,6 +137,18 @@ exports.createTarea = async (req, res) => {
 
     // Ubicación: coords del autocomplete o geocode de la dirección
     const incomingMap = datosAjustados.ubicacionMapa;
+    const incomingDir = datosAjustados.ubicacionDireccion;
+    if (
+      incomingDir &&
+      typeof incomingDir.lat === 'number' &&
+      typeof incomingDir.lng === 'number'
+    ) {
+      datosAjustados.ubicacionDireccion = {
+        lat: incomingDir.lat,
+        lng: incomingDir.lng,
+        actualizadoAt: new Date(),
+      };
+    }
     if (
       incomingMap &&
       typeof incomingMap.lat === 'number' &&
@@ -148,6 +160,14 @@ exports.createTarea = async (req, res) => {
         fuente: incomingMap.fuente || 'direccion',
         actualizadoAt: new Date(),
       };
+      // Si vienen del autocomplete, fijar también ubicacionDireccion
+      if ((incomingMap.fuente || 'direccion') === 'direccion' && !datosAjustados.ubicacionDireccion) {
+        datosAjustados.ubicacionDireccion = {
+          lat: incomingMap.lat,
+          lng: incomingMap.lng,
+          actualizadoAt: new Date(),
+        };
+      }
     } else if (datosAjustados.direccion) {
       const coords = await geocodeAddress(datosAjustados.direccion);
       if (coords) {
@@ -155,6 +175,11 @@ exports.createTarea = async (req, res) => {
           lat: coords.lat,
           lng: coords.lng,
           fuente: 'direccion',
+          actualizadoAt: new Date(),
+        };
+        datosAjustados.ubicacionDireccion = {
+          lat: coords.lat,
+          lng: coords.lng,
           actualizadoAt: new Date(),
         };
       }
@@ -252,7 +277,7 @@ exports.createTarea = async (req, res) => {
 
 /** Campos de listado (sin materiales / mensaje WhatsApp / blobs pesados). */
 const TAREA_LIST_SELECT =
-  'numero titulo descripcion estado tecnicos fechaCreacion fechaModificacion fechaEjecucion franja_horaria creadoPor cliente cuentaCliente fechaCompletado numeroTitular direccion direccionExtra entreCalles especialidad proveedor vip ubicacionMapa origen';
+  'numero titulo descripcion estado tecnicos fechaCreacion fechaModificacion fechaEjecucion franja_horaria creadoPor cliente cuentaCliente fechaCompletado numeroTitular direccion direccionExtra entreCalles especialidad proveedor vip ubicacionMapa ubicacionDireccion origen',
 
 // Listar tareas con filtros (usuario, estado, fecha, cliente, q)
 exports.getTareas = async (req, res) => {
@@ -484,24 +509,46 @@ exports.updateTarea = async (req, res) => {
       datosActualizados.proveedor = null;
     }
 
+    // Coords fijas de dirección (autocomplete) — independientes del pin en vivo
+    if (
+      datosActualizados.ubicacionDireccion &&
+      typeof datosActualizados.ubicacionDireccion.lat === 'number' &&
+      typeof datosActualizados.ubicacionDireccion.lng === 'number'
+    ) {
+      datosActualizados.ubicacionDireccion = {
+        lat: datosActualizados.ubicacionDireccion.lat,
+        lng: datosActualizados.ubicacionDireccion.lng,
+        actualizadoAt: new Date(),
+      };
+    }
+
     // Si el front mandó coords del autocomplete, persistirlas
     if (
       datosActualizados.ubicacionMapa &&
       typeof datosActualizados.ubicacionMapa.lat === 'number' &&
       typeof datosActualizados.ubicacionMapa.lng === 'number'
     ) {
+      const fuente = datosActualizados.ubicacionMapa.fuente || 'direccion';
       datosActualizados.ubicacionMapa = {
         lat: datosActualizados.ubicacionMapa.lat,
         lng: datosActualizados.ubicacionMapa.lng,
-        fuente: datosActualizados.ubicacionMapa.fuente || 'direccion',
+        fuente,
         actualizadoAt: new Date(),
       };
+      if (fuente === 'direccion') {
+        datosActualizados.ubicacionDireccion = {
+          lat: datosActualizados.ubicacionMapa.lat,
+          lng: datosActualizados.ubicacionMapa.lng,
+          actualizadoAt: new Date(),
+        };
+      }
     } else if (
       Object.prototype.hasOwnProperty.call(datosActualizados, 'direccion') &&
       String(datosActualizados.direccion || '').trim() === ''
     ) {
       // Dirección vaciada: limpiar coords stale
       datosActualizados.ubicacionMapa = null;
+      datosActualizados.ubicacionDireccion = null;
     } else if (
       datosActualizados.direccion &&
       datosActualizados.direccion !== tarea.direccion
@@ -514,9 +561,15 @@ exports.updateTarea = async (req, res) => {
           fuente: 'direccion',
           actualizadoAt: new Date(),
         };
+        datosActualizados.ubicacionDireccion = {
+          lat: coordsDir.lat,
+          lng: coordsDir.lng,
+          actualizadoAt: new Date(),
+        };
       } else {
         // Dirección cambió y no se pudo ubicar: no dejar coords de la dirección anterior
         datosActualizados.ubicacionMapa = null;
+        datosActualizados.ubicacionDireccion = null;
       }
     }
 
@@ -604,6 +657,10 @@ exports.updateTarea = async (req, res) => {
     if (datosActualizados.ubicacionMapa === null) {
       tarea.ubicacionMapa = undefined;
       tarea.markModified('ubicacionMapa');
+    }
+    if (datosActualizados.ubicacionDireccion === null) {
+      tarea.ubicacionDireccion = undefined;
+      tarea.markModified('ubicacionDireccion');
     }
     await tarea.save();
 
@@ -1113,7 +1170,7 @@ exports.getTareasCalendario = async (req, res) => {
     
     const tareas = await Tarea.find(filtro)
       .select(
-        'titulo estado fechaEjecucion fechaCompletado franja_horaria tecnicos cliente cuentaCliente descripcion numero direccion direccionExtra entreCalles especialidad proveedor vip ubicacionMapa numeroTitular origen'
+        'titulo estado fechaEjecucion fechaCompletado franja_horaria tecnicos cliente cuentaCliente descripcion numero direccion direccionExtra entreCalles especialidad proveedor vip ubicacionMapa ubicacionDireccion numeroTitular origen'
       )
       .populate({
         path: 'tecnicos',

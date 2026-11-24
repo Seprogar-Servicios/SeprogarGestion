@@ -66,6 +66,10 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
       showError('Número y título son obligatorios');
       return;
     }
+    if (form.direccion.trim() && !ubicacionCoords) {
+      showError('Elegí la dirección de la lista para confirmar el punto exacto (WhatsApp / Maps).');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -95,6 +99,10 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
                   lat: ubicacionCoords.lat,
                   lng: ubicacionCoords.lng,
                   fuente: 'direccion',
+                },
+                ubicacionDireccion: {
+                  lat: ubicacionCoords.lat,
+                  lng: ubicacionCoords.lng,
                 },
               }
             : {}),
@@ -281,6 +289,8 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           <AddressAutocomplete
             label="Dirección"
             value={form.direccion}
+            requireSelect
+            confirmed={Boolean(ubicacionCoords)}
             onChange={(direccion) => {
               setForm({ ...form, direccion });
               setUbicacionCoords(null);

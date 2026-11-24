@@ -1,17 +1,14 @@
 /**
- * Geocodificación y sugerencias (Buenos Aires / AMBA / Argentina).
- * USIG (GCBA) como fuente principal de autocomplete; Georef y Photon como fallback.
- * Nominatim para geocode puntual.
+ * Geocodificación y sugerencias — solo Buenos Aires (CABA / AMBA).
+ * Prioridad: USIG (GCBA) → Georef. Cache en memoria para respuestas instantáneas.
  */
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
-const PHOTON_URL = 'https://photon.komoot.io/api/';
 const USIG_URL = 'https://servicios.usig.buenosaires.gob.ar/normalizar/';
 const GEOREF_URL = 'https://apis.datos.gob.ar/georef/api/direcciones';
 
-/** BBox aprox. AMBA / Provincia BA: west,south,east,north */
-const BA_BBOX = '-59.2,-35.2,-57.8,-34.0';
-const BA_CENTER = { lat: -34.6037, lon: -58.3816 };
+/** BBox AMBA: west,south,east,north */
+const BA_BBOX = '-59.15,-35.05,-57.75,-34.05';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -23,7 +20,7 @@ async function throttleNominatim() {
   lastNominatimAt = Date.now();
 }
 
-/** CABA + AMBA (más estricto para precisión del técnico). */
+/** CABA + AMBA */
 function inBaArea(lat, lng) {
   return lat >= -35.05 && lat <= -34.05 && lng >= -59.15 && lng <= -57.75;
 }
@@ -35,9 +32,6 @@ function withTimeout(promise, ms) {
   ]);
 }
 
-/**
- * Distancia en km (Haversine).
- */
 function haversineKm(a, b) {
   if (!a || !b || a.lat == null || a.lng == null || b.lat == null || b.lng == null) {
     return null;
@@ -54,23 +48,99 @@ function haversineKm(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-function dedupeSuggestions(items, limit) {
+/** Cache sugerencias (evita reconsultar al teclear / reabrir). */
+const suggestCache = new Map();
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_MAX = 400;
+
+function cacheGet(key) {
+  const hit = suggestCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > CACHE_TTL_MS) {
+    suggestCache.delete(key);
+    return null;
+  }
+  return hit.data;
+}
+
+function cacheSet(key, data) {
+  if (suggestCache.size >= CACHE_MAX) {
+    const first = suggestCache.keys().next().value;
+    suggestCache.delete(first);
+  }
+  suggestCache.set(key, { at: Date.now(), data });
+}
+
+/** Normaliza query corta para USIG (Av. → Avenida, etc.). */
+function normalizeQuery(raw) {
+  let q = String(raw || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!q) return '';
+  q = q.replace(/\bav\.?\b/gi, 'Avenida');
+  q = q.replace(/\bpje\.?\b/gi, 'Pasaje');
+  q = q.replace(/\bc\.?\b(?=\s+\d)/gi, 'Calle');
+  return q;
+}
+
+function cacheKey(q, limit) {
+  return `${q.toLowerCase()}|${limit}`;
+}
+
+function hasStreetNumber(label) {
+  return /\b\d{1,5}\b/.test(String(label || ''));
+}
+
+function rankAndDedupe(items, query, limit) {
+  const q = String(query || '').toLowerCase();
+  const qNum = (q.match(/\b(\d{1,5})\b/) || [])[1] || '';
   const seen = new Set();
-  const out = [];
+  const scored = [];
+
   for (const item of items) {
     if (!item?.label) continue;
     const key = item.label.toLowerCase().replace(/\s+/g, ' ').trim();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(item);
-    if (out.length >= limit) break;
+
+    let score = 0;
+    if (hasStreetNumber(item.label)) score += 40;
+    if (qNum && String(item.label).includes(qNum)) score += 30;
+    if (/caba|capital|ciudad aut[oó]noma/i.test(item.label)) score += 8;
+    if (item.source === 'usig') score += 15;
+    // Prefer shorter precise labels
+    score += Math.max(0, 20 - Math.floor(item.label.length / 12));
+
+    scored.push({ ...item, _score: score });
   }
-  return out;
+
+  scored.sort((a, b) => b._score - a._score);
+  return scored.slice(0, limit).map(({ _score, ...rest }) => rest);
 }
 
-/**
- * Autocomplete oficial GCBA / AMBA (calle + altura + partido).
- */
+function buildUsigLabel(d) {
+  const base = String(d.direccion || '').trim();
+  if (!base) return '';
+  const partido = String(d.nombre_partido || d.partido || '').trim();
+  const localidad = String(d.nombre_localidad || d.localidad || '').trim();
+  const extras = [];
+  if (localidad && !base.toLowerCase().includes(localidad.toLowerCase())) {
+    extras.push(localidad);
+  }
+  if (
+    partido &&
+    !/caba|capital|ciudad aut/i.test(partido) &&
+    !base.toLowerCase().includes(partido.toLowerCase()) &&
+    !extras.some((e) => e.toLowerCase() === partido.toLowerCase())
+  ) {
+    extras.push(partido);
+  }
+  if (!/caba|buenos aires|capital|amba/i.test(base) && extras.length === 0) {
+    extras.push('CABA');
+  }
+  return extras.length ? `${base}, ${extras.join(', ')}` : base;
+}
+
 async function suggestFromUsig(query, limit) {
   try {
     const url = new URL(USIG_URL);
@@ -96,16 +166,13 @@ async function suggestFromUsig(query, limit) {
 
     return list
       .map((d) => {
-        const label = String(d.direccion || '').trim();
+        const label = buildUsigLabel(d);
         if (!label) return null;
         const lng = Number(d.coordenadas?.x);
         const lat = Number(d.coordenadas?.y);
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
-          // Sin coords aún: devolver label con 0,0 filtrado abajo
-          return null;
-        }
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
         if (!inBaArea(lat, lng)) return null;
-        return { label, lat, lng };
+        return { label, lat, lng, source: 'usig' };
       })
       .filter(Boolean);
   } catch (error) {
@@ -114,45 +181,33 @@ async function suggestFromUsig(query, limit) {
   }
 }
 
-/**
- * Georef (datos.gob.ar) — buena cobertura CABA / provincia.
- */
-async function suggestFromGeoref(query, limit) {
+async function suggestFromGeorefProvince(query, limit, provincia) {
   try {
-    const provinces = [
-      'Ciudad Autónoma de Buenos Aires',
-      'Buenos Aires',
-    ];
+    const url = new URL(GEOREF_URL);
+    url.searchParams.set('direccion', query);
+    url.searchParams.set('provincia', provincia);
+    url.searchParams.set('max', String(Math.min(limit, 10)));
+    url.searchParams.set('campos', 'estandar');
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'SeprogarGestion/1.0 (address-suggest-georef)',
+      },
+    });
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const list = Array.isArray(data?.direcciones) ? data.direcciones : [];
     const results = [];
-
-    for (const provincia of provinces) {
-      const url = new URL(GEOREF_URL);
-      url.searchParams.set('direccion', query);
-      url.searchParams.set('provincia', provincia);
-      url.searchParams.set('max', String(Math.min(limit, 10)));
-      url.searchParams.set('campos', 'estandar');
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'SeprogarGestion/1.0 (address-suggest-georef)',
-        },
-      });
-      if (!response.ok) continue;
-
-      const data = await response.json();
-      const list = Array.isArray(data?.direcciones) ? data.direcciones : [];
-      for (const d of list) {
-        const label = String(d.nomenclatura || '').trim();
-        const lat = Number(d.ubicacion?.lat);
-        const lng = Number(d.ubicacion?.lon);
-        if (!label || Number.isNaN(lat) || Number.isNaN(lng)) continue;
-        if (!inBaArea(lat, lng)) continue;
-        results.push({ label, lat, lng });
-      }
-      if (results.length >= limit) break;
+    for (const d of list) {
+      const label = String(d.nomenclatura || '').trim();
+      const lat = Number(d.ubicacion?.lat);
+      const lng = Number(d.ubicacion?.lon);
+      if (!label || Number.isNaN(lat) || Number.isNaN(lng)) continue;
+      if (!inBaArea(lat, lng)) continue;
+      results.push({ label, lat, lng, source: 'georef' });
     }
-
     return results;
   } catch (error) {
     console.error('Error Georef suggest:', error.message);
@@ -160,59 +215,13 @@ async function suggestFromGeoref(query, limit) {
   }
 }
 
-async function suggestFromPhoton(query, limit) {
-  try {
-    const url = new URL(PHOTON_URL);
-    url.searchParams.set('q', query.trim());
-    url.searchParams.set('lang', 'es');
-    url.searchParams.set('limit', String(Math.min(limit, 10)));
-    url.searchParams.set('lat', String(BA_CENTER.lat));
-    url.searchParams.set('lon', String(BA_CENTER.lon));
-    url.searchParams.set('bbox', '-59.2,-35.2,-57.8,-34.0');
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        'User-Agent': 'SeprogarGestion/1.0 (address-suggest)',
-        Accept: 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.warn('Photon error:', response.status);
-      return [];
-    }
-
-    const data = await response.json();
-    const features = Array.isArray(data?.features) ? data.features : [];
-
-    return features
-      .map((f) => {
-        const p = f.properties || {};
-        const coords = f.geometry?.coordinates;
-        if (!Array.isArray(coords) || coords.length < 2) return null;
-
-        const lng = Number(coords[0]);
-        const lat = Number(coords[1]);
-        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-        if (!inBaArea(lat, lng)) return null;
-
-        const parts = [
-          p.name,
-          p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street,
-          p.district || p.suburb || p.city || p.town || p.county,
-          p.state,
-        ].filter(Boolean);
-
-        const label = [...new Set(parts)].join(', ');
-        if (!label) return null;
-
-        return { label, lat, lng };
-      })
-      .filter(Boolean);
-  } catch (error) {
-    console.error('Error Photon suggest:', error.message);
-    return [];
-  }
+async function suggestFromGeoref(query, limit) {
+  // Paralelo CABA + Provincia BA (antes era secuencial → más lento)
+  const [caba, ba] = await Promise.all([
+    suggestFromGeorefProvince(query, limit, 'Ciudad Autónoma de Buenos Aires'),
+    suggestFromGeorefProvince(query, limit, 'Buenos Aires'),
+  ]);
+  return [...caba, ...ba];
 }
 
 /**
@@ -224,10 +233,13 @@ async function geocodeAddress(address) {
     return null;
   }
 
-  // Preferir USIG / Georef para direcciones locales
-  const suggestions = await suggestAddresses(address, 1);
-  if (suggestions[0]) {
-    return { lat: suggestions[0].lat, lng: suggestions[0].lng };
+  const suggestions = await suggestAddresses(address, 3);
+  // Preferir resultado con altura si el query trae número
+  const qNum = (address.match(/\b(\d{1,5})\b/) || [])[1];
+  const best =
+    (qNum && suggestions.find((s) => String(s.label).includes(qNum))) || suggestions[0];
+  if (best) {
+    return { lat: best.lat, lng: best.lng };
   }
 
   let query = address.trim();
@@ -259,13 +271,12 @@ async function geocodeAddress(address) {
     }
 
     const data = await response.json();
-    if (!Array.isArray(data) || data.length === 0) {
-      return null;
-    }
+    if (!Array.isArray(data) || data.length === 0) return null;
 
     const lat = parseFloat(data[0].lat);
     const lng = parseFloat(data[0].lon);
     if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+    if (!inBaArea(lat, lng)) return null;
 
     return { lat, lng };
   } catch (error) {
@@ -275,27 +286,28 @@ async function geocodeAddress(address) {
 }
 
 /**
- * Sugerencias de dirección acotadas a BA / AMBA.
- * @param {string} query
- * @param {number} [limit=6]
- * @returns {Promise<Array<{ label: string, lat: number, lng: number }>>}
+ * Sugerencias acotadas a BA / AMBA.
+ * USIG + Georef en paralelo; ranking prioriza altura + USIG.
  */
 async function suggestAddresses(query, limit = 8) {
   if (!query || typeof query !== 'string' || query.trim().length < 3) {
     return [];
   }
 
-  const q = query.trim();
-  // Prioridad: USIG (GCBA) — más preciso y rápido para BA.
-  // Si alcanza, no esperamos las otras fuentes (menos demora al teclear).
-  const usig = await withTimeout(suggestFromUsig(q, limit), 2200);
-  if (usig.length >= Math.min(4, limit)) {
-    return dedupeSuggestions(usig, limit);
-  }
+  const q = normalizeQuery(query);
+  const key = cacheKey(q, limit);
+  const cached = cacheGet(key);
+  if (cached) return cached;
 
-  // Fallback: Georef (CABA + Prov. BA). Sin Photon (más ruido / más lento).
-  const georef = await withTimeout(suggestFromGeoref(q, limit), 2200);
-  return dedupeSuggestions([...usig, ...georef], limit);
+  // Paralelo: USIG (preciso) + Georef (cobertura). Timeouts cortos.
+  const [usig, georef] = await Promise.all([
+    withTimeout(suggestFromUsig(q, limit), 1800),
+    withTimeout(suggestFromGeoref(q, limit), 1800),
+  ]);
+
+  const merged = rankAndDedupe([...usig, ...georef], q, limit);
+  cacheSet(key, merged);
+  return merged;
 }
 
 module.exports = {

@@ -264,20 +264,16 @@ const TaskList: React.FC = () => {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (formData.direccion.trim() && !ubicacionCoords) {
+        showError('Elegí la dirección de la lista para confirmar el punto exacto (WhatsApp / Maps).');
+        return;
+      }
+
       // Concatenar horaInicio y horaFin para crear franja_horaria
       const franja_horaria = actualizarFranjaHoraria(formData.horaInicio, formData.horaFin);
       
       // Crear objeto con los datos del formulario incluyendo franja_horaria pero excluyendo horaInicio y horaFin
       const { horaInicio, horaFin, ...restFormData } = formData;
-      
-      // Ajustar la fecha de ejecución para evitar problemas de zona horaria
-      let fechaEjecucionAjustada = restFormData.fechaEjecucion;
-      
-      if (fechaEjecucionAjustada) {
-        // Si la fecha viene en formato YYYY-MM-DD (sin tiempo)
-        // La dejamos tal cual para que se maneje como string en el backend
-        // y no se convierta automáticamente a Date con zona horaria UTC;
-      }
       
       const taskData = {
         ...restFormData,
@@ -288,6 +284,10 @@ const TaskList: React.FC = () => {
                 lat: ubicacionCoords.lat,
                 lng: ubicacionCoords.lng,
                 fuente: 'direccion' as const,
+              },
+              ubicacionDireccion: {
+                lat: ubicacionCoords.lat,
+                lng: ubicacionCoords.lng,
               },
             }
           : {}),
@@ -308,6 +308,11 @@ const TaskList: React.FC = () => {
     if (!editingTask) return;
     
     try {
+      if (formData.direccion.trim() && !ubicacionCoords) {
+        showError('Elegí la dirección de la lista para confirmar el punto exacto (WhatsApp / Maps).');
+        return;
+      }
+
       // Concatenar horaInicio y horaFin para crear franja_horaria
       const franja_horaria = actualizarFranjaHoraria(formData.horaInicio, formData.horaFin);
       
@@ -323,8 +328,12 @@ const TaskList: React.FC = () => {
                 lng: ubicacionCoords.lng,
                 fuente: 'direccion' as const,
               },
+              ubicacionDireccion: {
+                lat: ubicacionCoords.lat,
+                lng: ubicacionCoords.lng,
+              },
             }
-          : {}),
+          : { ubicacionDireccion: null }),
       };
       
       await dispatch(updateTask({ id: editingTask._id, data: taskData as any })).unwrap();
@@ -457,9 +466,13 @@ const TaskList: React.FC = () => {
       estado: task.estado as 'pendiente' | 'en progreso' | 'completada'
     });
     setUbicacionCoords(
-      task.ubicacionMapa?.lat != null && task.ubicacionMapa?.lng != null
-        ? { lat: task.ubicacionMapa.lat, lng: task.ubicacionMapa.lng }
-        : null
+      task.ubicacionDireccion?.lat != null && task.ubicacionDireccion?.lng != null
+        ? { lat: task.ubicacionDireccion.lat, lng: task.ubicacionDireccion.lng }
+        : task.ubicacionMapa?.lat != null &&
+            task.ubicacionMapa?.lng != null &&
+            (task.ubicacionMapa.fuente === 'direccion' || !task.ubicacionMapa.fuente)
+          ? { lat: task.ubicacionMapa.lat, lng: task.ubicacionMapa.lng }
+          : null
     );
     setShowCreateModal(true);
   };
@@ -1778,19 +1791,21 @@ const TaskList: React.FC = () => {
                   </div>
                 </div>
 
-                <AddressAutocomplete
-                  label="Dirección"
-                  value={formData.direccion}
-                  onChange={(direccion) => {
-                    setFormData({ ...formData, direccion });
-                    setUbicacionCoords(null);
-                  }}
-                  onSelect={(s) => {
-                    setFormData((prev) => ({ ...prev, direccion: s.label }));
-                    setUbicacionCoords({ lat: s.lat, lng: s.lng });
-                  }}
-                  inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
-                />
+                  <AddressAutocomplete
+                    label="Dirección"
+                    value={formData.direccion}
+                    requireSelect
+                    confirmed={Boolean(ubicacionCoords)}
+                    onChange={(direccion) => {
+                      setFormData({ ...formData, direccion });
+                      setUbicacionCoords(null);
+                    }}
+                    onSelect={(s) => {
+                      setFormData((prev) => ({ ...prev, direccion: s.label }));
+                      setUbicacionCoords({ lat: s.lat, lng: s.lng });
+                    }}
+                    inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
+                  />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">

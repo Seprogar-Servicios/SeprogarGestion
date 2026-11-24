@@ -75,6 +75,12 @@ export interface Task {
     fuente?: 'gps' | 'direccion' | 'tecnico' | null;
     actualizadoAt?: string;
   } | null;
+  /** Coords fijas de la dirección (no se pisan con GPS en vivo) */
+  ubicacionDireccion?: {
+    lat: number;
+    lng: number;
+    actualizadoAt?: string;
+  } | null;
 }
 
 export type CuentaCliente = 'IKE' | 'VAITTY' | 'MDO' | 'Particular' | 'Consorcio' | 'Otro';
