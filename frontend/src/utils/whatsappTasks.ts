@@ -95,8 +95,6 @@ export const buildAdminTasksWhatsAppMessage = (tasks: Task[]): string => {
     message += `*TAREA ${index + 1}: ${String(task.titulo || '').toUpperCase()}*\n`;
     message += `--------------------------------\n`;
     message += `• *Numero:* ${formatTaskNumeroWhatsApp(task)}\n`;
-    const proveedor = proveedorNombreOf(task.proveedor);
-    if (proveedor) message += `• *Proveedor:* ${proveedor}\n`;
     if (task.descripcion) message += `• *Descripcion:* ${task.descripcion}\n`;
     if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
     if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
@@ -129,8 +127,6 @@ export const buildUserTasksWhatsAppMessage = (
   ordered.forEach((task, index) => {
     message += `*Tarea ${index + 1}: ${task.titulo}*\n`;
     message += `• *Numero:* ${formatTaskNumeroWhatsApp(task)}\n`;
-    const proveedor = proveedorNombreOf(task.proveedor);
-    if (proveedor) message += `• *Proveedor:* ${proveedor}\n`;
     if (task.descripcion) message += `• *Descripción:* ${task.descripcion}\n`;
     if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
     if (task.numeroTitular) message += `• *Teléfono:* ${task.numeroTitular}\n`;

@@ -24,7 +24,6 @@ import { compareTasksBySchedule, parseFranjaHoraria } from '../../utils/franjaHo
 import {
   formatTaskLocationWhatsApp,
   formatTaskNumeroWhatsApp,
-  proveedorNombreOf,
 } from '../../utils/whatsappTasks';
 import type { RecommendCreatePrefill } from '../../types/recommendPrefill';
 
@@ -692,8 +691,6 @@ const TaskList: React.FC = () => {
       message += `*TAREA ${index + 1}: ${task.titulo.toUpperCase()}*\n`;
       message += `--------------------------------\n`;
       message += `• *Numero:* ${formatTaskNumeroWhatsApp(task)}\n`;
-      const proveedorWa = proveedorNombreOf(task.proveedor);
-      if (proveedorWa) message += `• *Proveedor:* ${proveedorWa}\n`;
       if (task.descripcion) message += `• *Descripcion:* ${task.descripcion}\n`;
       if (task.cliente) message += `• *Cliente:* ${task.cliente}\n`;
       if (task.numeroTitular) message += `• *Teléfono del Titular:* ${task.numeroTitular}\n`;
@@ -817,8 +814,6 @@ const TaskList: React.FC = () => {
     userSelectedTasks.forEach((task, index) => {
       message += `*Tarea ${index + 1}: ${task.titulo}*\n`;
       message += `• *Numero:* ${formatTaskNumeroWhatsApp(task)}\n`;
-      const proveedorWa = proveedorNombreOf(task.proveedor);
-      if (proveedorWa) message += `• *Proveedor:* ${proveedorWa}\n`;
       if (task.descripcion) {
         message += `• *Descripción:* ${task.descripcion}\n`;
       }

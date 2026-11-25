@@ -6,7 +6,6 @@ import { isAdminRole } from '../../utils/roles';
 import {
   formatTaskLocationWhatsApp,
   formatTaskNumeroWhatsApp,
-  proveedorNombreOf,
 } from '../../utils/whatsappTasks';
 
 interface WhatsAppMessageGeneratorProps {
@@ -102,8 +101,6 @@ const WhatsAppMessageGenerator: React.FC<WhatsAppMessageGeneratorProps> = ({ tas
     
     selectedTasksForTecnico.forEach((task, index) => {
       message += `${index + 1}. *${task.titulo}* (${formatTaskNumeroWhatsApp(task)})\n`;
-      const proveedor = proveedorNombreOf(task.proveedor);
-      if (proveedor) message += `   Proveedor: ${proveedor}\n`;
       if (task.descripcion) message += `   ${task.descripcion}\n`;
       if (task.cliente) message += `   Cliente: ${task.cliente}\n`;
       message += formatTaskLocationWhatsApp(task);
