@@ -64,7 +64,10 @@ type RecommendResponse = {
   recomendaciones: Recomendacion[];
   meta: {
     tecnicosEvaluados: number;
+    tecnicosConCoords?: number;
+    tecnicosOmitidosSinCoords?: number;
     tareasDelDia: number;
+    tareasDelDiaConCoords?: number;
     filtroEspecialidad?: boolean;
   };
 };
@@ -218,18 +221,22 @@ const TecnicoRecommendPage: React.FC = () => {
         missing.push('dirección');
       }
 
-      const fuente = task.ubicacionMapa?.fuente;
-      const lat = task.ubicacionMapa?.lat;
-      const lng = task.ubicacionMapa?.lng;
-      const coordsDireccion =
-        typeof lat === 'number' &&
-        typeof lng === 'number' &&
-        (fuente === 'direccion' || fuente == null || fuente === '');
-      if (coordsDireccion) {
-        setCoords({ lat, lng });
+      const dirLat = task.ubicacionDireccion?.lat;
+      const dirLng = task.ubicacionDireccion?.lng;
+      const mapLat = task.ubicacionMapa?.lat;
+      const mapLng = task.ubicacionMapa?.lng;
+      const mapFuente = task.ubicacionMapa?.fuente;
+      if (typeof dirLat === 'number' && typeof dirLng === 'number') {
+        setCoords({ lat: dirLat, lng: dirLng });
+      } else if (
+        typeof mapLat === 'number' &&
+        typeof mapLng === 'number' &&
+        (mapFuente === 'direccion' || mapFuente == null || mapFuente === '')
+      ) {
+        setCoords({ lat: mapLat, lng: mapLng });
       } else {
         setCoords(null);
-        if (dir) missing.push('coordenadas (se intentará geocodificar)');
+        if (dir) missing.push('coordenadas confirmadas (elegí sugerencia)');
       }
 
       const ymd = toFechaEjecucionYmd(task.fechaEjecucion || null);
@@ -267,8 +274,10 @@ const TecnicoRecommendPage: React.FC = () => {
 
   const handleRecommend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!direccion.trim() && !coords) {
-      showError('Necesitás al menos una dirección (o cargá una tarea con ubicación)');
+    if (!coords) {
+      showError(
+        'Para recomendar elegí la dirección de la lista (punto confirmado). No usamos coordenadas inventadas.'
+      );
       return;
     }
     setLoading(true);
@@ -381,6 +390,8 @@ const TecnicoRecommendPage: React.FC = () => {
         <AddressAutocomplete
           label="Dirección de la tarea"
           value={direccion}
+          requireSelect
+          confirmed={Boolean(coords)}
           onChange={(v) => {
             setDireccion(v);
             setCoords(null);
@@ -480,10 +491,17 @@ const TecnicoRecommendPage: React.FC = () => {
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2 text-xs text-slate-500">
             <span className="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700">
-              {result.meta.tecnicosEvaluados} técnicos evaluados
+              {result.meta.tecnicosConCoords ?? result.recomendaciones.length} con
+              ubicación
             </span>
+            {(result.meta.tecnicosOmitidosSinCoords || 0) > 0 && (
+              <span className="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200">
+                {result.meta.tecnicosOmitidosSinCoords} omitidos sin coords
+              </span>
+            )}
             <span className="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700">
-              {result.meta.tareasDelDia} tareas ese día
+              {result.meta.tareasDelDiaConCoords ?? '—'} / {result.meta.tareasDelDia}{' '}
+              tareas con punto
             </span>
             <span className="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700">
               Franja {result.franja.inicio} – {result.franja.fin}
@@ -497,9 +515,9 @@ const TecnicoRecommendPage: React.FC = () => {
 
           {result.recomendaciones.length === 0 && (
             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-gray-800 px-4 py-6 text-sm text-slate-600 dark:text-slate-300 text-center">
-              No hay técnicos que cumplan el filtro
-              {especialidadId ? ' de especialidad' : ''}. Probá otra especialidad o
-              revisá que los técnicos tengan especialidad asignada.
+              No hay técnicos con ubicación cargada
+              {especialidadId ? ' para esa especialidad' : ''}. Cargá localidad base
+              (sugerencia) en los técnicos o usá otro filtro.
             </div>
           )}
 

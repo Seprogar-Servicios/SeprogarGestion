@@ -461,7 +461,7 @@ const TaskCalendar: React.FC = () => {
         icon={<Calendar className="h-5 w-5" />}
         actions={
           canCreate ? (
-            <button
+          <button
               type="button"
               onClick={() =>
                 setQuickCreate({
@@ -475,7 +475,7 @@ const TaskCalendar: React.FC = () => {
             >
               <Plus className="h-4 w-4 text-blue-600" />
               Crear
-            </button>
+          </button>
           ) : undefined
         }
       />
@@ -554,8 +554,8 @@ const TaskCalendar: React.FC = () => {
           }}
           dayHeaderFormat={{ weekday: 'short', day: 'numeric', omitCommas: true }}
         />
-      </div>
-
+                      </div>
+                      
       {selectedTask && (
         <TaskEventPopover
           task={selectedTask}

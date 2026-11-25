@@ -200,12 +200,6 @@ const TaskDetails: React.FC = () => {
         typeof tecnico === 'string' ? tecnico : tecnico._id
       );
       
-      // Only include fields that are allowed to be updated
-      if (String(formData.direccion || '').trim() && !formData.ubicacionMapa) {
-        showError('Elegí la dirección de la lista para confirmar el punto exacto (WhatsApp / Maps).');
-        return;
-      }
-
       // No enviamos cuentaCliente: se conserva el valor histórico en DB
       const taskUpdate = {
         numero: formData.numero,

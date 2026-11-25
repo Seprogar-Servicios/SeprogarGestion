@@ -13,6 +13,9 @@ const ProfilePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { user, loading } = useAppSelector((state) => state.auth);
   const [localidad, setLocalidad] = useState('');
+  const [localidadCoords, setLocalidadCoords] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
   const [savingLocalidad, setSavingLocalidad] = useState(false);
 
   useEffect(() => {
@@ -21,7 +24,12 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     setLocalidad(user?.localidad || '');
-  }, [user?.localidad]);
+    setLocalidadCoords(
+      user?.ubicacionBase?.lat != null && user?.ubicacionBase?.lng != null
+        ? { lat: user.ubicacionBase.lat, lng: user.ubicacionBase.lng }
+        : null
+    );
+  }, [user?.localidad, user?.ubicacionBase?.lat, user?.ubicacionBase?.lng]);
 
   // Backend usa `usuario` para técnicos de campo; `tecnico` solo por compatibilidad de tipos
   const canEditLocalidad = user?.rol === 'usuario' || user?.rol === 'tecnico';
@@ -32,7 +40,12 @@ const ProfilePage: React.FC = () => {
     try {
       const res = await api.put<{ success: boolean; data: AppUser; message?: string }>(
         '/usuarios/profile',
-        { localidad: localidad.trim() || null }
+        {
+          localidad: localidad.trim() || null,
+          ...(localidadCoords
+            ? { ubicacionBase: { lat: localidadCoords.lat, lng: localidadCoords.lng } }
+            : {}),
+        }
       );
       if (res.data.data) {
         dispatch(setUser(res.data.data));
@@ -184,8 +197,16 @@ const ProfilePage: React.FC = () => {
                         <AddressAutocomplete
                           mode="localidad"
                           value={localidad}
-                          onChange={setLocalidad}
-                          onSelect={(s) => setLocalidad(s.label)}
+                          requireSelect
+                          confirmed={Boolean(localidadCoords)}
+                          onChange={(v) => {
+                            setLocalidad(v);
+                            setLocalidadCoords(null);
+                          }}
+                          onSelect={(s) => {
+                            setLocalidad(s.label);
+                            setLocalidadCoords({ lat: s.lat, lng: s.lng });
+                          }}
                           placeholder="Barrio o partido donde operás"
                         />
                         <button

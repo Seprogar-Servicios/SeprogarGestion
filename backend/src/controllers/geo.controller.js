@@ -25,7 +25,7 @@ exports.suggest = async (req, res) => {
       return res.status(429).json({ success: false, message: 'Demasiadas consultas de dirección' });
     }
     const q = String(req.query.q || '').trim().slice(0, MAX_Q_LEN);
-    const limit = Math.min(parseInt(req.query.limit, 10) || 6, 10);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 6, 8);
     const suggestions = await suggestAddresses(q, limit);
     res.json({ success: true, data: suggestions });
   } catch (err) {

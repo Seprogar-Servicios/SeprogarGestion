@@ -6,7 +6,6 @@ const mongoose = require('mongoose');
 const Subscription = require('../models/Subscription');
 const { sendNotification } = require('../utils/push');
 const { normalizeAddress } = require('../utils/addressNormalizer');
-const { geocodeAddress } = require('../utils/geocode');
 const { isPrivilegedAdmin } = require('../utils/roles');
 const {
   parseHmToMinutes,
@@ -139,7 +138,8 @@ exports.createTarea = async (req, res) => {
       datosAjustados.vip = Boolean(datosAjustados.vip);
     }
 
-    // Ubicación: coords del autocomplete o geocode de la dirección
+    // Ubicación: SOLO coords del autocomplete (opcional).
+    // No geocodificar texto libre al crear: puede ser impreciso y romper mapa/recomendaciones.
     const incomingMap = datosAjustados.ubicacionMapa;
     const incomingDir = datosAjustados.ubicacionDireccion;
     if (
@@ -164,26 +164,10 @@ exports.createTarea = async (req, res) => {
         fuente: incomingMap.fuente || 'direccion',
         actualizadoAt: new Date(),
       };
-      // Si vienen del autocomplete, fijar también ubicacionDireccion
       if ((incomingMap.fuente || 'direccion') === 'direccion' && !datosAjustados.ubicacionDireccion) {
         datosAjustados.ubicacionDireccion = {
           lat: incomingMap.lat,
           lng: incomingMap.lng,
-          actualizadoAt: new Date(),
-        };
-      }
-    } else if (datosAjustados.direccion) {
-      const coords = await geocodeAddress(datosAjustados.direccion);
-      if (coords) {
-        datosAjustados.ubicacionMapa = {
-          lat: coords.lat,
-          lng: coords.lng,
-          fuente: 'direccion',
-          actualizadoAt: new Date(),
-        };
-        datosAjustados.ubicacionDireccion = {
-          lat: coords.lat,
-          lng: coords.lng,
           actualizadoAt: new Date(),
         };
       }
@@ -531,7 +515,7 @@ exports.updateTarea = async (req, res) => {
       datosActualizados.proveedor = null;
     }
 
-    // Coords fijas de dirección (autocomplete) — independientes del pin en vivo
+    // Coords fijas de dirección (autocomplete opcional) — independientes del pin en vivo
     if (
       datosActualizados.ubicacionDireccion &&
       typeof datosActualizados.ubicacionDireccion.lat === 'number' &&
@@ -542,6 +526,11 @@ exports.updateTarea = async (req, res) => {
         lng: datosActualizados.ubicacionDireccion.lng,
         actualizadoAt: new Date(),
       };
+    } else if (
+      Object.prototype.hasOwnProperty.call(datosActualizados, 'ubicacionDireccion') &&
+      datosActualizados.ubicacionDireccion == null
+    ) {
+      datosActualizados.ubicacionDireccion = null;
     }
 
     // Si el front mandó coords del autocomplete, persistirlas
@@ -568,30 +557,28 @@ exports.updateTarea = async (req, res) => {
       Object.prototype.hasOwnProperty.call(datosActualizados, 'direccion') &&
       String(datosActualizados.direccion || '').trim() === ''
     ) {
-      // Dirección vaciada: limpiar coords stale
-      datosActualizados.ubicacionMapa = null;
+      // Dirección vaciada: limpiar coords stale de dirección (no tocar GPS si no venía)
+      if (!tarea.ubicacionMapa || tarea.ubicacionMapa.fuente === 'direccion' || !tarea.ubicacionMapa.fuente) {
+        datosActualizados.ubicacionMapa = null;
+      }
       datosActualizados.ubicacionDireccion = null;
     } else if (
-      datosActualizados.direccion &&
-      datosActualizados.direccion !== tarea.direccion
+      Object.prototype.hasOwnProperty.call(datosActualizados, 'direccion') &&
+      datosActualizados.direccion !== tarea.direccion &&
+      !(
+        datosActualizados.ubicacionMapa &&
+        typeof datosActualizados.ubicacionMapa.lat === 'number'
+      ) &&
+      !(
+        datosActualizados.ubicacionDireccion &&
+        typeof datosActualizados.ubicacionDireccion.lat === 'number'
+      )
     ) {
-      const coordsDir = await geocodeAddress(datosActualizados.direccion);
-      if (coordsDir) {
-        datosActualizados.ubicacionMapa = {
-          lat: coordsDir.lat,
-          lng: coordsDir.lng,
-          fuente: 'direccion',
-          actualizadoAt: new Date(),
-        };
-        datosActualizados.ubicacionDireccion = {
-          lat: coordsDir.lat,
-          lng: coordsDir.lng,
-          actualizadoAt: new Date(),
-        };
-      } else {
-        // Dirección cambió y no se pudo ubicar: no dejar coords de la dirección anterior
+      // Dirección cambió sin sugerencia confirmada: no inventar coords (pueden ser imprecisas).
+      // Limpiar solo el pin de dirección; conservar GPS/técnico en vivo.
+      datosActualizados.ubicacionDireccion = null;
+      if (!tarea.ubicacionMapa || tarea.ubicacionMapa.fuente === 'direccion' || !tarea.ubicacionMapa.fuente) {
         datosActualizados.ubicacionMapa = null;
-        datosActualizados.ubicacionDireccion = null;
       }
     }
 
@@ -609,28 +596,36 @@ exports.updateTarea = async (req, res) => {
           actualizadoAt: new Date(),
         };
       } else {
-        // Preferir base del técnico; si no, dirección de la tarea
+        // Preferir coords confirmadas de la tarea; si no, base del técnico.
+        // No geocodificar texto libre (puede ser impreciso).
         let coords = null;
         let fuente = 'direccion';
-        const tecnicoIds = (datosActualizados.tecnicos || tarea.tecnicos || []).map((t) =>
-          typeof t === 'string' ? t : t.toString()
-        );
-        if (tecnicoIds.length > 0) {
-          const tecnico = await Usuario.findById(tecnicoIds[0]).select(
-            'direccion localidad ubicacionBase'
-          );
-          if (tecnico?.ubicacionBase?.lat != null && tecnico?.ubicacionBase?.lng != null) {
-            coords = { lat: tecnico.ubicacionBase.lat, lng: tecnico.ubicacionBase.lng };
-            fuente = 'tecnico';
-          } else if (tecnico?.localidad || tecnico?.direccion) {
-            coords = await geocodeAddress(tecnico.localidad || tecnico.direccion);
-            if (coords) fuente = 'tecnico';
-          }
+        const dirFixed =
+          (datosActualizados.ubicacionDireccion &&
+          typeof datosActualizados.ubicacionDireccion.lat === 'number'
+            ? datosActualizados.ubicacionDireccion
+            : null) ||
+          (tarea.ubicacionDireccion &&
+          typeof tarea.ubicacionDireccion.lat === 'number'
+            ? tarea.ubicacionDireccion
+            : null);
+        if (dirFixed) {
+          coords = { lat: dirFixed.lat, lng: dirFixed.lng };
+          fuente = 'direccion';
         }
         if (!coords) {
-          const dirTarea = datosActualizados.direccion || tarea.direccion;
-          coords = await geocodeAddress(dirTarea);
-          fuente = 'direccion';
+          const tecnicoIds = (datosActualizados.tecnicos || tarea.tecnicos || []).map((t) =>
+            typeof t === 'string' ? t : t.toString()
+          );
+          if (tecnicoIds.length > 0) {
+            const tecnico = await Usuario.findById(tecnicoIds[0]).select(
+              'direccion localidad ubicacionBase'
+            );
+            if (tecnico?.ubicacionBase?.lat != null && tecnico?.ubicacionBase?.lng != null) {
+              coords = { lat: tecnico.ubicacionBase.lat, lng: tecnico.ubicacionBase.lng };
+              fuente = 'tecnico';
+            }
+          }
         }
         if (coords) {
           datosActualizados.ubicacionMapa = {
@@ -645,24 +640,27 @@ exports.updateTarea = async (req, res) => {
       }
     }
 
-    // Salir de "en progreso": quitar pin en vivo, restaurar coords de la dirección
-    // (LiveMap solo mira estado "en progreso"; DayMap/WhatsApp necesitan la dirección).
+    // Salir de "en progreso": quitar pin GPS; restaurar solo coords confirmadas del autocomplete.
+    // Sin ubicacionDireccion no inventamos punto (evita pins imprecisos en DayMap).
     if (estadoAnterior === 'en progreso' && estadoNuevo !== 'en progreso') {
-      const dirTarea = String(
-        datosActualizados.direccion || tarea.direccion || ''
-      ).trim();
-      if (dirTarea) {
-        const coordsDir = await geocodeAddress(dirTarea);
-        if (coordsDir) {
-          datosActualizados.ubicacionMapa = {
-            lat: coordsDir.lat,
-            lng: coordsDir.lng,
-            fuente: 'direccion',
-            actualizadoAt: new Date(),
-          };
-        } else {
-          datosActualizados.ubicacionMapa = null;
-        }
+      const dirCoords =
+        (datosActualizados.ubicacionDireccion &&
+        typeof datosActualizados.ubicacionDireccion.lat === 'number' &&
+        typeof datosActualizados.ubicacionDireccion.lng === 'number'
+          ? datosActualizados.ubicacionDireccion
+          : null) ||
+        (tarea.ubicacionDireccion &&
+        typeof tarea.ubicacionDireccion.lat === 'number' &&
+        typeof tarea.ubicacionDireccion.lng === 'number'
+          ? tarea.ubicacionDireccion
+          : null);
+      if (dirCoords) {
+        datosActualizados.ubicacionMapa = {
+          lat: dirCoords.lat,
+          lng: dirCoords.lng,
+          fuente: 'direccion',
+          actualizadoAt: new Date(),
+        };
       } else {
         datosActualizados.ubicacionMapa = null;
       }
@@ -829,6 +827,7 @@ exports.recomendarTecnicos = async (req, res) => {
     let proposedEnd = proposedEndRaw;
     if (proposedEnd <= proposedStart) proposedEnd += 24 * 60;
 
+    // Solo coords explícitas (autocomplete). Nunca inventamos geocode de texto libre.
     let targetCoords = null;
     if (
       src.lat != null &&
@@ -837,14 +836,13 @@ exports.recomendarTecnicos = async (req, res) => {
       !Number.isNaN(Number(src.lng))
     ) {
       targetCoords = { lat: Number(src.lat), lng: Number(src.lng) };
-    } else if (direccion) {
-      targetCoords = await geocodeAddress(direccion);
     }
 
     if (!targetCoords) {
       return res.status(400).json({
         success: false,
-        message: 'No se pudo ubicar la dirección. Probá con calle, altura y partido.',
+        message:
+          'Para recomendar necesitás elegir la dirección de la lista (punto confirmado). No inventamos coordenadas.',
       });
     }
 
@@ -876,31 +874,28 @@ exports.recomendarTecnicos = async (req, res) => {
     }
 
     const tareasDia = await Tarea.find(tareasDiaQuery)
-      .select('numero titulo estado direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos')
+      .select(
+        'numero titulo estado direccion franja_horaria fechaEjecucion ubicacionMapa ubicacionDireccion tecnicos'
+      )
       .lean();
 
-    // Geocode liviano de tareas del día sin coords (máx 8).
-    // No pisa pins en vivo (gps/tecnico) si ya hay ubicacionMapa.
-    let geocodeBudget = 8;
+    // Usar solo coords ya guardadas (mapa o dirección confirmada). Nunca geocodificar.
     for (const t of tareasDia) {
-      const has =
+      const hasMap =
         t.ubicacionMapa &&
         typeof t.ubicacionMapa.lat === 'number' &&
         typeof t.ubicacionMapa.lng === 'number';
-      if (has || !t.direccion || geocodeBudget <= 0) continue;
-      const coords = await geocodeAddress(String(t.direccion).trim());
-      geocodeBudget -= 1;
-      if (coords) {
+      if (hasMap) continue;
+      if (
+        t.ubicacionDireccion &&
+        typeof t.ubicacionDireccion.lat === 'number' &&
+        typeof t.ubicacionDireccion.lng === 'number'
+      ) {
         t.ubicacionMapa = {
-          lat: coords.lat,
-          lng: coords.lng,
+          lat: t.ubicacionDireccion.lat,
+          lng: t.ubicacionDireccion.lng,
           fuente: 'direccion',
-          actualizadoAt: new Date(),
         };
-        Tarea.updateOne(
-          { _id: t._id },
-          { $set: { ubicacionMapa: t.ubicacionMapa } }
-        ).catch(() => {});
       }
     }
 
@@ -914,7 +909,7 @@ exports.recomendarTecnicos = async (req, res) => {
       }
     }
 
-    const recomendaciones = rankTecnicos({
+    const { recomendaciones, omitidosSinCoords } = rankTecnicos({
       targetCoords,
       proposedStart,
       proposedEnd,
@@ -922,6 +917,16 @@ exports.recomendarTecnicos = async (req, res) => {
       tareasPorTecnico,
       priorizarCercania,
     });
+
+    const tareasDiaConCoords = tareasDia.filter(
+      (t) =>
+        (t.ubicacionMapa &&
+          typeof t.ubicacionMapa.lat === 'number' &&
+          typeof t.ubicacionMapa.lng === 'number') ||
+        (t.ubicacionDireccion &&
+          typeof t.ubicacionDireccion.lat === 'number' &&
+          typeof t.ubicacionDireccion.lng === 'number')
+    ).length;
 
     res.json({
       success: true,
@@ -935,7 +940,10 @@ exports.recomendarTecnicos = async (req, res) => {
         recomendaciones,
         meta: {
           tecnicosEvaluados: tecnicos.length,
+          tecnicosConCoords: recomendaciones.length,
+          tecnicosOmitidosSinCoords: omitidosSinCoords,
           tareasDelDia: tareasDia.length,
+          tareasDelDiaConCoords: tareasDiaConCoords,
           filtroEspecialidad: Boolean(especialidadId && mongoose.Types.ObjectId.isValid(especialidadId)),
         },
       },
@@ -951,8 +959,8 @@ exports.recomendarTecnicos = async (req, res) => {
 };
 
 /**
- * Mapa del día: tareas de una fecha (y opcional técnico) con coordenadas.
- * Geocodifica direcciones faltantes (y las guarda) para poder ver el recorrido.
+ * Mapa del día: tareas de una fecha (y opcional técnico).
+ * Solo pinea las que ya tienen coords confirmadas; las demás se listan sin inventar punto.
  */
 exports.getMapaDia = async (req, res) => {
   try {
@@ -977,11 +985,12 @@ exports.getMapaDia = async (req, res) => {
 
     const tareas = await Tarea.find(filtro)
       .select(
-        'numero titulo estado cliente direccion franja_horaria fechaEjecucion ubicacionMapa tecnicos'
+        'numero titulo estado cliente direccion franja_horaria fechaEjecucion ubicacionMapa ubicacionDireccion tecnicos'
       )
       .populate('tecnicos', 'nombre telefono direccion color localidad')
       .lean();
 
+    // Solo coords ya confirmadas. Nunca geocodificar texto libre ni persistir inventos.
     let geocoded = 0;
     let sinCoords = 0;
 
@@ -993,36 +1002,18 @@ exports.getMapaDia = async (req, res) => {
 
       if (hasCoords) continue;
 
-      if (tarea.direccion && String(tarea.direccion).trim()) {
-        try {
-          const coords = await geocodeAddress(String(tarea.direccion).trim());
-          if (coords && coords.lat != null && coords.lng != null) {
-            tarea.ubicacionMapa = {
-              lat: coords.lat,
-              lng: coords.lng,
-              fuente: 'direccion',
-              actualizadoAt: new Date(),
-            };
-            geocoded += 1;
-            // Persistir para próximas cargas (no bloquea la respuesta si falla)
-            Tarea.updateOne(
-              { _id: tarea._id },
-              {
-                $set: {
-                  ubicacionMapa: {
-                    lat: coords.lat,
-                    lng: coords.lng,
-                    fuente: 'direccion',
-                    actualizadoAt: new Date(),
-                  },
-                },
-              }
-            ).catch(() => {});
-            continue;
-          }
-        } catch (e) {
-          console.warn('Geocode mapa-día falló:', tarea._id, e.message);
-        }
+      if (
+        tarea.ubicacionDireccion &&
+        typeof tarea.ubicacionDireccion.lat === 'number' &&
+        typeof tarea.ubicacionDireccion.lng === 'number'
+      ) {
+        tarea.ubicacionMapa = {
+          lat: tarea.ubicacionDireccion.lat,
+          lng: tarea.ubicacionDireccion.lng,
+          fuente: 'direccion',
+        };
+        geocoded += 1;
+        continue;
       }
       sinCoords += 1;
     }

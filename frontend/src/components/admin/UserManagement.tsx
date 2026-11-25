@@ -119,6 +119,10 @@ const UserManagement: React.FC = () => {
     color: null,
     especialidades: [],
   });
+  const [editAddressCoords, setEditAddressCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [createFormData, setCreateFormData] = useState({
@@ -134,6 +138,10 @@ const UserManagement: React.FC = () => {
     porcentajeTecnico: 0,
     color: '' as string,
   });
+  const [createAddressCoords, setCreateAddressCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   useEffect(() => {
     if (isAdminRole(user)) {
@@ -188,7 +196,7 @@ const UserManagement: React.FC = () => {
           return;
         }
       }
-      
+
       // Only send the fields that have changed
       const updatedFields: Record<string, unknown> = {};
       Object.entries(formData).forEach(([key, value]) => {
@@ -207,6 +215,16 @@ const UserManagement: React.FC = () => {
       const nextEsp = [...formData.especialidades].slice().sort().join(',');
       if (prevEsp !== nextEsp) {
         updatedFields.especialidades = formData.especialidades;
+      }
+
+      if (
+        editAddressCoords &&
+        (updatedFields.localidad !== undefined || updatedFields.direccion !== undefined)
+      ) {
+        updatedFields.ubicacionBase = {
+          lat: editAddressCoords.lat,
+          lng: editAddressCoords.lng,
+        };
       }
       
       if (Object.keys(updatedFields).length === 0) {
@@ -250,6 +268,7 @@ const UserManagement: React.FC = () => {
       color: null,
       especialidades: [],
     });
+    setEditAddressCoords(null);
   };
 
   const resetCreateForm = () => {
@@ -266,6 +285,7 @@ const UserManagement: React.FC = () => {
       porcentajeTecnico: 0,
       color: nextAvailableColor(takenColors) || '',
     });
+    setCreateAddressCoords(null);
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -295,6 +315,14 @@ const UserManagement: React.FC = () => {
           createFormData.rol === 'usuario' ? createFormData.especialidades : [],
         porcentajeTecnico: createFormData.rol === 'usuario' ? createFormData.porcentajeTecnico : undefined,
         color: createFormData.rol === 'usuario' ? createFormData.color : undefined,
+        ...(createAddressCoords
+          ? {
+              ubicacionBase: {
+                lat: createAddressCoords.lat,
+                lng: createAddressCoords.lng,
+              },
+            }
+          : {}),
       };
       
       await dispatch(createUser(userToCreate)).unwrap();
@@ -327,6 +355,11 @@ const UserManagement: React.FC = () => {
       color: target.color || nextAvailableColor(takenColors) || '',
       especialidades: especialidadIdsOf(target),
     });
+    setEditAddressCoords(
+      target.ubicacionBase?.lat != null && target.ubicacionBase?.lng != null
+        ? { lat: target.ubicacionBase.lat, lng: target.ubicacionBase.lng }
+        : null
+    );
     setShowEditModal(true);
   };
 
@@ -977,16 +1010,32 @@ const UserManagement: React.FC = () => {
                     label="Localidad (base del técnico)"
                     mode="localidad"
                     value={formData.localidad || ''}
-                    onChange={(localidad) => setFormData({ ...formData, localidad })}
-                    onSelect={(s) => setFormData({ ...formData, localidad: s.label })}
+                    requireSelect
+                    confirmed={Boolean(editAddressCoords)}
+                    onChange={(localidad) => {
+                      setFormData({ ...formData, localidad });
+                      setEditAddressCoords(null);
+                    }}
+                    onSelect={(s) => {
+                      setFormData({ ...formData, localidad: s.label });
+                      setEditAddressCoords({ lat: s.lat, lng: s.lng });
+                    }}
                     inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
                   />
                 ) : (
                   <AddressAutocomplete
                     label="Dirección"
                     value={formData.direccion || ''}
-                    onChange={(direccion) => setFormData({ ...formData, direccion })}
-                    onSelect={(s) => setFormData({ ...formData, direccion: s.label })}
+                    requireSelect
+                    confirmed={Boolean(editAddressCoords)}
+                    onChange={(direccion) => {
+                      setFormData({ ...formData, direccion });
+                      setEditAddressCoords(null);
+                    }}
+                    onSelect={(s) => {
+                      setFormData({ ...formData, direccion: s.label });
+                      setEditAddressCoords({ lat: s.lat, lng: s.lng });
+                    }}
                     placeholder="Dirección del usuario"
                     inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
                   />
@@ -1281,16 +1330,32 @@ const UserManagement: React.FC = () => {
                     label="Localidad (base del técnico)"
                     mode="localidad"
                     value={createFormData.localidad}
-                    onChange={(localidad) => setCreateFormData({ ...createFormData, localidad })}
-                    onSelect={(s) => setCreateFormData({ ...createFormData, localidad: s.label })}
+                    requireSelect
+                    confirmed={Boolean(createAddressCoords)}
+                    onChange={(localidad) => {
+                      setCreateFormData({ ...createFormData, localidad });
+                      setCreateAddressCoords(null);
+                    }}
+                    onSelect={(s) => {
+                      setCreateFormData({ ...createFormData, localidad: s.label });
+                      setCreateAddressCoords({ lat: s.lat, lng: s.lng });
+                    }}
                     inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
                   />
                 ) : (
                   <AddressAutocomplete
                     label="Dirección"
                     value={createFormData.direccion}
-                    onChange={(direccion) => setCreateFormData({ ...createFormData, direccion })}
-                    onSelect={(s) => setCreateFormData({ ...createFormData, direccion: s.label })}
+                    requireSelect
+                    confirmed={Boolean(createAddressCoords)}
+                    onChange={(direccion) => {
+                      setCreateFormData({ ...createFormData, direccion });
+                      setCreateAddressCoords(null);
+                    }}
+                    onSelect={(s) => {
+                      setCreateFormData({ ...createFormData, direccion: s.label });
+                      setCreateAddressCoords({ lat: s.lat, lng: s.lng });
+                    }}
                     placeholder="Dirección del usuario"
                     inputClassName="!py-3 !bg-gray-50 dark:!bg-gray-700 !border-0"
                   />

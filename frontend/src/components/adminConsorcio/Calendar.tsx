@@ -42,6 +42,7 @@ const AdminConsorcioCalendar: React.FC = () => {
     fechaEjecucion: '',
     franja_horaria: ''
   });
+  const [direccionConfirmada, setDireccionConfirmada] = useState(false);
 
   // Definición de estados
   const estadoLabels: Record<string, string> = {
@@ -203,6 +204,7 @@ const AdminConsorcioCalendar: React.FC = () => {
       fechaEjecucion: '',
       franja_horaria: ''
     });
+    setDireccionConfirmada(false);
     setSelectedDate(null);
   };
 
@@ -463,8 +465,16 @@ const AdminConsorcioCalendar: React.FC = () => {
                 label="Dirección"
                 required
                 value={formData.direccion}
-                onChange={(direccion) => setFormData({ ...formData, direccion })}
-                onSelect={(s) => setFormData((prev) => ({ ...prev, direccion: s.label }))}
+                requireSelect
+                confirmed={direccionConfirmada}
+                onChange={(direccion) => {
+                  setFormData({ ...formData, direccion });
+                  setDireccionConfirmada(false);
+                }}
+                onSelect={(s) => {
+                  setFormData((prev) => ({ ...prev, direccion: s.label }));
+                  setDireccionConfirmada(true);
+                }}
                 placeholder="Calle, número y partido"
               />
 

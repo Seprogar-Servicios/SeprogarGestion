@@ -1,5 +1,10 @@
 const Joi = require('joi');
 
+const ubicacionBaseSchema = Joi.object({
+  lat: Joi.number().min(-90).max(90).required(),
+  lng: Joi.number().min(-180).max(180).required(),
+}).optional().allow(null);
+
 const userRegisterSchema = Joi.object({
   nombre: Joi.string().required(),
   email: Joi.string().email().required(),
@@ -10,6 +15,7 @@ const userRegisterSchema = Joi.object({
   telefono: Joi.string().optional().allow(null, ''),
   direccion: Joi.string().optional().allow(null, ''),
   localidad: Joi.string().optional().allow(null, ''),
+  ubicacionBase: ubicacionBaseSchema,
   porcentajeTecnico: Joi.number().min(0).max(1).optional().default(0),
   color: Joi.string().pattern(/^#[0-9A-Fa-f]{6}$/).optional().allow(null, ''),
 });
@@ -26,6 +32,7 @@ const userUpdateSchema = Joi.object({
   telefono: Joi.string().optional().allow(null, ''),
   direccion: Joi.string().optional().allow(null, ''),
   localidad: Joi.string().optional().allow(null, ''),
+  ubicacionBase: ubicacionBaseSchema,
   porcentajeTecnico: Joi.number().min(0).max(1).optional(),
   color: Joi.string().pattern(/^#[0-9A-Fa-f]{6}$/).optional().allow(null, ''),
 });

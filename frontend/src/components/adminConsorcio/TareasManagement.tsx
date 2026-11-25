@@ -66,6 +66,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
     prioridad: 'media',
     fotos: []
   });
+  const [direccionConfirmada, setDireccionConfirmada] = useState(false);
 
   // Definición de estados
   const estadoLabels: Record<string, string> = {
@@ -333,6 +334,7 @@ const AdminConsorcioTareasManagement: React.FC = () => {
       prioridad: 'media',
       fotos: []
     });
+    setDireccionConfirmada(false);
   };
 
   const totalPages = Math.ceil(totalTasks / tasksPerPage);
@@ -594,8 +596,16 @@ const AdminConsorcioTareasManagement: React.FC = () => {
                 label="Dirección"
                 required
                 value={formData.direccion}
-                onChange={(direccion) => setFormData({ ...formData, direccion })}
-                onSelect={(s) => setFormData((prev) => ({ ...prev, direccion: s.label }))}
+                requireSelect
+                confirmed={direccionConfirmada}
+                onChange={(direccion) => {
+                  setFormData({ ...formData, direccion });
+                  setDireccionConfirmada(false);
+                }}
+                onSelect={(s) => {
+                  setFormData((prev) => ({ ...prev, direccion: s.label }));
+                  setDireccionConfirmada(true);
+                }}
                 placeholder="Calle, número y partido"
               />
               <div>

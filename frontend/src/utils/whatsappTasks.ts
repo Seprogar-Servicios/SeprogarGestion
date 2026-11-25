@@ -1,6 +1,5 @@
 import type { Task } from '../types';
 import { toFechaEjecucionYmd } from './franjaHoraria';
-import { formatTaskToPreciseMapsUrl } from './mapsUtils';
 
 /** Límite práctico de URL wa.me + texto (varía por dispositivo). */
 const WA_URL_SAFE_LEN = 1800;
@@ -76,16 +75,14 @@ export const formatTaskNumeroWhatsApp = (task: Task): string => {
 
 /**
  * Bloque de ubicación para WhatsApp.
- * Maps SOLO si hay coords confirmadas del autocomplete (punto exacto).
- * Sin coords no mandamos link: la búsqueda por texto puede despistar al técnico.
+ * Sin link de Google Maps: no arriesgamos mandar al técnico a un punto incorrecto.
+ * Solo texto de dirección / extras / entre calles.
  */
 export const formatTaskLocationWhatsApp = (task: Task): string => {
   let block = '';
   if (task.direccion) block += `• *Dirección:* ${task.direccion}\n`;
   if (task.direccionExtra) block += `• *Datos extras:* ${task.direccionExtra}\n`;
   if (task.entreCalles) block += `• *Entre calles:* ${task.entreCalles}\n`;
-  const mapsUrl = formatTaskToPreciseMapsUrl(task);
-  if (mapsUrl) block += `• *Maps:* ${mapsUrl}\n`;
   return block;
 };
 

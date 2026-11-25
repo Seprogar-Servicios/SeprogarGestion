@@ -25,6 +25,9 @@ const AdminConsorcioProfile: React.FC = () => {
     telefono: user?.telefono || '',
     direccion: user?.direccion || ''
   });
+  const [direccionConfirmada, setDireccionConfirmada] = useState(
+    Boolean(String(user?.direccion || '').trim())
+  );
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
@@ -36,6 +39,7 @@ const AdminConsorcioProfile: React.FC = () => {
       telefono: user?.telefono || '',
       direccion: user?.direccion || ''
     });
+    setDireccionConfirmada(Boolean(String(user?.direccion || '').trim()));
     setIsEditing(true);
   };
 
@@ -47,6 +51,7 @@ const AdminConsorcioProfile: React.FC = () => {
       telefono: user?.telefono || '',
       direccion: user?.direccion || ''
     });
+    setDireccionConfirmada(Boolean(String(user?.direccion || '').trim()));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -237,8 +242,16 @@ const AdminConsorcioProfile: React.FC = () => {
                   label="Dirección"
                   value={formData.direccion}
                   disabled={!isEditing}
-                  onChange={(direccion) => setFormData((prev) => ({ ...prev, direccion }))}
-                  onSelect={(s) => setFormData((prev) => ({ ...prev, direccion: s.label }))}
+                  requireSelect
+                  confirmed={direccionConfirmada}
+                  onChange={(direccion) => {
+                    setFormData((prev) => ({ ...prev, direccion }));
+                    setDireccionConfirmada(false);
+                  }}
+                  onSelect={(s) => {
+                    setFormData((prev) => ({ ...prev, direccion: s.label }));
+                    setDireccionConfirmada(true);
+                  }}
                   placeholder="Calle, número y partido"
                   inputClassName={
                     !isEditing

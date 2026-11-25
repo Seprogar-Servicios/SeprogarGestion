@@ -122,6 +122,7 @@ const TareaConsorcioManagement: React.FC = () => {
     estado: '',
     tecnicos: [] as string[]
   });
+  const [direccionConfirmada, setDireccionConfirmada] = useState(false);
 
   // Estados para manejo de archivos
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
@@ -146,6 +147,7 @@ const TareaConsorcioManagement: React.FC = () => {
       estado: '',
       tecnicos: []
     });
+    setDireccionConfirmada(false);
     setSelectedPhotos([]);
   };
   
@@ -355,6 +357,8 @@ const TareaConsorcioManagement: React.FC = () => {
       estado: latestTask.estado || '',
       tecnicos: tecnicosIds
     });
+    // Al editar hay que reconfirmar si se cambia; si no se toca, se asume válida
+    setDireccionConfirmada(Boolean(String(latestTask.direccion || '').trim()));
   };
 
   // Función para asignar técnico
@@ -979,8 +983,16 @@ const TareaConsorcioManagement: React.FC = () => {
                   <AddressAutocomplete
                     label="Dirección *"
                     value={formData.direccion}
-                    onChange={(direccion) => setFormData({ ...formData, direccion })}
-                    onSelect={(s) => setFormData({ ...formData, direccion: s.label })}
+                    requireSelect
+                    confirmed={direccionConfirmada}
+                    onChange={(direccion) => {
+                      setFormData({ ...formData, direccion });
+                      setDireccionConfirmada(false);
+                    }}
+                    onSelect={(s) => {
+                      setFormData({ ...formData, direccion: s.label });
+                      setDireccionConfirmada(true);
+                    }}
                     placeholder="Dirección del cliente"
                   />
                 </div>
@@ -1225,8 +1237,16 @@ const TareaConsorcioManagement: React.FC = () => {
                   <AddressAutocomplete
                     label="Dirección *"
                     value={formData.direccion}
-                    onChange={(direccion) => setFormData({ ...formData, direccion })}
-                    onSelect={(s) => setFormData({ ...formData, direccion: s.label })}
+                    requireSelect
+                    confirmed={direccionConfirmada}
+                    onChange={(direccion) => {
+                      setFormData({ ...formData, direccion });
+                      setDireccionConfirmada(false);
+                    }}
+                    onSelect={(s) => {
+                      setFormData({ ...formData, direccion: s.label });
+                      setDireccionConfirmada(true);
+                    }}
                     placeholder="Dirección del cliente"
                   />
                 </div>

@@ -67,11 +67,6 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
       showError('Número y título son obligatorios');
       return;
     }
-    if (form.direccion.trim() && !ubicacionCoords) {
-      showError('Elegí la dirección de la lista para confirmar el punto exacto (WhatsApp / Maps).');
-      return;
-    }
-
     setSaving(true);
     try {
       const franja_horaria = form.allDay

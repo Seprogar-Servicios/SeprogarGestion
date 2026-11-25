@@ -397,36 +397,71 @@ async function geocodeAddress(address) {
   }
 }
 
+/** Dedup de requests concurrentes iguales (tecleo rápido / doble fetch). */
+const inflightSuggest = new Map();
+
+function isGoodEnoughSuggest(items, query) {
+  if (!items || items.length === 0) return false;
+  const qNum = (String(query || '').match(/\b(\d{1,5})\b/) || [])[1] || '';
+  if (qNum && items.some((s) => String(s.label || '').includes(qNum))) return true;
+  return items.length >= 4;
+}
+
 /**
  * Sugerencias acotadas a BA / AMBA.
- * Prueba variantes (typos/abrevs) en paralelo sobre USIG + Georef.
+ * Fast-path: primary USIG(+Georef si hace falta). Variantes solo si faltan resultados.
  */
-async function suggestAddresses(query, limit = 8) {
+async function suggestAddresses(query, limit = 6) {
   if (!query || typeof query !== 'string' || query.trim().length < 3) {
     return [];
   }
 
   const variants = buildQueryVariants(query);
   const primary = variants[0] || normalizeQuery(query);
-  const key = cacheKey(`v2:${variants.join('|')}`, limit);
+  const key = cacheKey(`v3:${primary}`, limit);
   const cached = cacheGet(key);
   if (cached) return cached;
 
-  // Consultar hasta 3 variantes en paralelo (cada una: USIG + Georef)
-  const toTry = variants.slice(0, 3);
-  const batches = await Promise.all(
-    toTry.map(async (q) => {
-      const [usig, georef] = await Promise.all([
-        withTimeout(suggestFromUsig(q, limit), 1800),
-        withTimeout(suggestFromGeoref(q, limit), 1800),
-      ]);
-      return [...usig, ...georef];
-    })
-  );
+  if (inflightSuggest.has(key)) {
+    return inflightSuggest.get(key);
+  }
 
-  const merged = rankAndDedupe(batches.flat(), primary, limit);
-  cacheSet(key, merged);
-  return merged;
+  const run = (async () => {
+    // 1) Fast path: solo query primaria
+    let usig = await withTimeout(suggestFromUsig(primary, limit), 1400);
+    let merged = rankAndDedupe(usig, primary, limit);
+
+    // Si USIG no alcanza, Georef en paralelo sobre la primaria
+    if (!isGoodEnoughSuggest(merged, primary)) {
+      const georef = await withTimeout(suggestFromGeoref(primary, limit), 1400);
+      merged = rankAndDedupe([...usig, ...georef], primary, limit);
+    }
+
+    // 2) Variantes extra solo si sigue flojo (typos / abrevs)
+    if (!isGoodEnoughSuggest(merged, primary) && variants.length > 1) {
+      const extra = variants.slice(1, 3);
+      const batches = await Promise.all(
+        extra.map(async (q) => {
+          const [u, g] = await Promise.all([
+            withTimeout(suggestFromUsig(q, limit), 1200),
+            withTimeout(suggestFromGeoref(q, limit), 1200),
+          ]);
+          return [...u, ...g];
+        })
+      );
+      merged = rankAndDedupe([...merged, ...batches.flat()], primary, limit);
+    }
+
+    cacheSet(key, merged);
+    return merged;
+  })();
+
+  inflightSuggest.set(key, run);
+  try {
+    return await run;
+  } finally {
+    inflightSuggest.delete(key);
+  }
 }
 
 module.exports = {

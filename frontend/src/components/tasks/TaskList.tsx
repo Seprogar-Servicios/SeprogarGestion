@@ -265,11 +265,6 @@ const TaskList: React.FC = () => {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (formData.direccion.trim() && !ubicacionCoords) {
-        showError('Elegí la dirección de la lista para confirmar el punto exacto (WhatsApp / Maps).');
-        return;
-      }
-
       // Concatenar horaInicio y horaFin para crear franja_horaria
       const franja_horaria = actualizarFranjaHoraria(formData.horaInicio, formData.horaFin);
       
@@ -309,11 +304,6 @@ const TaskList: React.FC = () => {
     if (!editingTask) return;
     
     try {
-      if (formData.direccion.trim() && !ubicacionCoords) {
-        showError('Elegí la dirección de la lista para confirmar el punto exacto (WhatsApp / Maps).');
-        return;
-      }
-
       // Concatenar horaInicio y horaFin para crear franja_horaria
       const franja_horaria = actualizarFranjaHoraria(formData.horaInicio, formData.horaFin);
       

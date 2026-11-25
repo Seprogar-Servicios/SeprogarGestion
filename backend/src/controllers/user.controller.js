@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const { userRegisterSchema, userUpdateSchema } = require('../utils/validators');
 const Joi = require('joi');
 const { isSuperAdmin, isPrivilegedAdmin, MAX_SUPER_ADMINS } = require('../utils/roles');
-const { geocodeAddress } = require('../utils/geocode');
 const { normalizeColor, nextAvailableColor } = require('../utils/tecnicoColors');
 
 /** Normaliza especialidades[] + especialidad (legacy = primera). */
@@ -50,12 +49,20 @@ const assertUniqueTecnicoColor = async (color, excludeUserId = null) => {
   return { ok: true, color: normalized };
 };
 
-const resolveUbicacionBase = async (localidad, direccionLegacy) => {
-  const query = (localidad || direccionLegacy || '').trim();
-  if (!query) return null;
-  const coords = await geocodeAddress(query);
-  if (!coords) return null;
-  return { lat: coords.lat, lng: coords.lng, actualizadoAt: new Date() };
+/** Solo acepta coords del autocomplete. Nunca geocodifica texto libre. */
+const resolveUbicacionBase = (localidad, direccionLegacy, clientCoords = null) => {
+  if (
+    clientCoords &&
+    Number.isFinite(Number(clientCoords.lat)) &&
+    Number.isFinite(Number(clientCoords.lng))
+  ) {
+    return {
+      lat: Number(clientCoords.lat),
+      lng: Number(clientCoords.lng),
+      actualizadoAt: new Date(),
+    };
+  }
+  return null;
 };
 
 const countSuperAdmins = async (excludeId = null) => {
@@ -154,9 +161,14 @@ exports.createUser = async (req, res) => {
       payload.color = null;
     }
 
-    if (payload.localidad || payload.direccion) {
-      const base = await resolveUbicacionBase(payload.localidad, payload.direccion);
+    if (payload.ubicacionBase || payload.localidad || payload.direccion) {
+      const base = resolveUbicacionBase(
+        payload.localidad,
+        payload.direccion,
+        payload.ubicacionBase
+      );
       if (base) payload.ubicacionBase = base;
+      else delete payload.ubicacionBase;
     }
     const usuario = new Usuario(payload);
     await usuario.save();
@@ -270,16 +282,27 @@ exports.updateUser = async (req, res) => {
     const direccionChanged =
       Object.prototype.hasOwnProperty.call(updatePayload, 'direccion') &&
       updatePayload.direccion !== target.direccion;
+    const clientBase = Object.prototype.hasOwnProperty.call(updatePayload, 'ubicacionBase')
+      ? updatePayload.ubicacionBase
+      : null;
 
-    if (localidadChanged || (direccionChanged && !updatePayload.localidad && !target.localidad)) {
-      const base = await resolveUbicacionBase(
+    if (
+      clientBase ||
+      localidadChanged ||
+      (direccionChanged && !updatePayload.localidad && !target.localidad)
+    ) {
+      const base = resolveUbicacionBase(
         updatePayload.localidad ?? target.localidad,
-        updatePayload.direccion ?? target.direccion
+        updatePayload.direccion ?? target.direccion,
+        clientBase
       );
       if (base) {
         updatePayload.ubicacionBase = base;
-      } else if (localidadChanged && !String(updatePayload.localidad || '').trim()) {
+      } else if (localidadChanged || direccionChanged) {
+        // Texto cambió sin sugerencia: no conservar coords viejas ni inventar
         updatePayload.ubicacionBase = undefined;
+      } else {
+        delete updatePayload.ubicacionBase;
       }
     }
 
@@ -458,6 +481,12 @@ exports.updateProfile = async (req, res) => {
       telefono: Joi.string().optional().allow(null, ''),
       direccion: Joi.string().optional().allow(null, ''),
       localidad: Joi.string().optional().allow(null, ''),
+      ubicacionBase: Joi.object({
+        lat: Joi.number().min(-90).max(90).required(),
+        lng: Joi.number().min(-180).max(180).required(),
+      })
+        .optional()
+        .allow(null),
     });
 
     const { error, value } = profileSchema.validate(req.body, {
@@ -496,15 +525,22 @@ exports.updateProfile = async (req, res) => {
     const direccionChanged =
       Object.prototype.hasOwnProperty.call(updateData, 'direccion') &&
       updateData.direccion !== current.direccion;
+    const clientBase =
+      value.ubicacionBase !== undefined ? value.ubicacionBase : null;
 
-    if (localidadChanged || (direccionChanged && !updateData.localidad && !current.localidad)) {
-      const base = await resolveUbicacionBase(
+    if (
+      clientBase ||
+      localidadChanged ||
+      (direccionChanged && !updateData.localidad && !current.localidad)
+    ) {
+      const base = resolveUbicacionBase(
         updateData.localidad ?? current.localidad,
-        updateData.direccion ?? current.direccion
+        updateData.direccion ?? current.direccion,
+        clientBase
       );
       if (base) {
         updateData.ubicacionBase = base;
-      } else if (localidadChanged && !String(updateData.localidad || '').trim()) {
+      } else if (localidadChanged || direccionChanged) {
         updateData.ubicacionBase = null;
       }
     }

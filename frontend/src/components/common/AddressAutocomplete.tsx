@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MapPin, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { MapPin, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 import api from '../../config/api';
 
 export type AddressSuggestion = {
@@ -24,11 +24,13 @@ type Props = {
   /** Oculta el texto de ayuda debajo del input */
   hideHint?: boolean;
   /**
-   * Si true (default en direcciones de tarea), hay que elegir de la lista
-   * para confirmar el punto exacto (Maps / WhatsApp).
+   * Mostrar UX de “recomendado elegir de la lista”.
+   * No bloquea guardar: el admin puede escribir libremente.
+   * @deprecated requireSelect — se mantiene como alias de recommendSelect
    */
+  recommendSelect?: boolean;
   requireSelect?: boolean;
-  /** Estado externo: ya hay coords confirmadas */
+  /** Estado externo: ya hay coords / sugerencia confirmada */
   confirmed?: boolean;
 };
 
@@ -44,9 +46,17 @@ const AddressAutocomplete: React.FC<Props> = ({
   inputClassName = '',
   mode = 'address',
   hideHint = false,
-  requireSelect = mode === 'address',
+  recommendSelect,
+  requireSelect,
   confirmed: confirmedProp,
 }) => {
+  const showRecommend =
+    typeof recommendSelect === 'boolean'
+      ? recommendSelect
+      : typeof requireSelect === 'boolean'
+        ? requireSelect
+        : true;
+
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -133,6 +143,7 @@ const AddressAutocomplete: React.FC<Props> = ({
 
     setLoading(true);
     setErrorHint(null);
+    // Debounce un poco más: menos requests, mismo cache en backend
     debounceRef.current = window.setTimeout(async () => {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -140,7 +151,7 @@ const AddressAutocomplete: React.FC<Props> = ({
         const res = await api.get<{ success: boolean; data: AddressSuggestion[] }>(
           '/geo/suggest',
           {
-            params: { q, limit: 8 },
+            params: { q, limit: 6 },
             signal: ctrl.signal,
           }
         );
@@ -152,8 +163,8 @@ const AddressAutocomplete: React.FC<Props> = ({
         if (list.length === 0) {
           setErrorHint(
             mode === 'localidad'
-              ? 'Sin coincidencias. Probá barrio o partido (CABA / AMBA).'
-              : 'Sin coincidencias. Escribí calle + altura (ej. Corrientes 1234) y elegí de la lista.'
+              ? 'Sin coincidencias. Podés escribir a mano igual.'
+              : 'Sin coincidencias. Podés guardar la dirección a mano igual.'
           );
         }
       } catch (err: any) {
@@ -165,12 +176,12 @@ const AddressAutocomplete: React.FC<Props> = ({
         setErrorHint(
           status === 429
             ? 'Demasiadas consultas. Esperá un momento.'
-            : 'No se pudieron cargar sugerencias de dirección.'
+            : 'No se pudieron cargar sugerencias (podés escribir a mano).'
         );
       } finally {
         setLoading(false);
       }
-    }, 150);
+    }, 220);
 
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
@@ -222,7 +233,7 @@ const AddressAutocomplete: React.FC<Props> = ({
       : 'Calle y altura — ej. Av. Corrientes 1234';
 
   const hasText = value.trim().length > 0;
-  const needsConfirm = requireSelect && hasText && !confirmed;
+  const recommendHint = showRecommend && hasText && !confirmed;
 
   const menu =
     open && suggestions.length > 0 && menuPos
@@ -238,7 +249,7 @@ const AddressAutocomplete: React.FC<Props> = ({
             }}
           >
             <li className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 border-b border-slate-100 dark:border-slate-700 sticky top-0 bg-white dark:bg-gray-800">
-              Elegí una opción · Buenos Aires
+              Recomendado · Buenos Aires
             </li>
             {suggestions.map((s, idx) => (
               <li key={`${s.label}-${s.lat}-${s.lng}`} role="option" aria-selected={idx === activeIndex}>
@@ -298,10 +309,10 @@ const AddressAutocomplete: React.FC<Props> = ({
             }
           }}
           className={`w-full pl-9 pr-10 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed ${
-            needsConfirm
-              ? 'border-amber-400 dark:border-amber-500'
-              : confirmed && hasText
-                ? 'border-emerald-400 dark:border-emerald-500'
+            confirmed && hasText
+              ? 'border-emerald-400 dark:border-emerald-500'
+              : recommendHint
+                ? 'border-sky-300 dark:border-sky-600'
                 : 'border-gray-300 dark:border-gray-600'
           } ${inputClassName}`}
         />
@@ -310,28 +321,32 @@ const AddressAutocomplete: React.FC<Props> = ({
             <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
           ) : confirmed && hasText ? (
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          ) : needsConfirm ? (
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          ) : recommendHint ? (
+            <Sparkles className="h-4 w-4 text-sky-500" />
           ) : null}
         </span>
       </div>
       {menu}
       {!hideHint &&
         (errorHint ? (
-          <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">{errorHint}</p>
-        ) : needsConfirm ? (
-          <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-            Elegí una sugerencia de la lista para fijar el punto exacto (WhatsApp / Maps).
-          </p>
+          <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{errorHint}</p>
         ) : confirmed && hasText ? (
           <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-            Ubicación confirmada · el técnico recibe el punto exacto.
+            {mode === 'localidad'
+              ? 'Localidad confirmada · útil para recomendaciones.'
+              : 'Punto confirmado · útil para mapa y recomendaciones.'}
+          </p>
+        ) : recommendHint ? (
+          <p className="mt-1 text-[11px] text-sky-700 dark:text-sky-300">
+            {mode === 'localidad'
+              ? 'Recomendado: elegí de la lista (opcional). Podés guardar a mano igual.'
+              : 'Recomendado: elegí de la lista para mapa/recomendaciones (opcional). Podés guardar a mano.'}
           </p>
         ) : (
           <p className="mt-1 text-[11px] text-slate-400">
             {mode === 'localidad'
-              ? 'Elegí una sugerencia (CABA / AMBA).'
-              : 'Calle + altura (ej. Inca 5328 Gonzalez Catan). Elegí la sugerencia correcta.'}
+              ? 'Sugerencias CABA / AMBA (opcional).'
+              : 'Calle + altura. Sugerencia recomendada pero opcional.'}
           </p>
         ))}
     </div>

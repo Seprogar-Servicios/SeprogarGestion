@@ -1,4 +1,4 @@
-const { haversineKm, geocodeAddress } = require('./geocode');
+const { haversineKm } = require('./geocode');
 
 const parseHmToMinutes = (hm) => {
   if (!hm || typeof hm !== 'string') return null;
@@ -21,6 +21,7 @@ const parseFranja = (franja) => {
   return { start, end };
 };
 
+/** Solo coords ya cargadas (mapa o dirección confirmada). Nunca inventa. */
 const taskCoords = (tarea) => {
   if (
     tarea?.ubicacionMapa &&
@@ -28,6 +29,13 @@ const taskCoords = (tarea) => {
     typeof tarea.ubicacionMapa.lng === 'number'
   ) {
     return { lat: tarea.ubicacionMapa.lat, lng: tarea.ubicacionMapa.lng };
+  }
+  if (
+    tarea?.ubicacionDireccion &&
+    typeof tarea.ubicacionDireccion.lat === 'number' &&
+    typeof tarea.ubicacionDireccion.lng === 'number'
+  ) {
+    return { lat: tarea.ubicacionDireccion.lat, lng: tarea.ubicacionDireccion.lng };
   }
   return null;
 };
@@ -173,16 +181,30 @@ const rankTecnicos = ({
   /** true = ordenar solo por cercanía (ignora solape de franja al rankear) */
   priorizarCercania = false,
 }) => {
-  const ranked = tecnicos.map((tec) => {
+  let omitidosSinCoords = 0;
+
+  const ranked = [];
+  for (const tec of tecnicos) {
     const tid = String(tec._id);
     const tareasDia = tareasPorTecnico.get(tid) || [];
     const resolved = resolveAnchor(tec, tareasDia, proposedStart, proposedEnd);
-    const km =
-      resolved.anchor && targetCoords
-        ? haversineKm(resolved.anchor, targetCoords)
-        : null;
 
-    return {
+    // Sin ancla con coords reales → no entra a la recomendación
+    if (!resolved.anchor || !targetCoords) {
+      omitidosSinCoords += 1;
+      continue;
+    }
+
+    const km = haversineKm(resolved.anchor, targetCoords);
+    if (km == null) {
+      omitidosSinCoords += 1;
+      continue;
+    }
+
+    let score = km;
+    if (!priorizarCercania && resolved.conflictoFranja) score += 50;
+
+    ranked.push({
       tecnico: {
         _id: tec._id,
         nombre: tec.nombre,
@@ -192,35 +214,24 @@ const rankTecnicos = ({
         color: tec.color,
         especialidad: tec.especialidad,
       },
-      distanciaKm: km != null ? Math.round(km * 10) / 10 : null,
+      distanciaKm: Math.round(km * 10) / 10,
       modo: resolved.modo,
       motivo: resolved.motivo,
       conflictoFranja: resolved.conflictoFranja,
       tareasDelDia: resolved.tareasDelDia,
-      ancla: resolved.anchor
-        ? {
-            lat: resolved.anchor.lat,
-            lng: resolved.anchor.lng,
-            fuente: resolved.anchor.fuente,
-            label: resolved.anchor.label,
-          }
-        : null,
+      ancla: {
+        lat: resolved.anchor.lat,
+        lng: resolved.anchor.lng,
+        fuente: resolved.anchor.fuente,
+        label: resolved.anchor.label,
+      },
       tareaAncla: resolved.tareaAncla,
-      score: (() => {
-        // Menor score = mejor. Sin distancia → peor.
-        if (km == null) return 1e9;
-        let s = km;
-        // Desactivado: priorizar quienes no solapan franja.
-        // Activado: solo distancia (puede terminar antes y llegar).
-        if (!priorizarCercania && resolved.conflictoFranja) s += 50;
-        if (resolved.modo === 'sin_ubicacion') s += 100;
-        return s;
-      })(),
-    };
-  });
+      score,
+    });
+  }
 
-  ranked.sort((a, b) => a.score - b.score || (a.distanciaKm ?? 999) - (b.distanciaKm ?? 999));
-  return ranked;
+  ranked.sort((a, b) => a.score - b.score || a.distanciaKm - b.distanciaKm);
+  return { recomendaciones: ranked, omitidosSinCoords };
 };
 
 module.exports = {
@@ -228,6 +239,6 @@ module.exports = {
   parseFranja,
   resolveAnchor,
   rankTecnicos,
-  geocodeAddress,
+  taskCoords,
   haversineKm,
 };
