@@ -285,7 +285,7 @@ const TaskQuickCreateModal: React.FC<TaskQuickCreateModalProps> = ({
           <AddressAutocomplete
             label="Dirección"
             value={form.direccion}
-            requireSelect
+            recommendSelect
             confirmed={Boolean(ubicacionCoords)}
             onChange={(direccion) => {
               setForm({ ...form, direccion });

@@ -1780,7 +1780,7 @@ const TaskList: React.FC = () => {
                   <AddressAutocomplete
                     label="Dirección"
                     value={formData.direccion}
-                    requireSelect
+                    recommendSelect
                     confirmed={Boolean(ubicacionCoords)}
                     onChange={(direccion) => {
                       setFormData({ ...formData, direccion });

@@ -157,7 +157,9 @@ const AddressAutocomplete: React.FC<Props> = ({
         );
         const list = res.data.data || [];
         setSuggestions(list);
-        setActiveIndex(list.length > 0 ? 0 : -1);
+        // Sin ítem preseleccionado: Enter envía el form (sugerencia opcional).
+        // Flechas / click siguen eligiendo de la lista.
+        setActiveIndex(-1);
         const focused = document.activeElement === inputRef.current;
         setOpen(list.length > 0 && focused);
         if (list.length === 0) {
@@ -207,11 +209,14 @@ const AddressAutocomplete: React.FC<Props> = ({
     }
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex((i) => (i + 1) % suggestions.length);
+      setActiveIndex((i) => (i < 0 ? 0 : (i + 1) % suggestions.length));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveIndex((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+      setActiveIndex((i) =>
+        i < 0 ? suggestions.length - 1 : i === 0 ? suggestions.length - 1 : i - 1
+      );
     } else if (e.key === 'Enter' && activeIndex >= 0 && activeIndex < suggestions.length) {
+      // Solo pisa Enter si el usuario eligió con flechas; si no, deja enviar el form.
       e.preventDefault();
       pick(suggestions[activeIndex]);
     } else if (e.key === 'Escape') {

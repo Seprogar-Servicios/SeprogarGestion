@@ -22,11 +22,12 @@ import {
   formatTaskToPreciseMapsUrl,
 } from '../../utils/mapsUtils';
 import { parseFranjaHoraria } from '../../utils/franjaHoraria';
-import { useAppDispatch } from '../../store';
+import { useAppDispatch, useAppSelector } from '../../store';
 import { updateTask } from '../../store/slices/tasksSlice';
 import { toast } from 'react-toastify';
 import { showError, showSuccess } from '../../utils/toastUtils';
 import { proveedorNombreOf } from '../../utils/whatsappTasks';
+import { isAdminRole } from '../../utils/roles';
 
 type TaskEstado = Task['estado'];
 
@@ -78,6 +79,8 @@ const tecnicoNombre = (t: AppUser | string) => {
 const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose, onUpdated }) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+  const canSeeProveedor = isAdminRole(user);
   const [current, setCurrent] = useState(task);
   const [savingEstado, setSavingEstado] = useState<TaskEstado | null>(null);
 
@@ -389,7 +392,7 @@ const TaskEventPopover: React.FC<TaskEventPopoverProps> = ({ task, onClose, onUp
                 <span>{current.cliente}</span>
               </div>
             )}
-            {proveedorNombre && (
+            {canSeeProveedor && proveedorNombre && (
               <div className="flex items-start gap-2.5 text-gray-700 dark:text-gray-200">
                 <Briefcase className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
                 <span>{proveedorNombre}</span>

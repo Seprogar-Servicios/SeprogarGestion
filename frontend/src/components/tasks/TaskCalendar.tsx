@@ -155,6 +155,7 @@ const TaskCalendar: React.FC = () => {
   const slotHoverRef = useRef<HTMLDivElement | null>(null);
 
   const canCreate = isAdminRole(user);
+  const canSeeProveedor = isAdminRole(user);
 
   const [filters, setFilters] = useState<TaskFilters>({});
   const [visibleRange, setVisibleRange] = useState<{ desde: string; hasta: string } | null>(null);
@@ -381,7 +382,9 @@ const TaskCalendar: React.FC = () => {
     const customTime = String(arg.event.extendedProps.timeLabel || '');
     const estadoLabel = String(arg.event.extendedProps.estadoLabel || '');
     const isVip = Boolean(arg.event.extendedProps.isVip);
-    const proveedorLabel = String(arg.event.extendedProps.proveedorLabel || '');
+    const proveedorLabel = canSeeProveedor
+      ? String(arg.event.extendedProps.proveedorLabel || '')
+      : '';
     const fallbackTime =
       arg.event.start && arg.event.end
         ? `${toLocalHm(arg.event.start)} – ${toLocalHm(arg.event.end)}`
@@ -433,7 +436,7 @@ const TaskCalendar: React.FC = () => {
         </div>
       </div>
     );
-  }, []);
+  }, [canSeeProveedor]);
 
   const filterTrailing = (
     <>

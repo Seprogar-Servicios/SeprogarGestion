@@ -23,3 +23,6 @@ services:
         sync: false
       - key: CORS_ORIGINS
         value: https://seprogar-gestion.vercel.app
+      # Sugerencias de dirección (Geoapify). Sin esta key usa USIG/Georef.
+      - key: GEOAPIFY_API_KEY
+        sync: false

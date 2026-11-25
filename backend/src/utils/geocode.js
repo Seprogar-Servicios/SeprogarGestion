@@ -1,11 +1,13 @@
 /**
  * Geocodificación y sugerencias — solo Buenos Aires (CABA / AMBA).
- * Prioridad: USIG (GCBA) → Georef. Cache en memoria para respuestas instantáneas.
+ * Prioridad: Geoapify (si hay GEOAPIFY_API_KEY) → fallback USIG → Georef.
+ * Cache en memoria para respuestas instantáneas.
  */
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const USIG_URL = 'https://servicios.usig.buenosaires.gob.ar/normalizar/';
 const GEOREF_URL = 'https://apis.datos.gob.ar/georef/api/direcciones';
+const { suggestFromGeoapify } = require('./geoapify');
 
 /** BBox AMBA: west,south,east,north */
 const BA_BBOX = '-59.15,-35.05,-57.75,-34.05';
@@ -408,8 +410,38 @@ function isGoodEnoughSuggest(items, query) {
 }
 
 /**
+ * Fallback histórico: USIG (+ Georef / variantes) — sin Geoapify.
+ */
+async function suggestAddressesUsigGeoref(primary, variants, limit) {
+  let usig = await withTimeout(suggestFromUsig(primary, limit), 1400);
+  let merged = rankAndDedupe(usig, primary, limit);
+
+  if (!isGoodEnoughSuggest(merged, primary)) {
+    const georef = await withTimeout(suggestFromGeoref(primary, limit), 1400);
+    merged = rankAndDedupe([...usig, ...georef], primary, limit);
+  }
+
+  if (!isGoodEnoughSuggest(merged, primary) && variants.length > 1) {
+    const extra = variants.slice(1, 3);
+    const batches = await Promise.all(
+      extra.map(async (q) => {
+        const [u, g] = await Promise.all([
+          withTimeout(suggestFromUsig(q, limit), 1200),
+          withTimeout(suggestFromGeoref(q, limit), 1200),
+        ]);
+        return [...u, ...g];
+      })
+    );
+    merged = rankAndDedupe([...merged, ...batches.flat()], primary, limit);
+  }
+
+  return merged;
+}
+
+/**
  * Sugerencias acotadas a BA / AMBA.
- * Fast-path: primary USIG(+Georef si hace falta). Variantes solo si faltan resultados.
+ * 1) Geoapify (si hay key) sobre query normalizada / variantes.
+ * 2) Si vacío, error o timeout → USIG/Georef (fallback).
  */
 async function suggestAddresses(query, limit = 6) {
   if (!query || typeof query !== 'string' || query.trim().length < 3) {
@@ -418,7 +450,7 @@ async function suggestAddresses(query, limit = 6) {
 
   const variants = buildQueryVariants(query);
   const primary = variants[0] || normalizeQuery(query);
-  const key = cacheKey(`v3:${primary}`, limit);
+  const key = cacheKey(`v4:${primary}`, limit);
   const cached = cacheGet(key);
   if (cached) return cached;
 
@@ -427,29 +459,23 @@ async function suggestAddresses(query, limit = 6) {
   }
 
   const run = (async () => {
-    // 1) Fast path: solo query primaria
-    let usig = await withTimeout(suggestFromUsig(primary, limit), 1400);
-    let merged = rankAndDedupe(usig, primary, limit);
-
-    // Si USIG no alcanza, Georef en paralelo sobre la primaria
-    if (!isGoodEnoughSuggest(merged, primary)) {
-      const georef = await withTimeout(suggestFromGeoref(primary, limit), 1400);
-      merged = rankAndDedupe([...usig, ...georef], primary, limit);
+    // 1) Geoapify primero (usa primary ya normalizado: typos/abrevs locales)
+    let geo = [];
+    try {
+      geo = await withTimeout(suggestFromGeoapify(primary, limit), 1800);
+      if ((!geo || geo.length === 0) && variants.length > 1) {
+        geo = await withTimeout(suggestFromGeoapify(variants[1], limit), 1400);
+      }
+    } catch (err) {
+      console.warn('Geoapify suggest falló, usando fallback:', err.message);
+      geo = [];
     }
 
-    // 2) Variantes extra solo si sigue flojo (typos / abrevs)
-    if (!isGoodEnoughSuggest(merged, primary) && variants.length > 1) {
-      const extra = variants.slice(1, 3);
-      const batches = await Promise.all(
-        extra.map(async (q) => {
-          const [u, g] = await Promise.all([
-            withTimeout(suggestFromUsig(q, limit), 1200),
-            withTimeout(suggestFromGeoref(q, limit), 1200),
-          ]);
-          return [...u, ...g];
-        })
-      );
-      merged = rankAndDedupe([...merged, ...batches.flat()], primary, limit);
+    let merged = rankAndDedupe(geo || [], primary, limit);
+
+    // 2) Fallback USIG/Georef si Geoapify no aportó resultados útiles
+    if (!merged.length) {
+      merged = await suggestAddressesUsigGeoref(primary, variants, limit);
     }
 
     cacheSet(key, merged);

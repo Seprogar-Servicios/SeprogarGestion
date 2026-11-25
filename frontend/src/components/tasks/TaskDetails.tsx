@@ -494,7 +494,7 @@ const TaskDetails: React.FC = () => {
                 ) : null}
                 <span>#{currentTask.numero || 'N/A'}</span>
               </span>
-              {proveedorNombreOf(currentTask.proveedor) ? (
+              {isAdminRole(user) && proveedorNombreOf(currentTask.proveedor) ? (
                 <span className="text-sm text-slate-500 dark:text-slate-400">
                   · {proveedorNombreOf(currentTask.proveedor)}
                 </span>
@@ -982,7 +982,7 @@ const TaskDetails: React.FC = () => {
                     <AddressAutocomplete
                       label="Dirección"
                       value={formData.direccion || ''}
-                      requireSelect
+                      recommendSelect
                       confirmed={Boolean(formData.ubicacionMapa)}
                       onChange={(direccion) =>
                         setFormData({

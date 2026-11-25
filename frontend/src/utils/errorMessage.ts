@@ -54,6 +54,19 @@ export function getErrorMessage(error: unknown, fallback = 'Ocurrió un error'):
 export function sanitizeTaskPayload<T extends Record<string, any>>(raw: T): T {
   const data: Record<string, any> = { ...raw };
 
+  // No reenviar metadatos de documento / UI
+  delete data._id;
+  delete data.id;
+  delete data.__v;
+  delete data.createdAt;
+  delete data.updatedAt;
+  delete data.fechaCreacion;
+  delete data.fechaModificacion;
+  delete data.materiales;
+  delete data.creadoPor;
+  delete data.horaInicio;
+  delete data.horaFin;
+
   // Técnicos: siempre array de IDs (0, 1 o N)
   if (Array.isArray(data.tecnicos)) {
     data.tecnicos = data.tecnicos
@@ -66,19 +79,16 @@ export function sanitizeTaskPayload<T extends Record<string, any>>(raw: T): T {
   // Fechas / textos vacíos → omitir o null
   if (data.fechaEjecucion === '' || data.fechaEjecucion == null) {
     delete data.fechaEjecucion;
+  } else if (typeof data.fechaEjecucion === 'string' && data.fechaEjecucion.includes('T')) {
+    data.fechaEjecucion = data.fechaEjecucion.slice(0, 10);
   }
   if (data.franja_horaria == null) data.franja_horaria = '';
 
-  if (data.especialidad === '' || data.especialidad == null) {
-    data.especialidad = null;
-  }
-  if (data.proveedor === '' || data.proveedor == null) {
-    data.proveedor = null;
-  }
+  const toId = (v: any) =>
+    v == null || v === '' ? null : typeof v === 'string' ? v : v?._id ? String(v._id) : null;
 
-  // No mandar campos UI
-  delete data.horaInicio;
-  delete data.horaFin;
+  data.especialidad = toId(data.especialidad);
+  data.proveedor = toId(data.proveedor);
 
   // Coords: si no hay, no mandar objetos vacíos
   if (data.ubicacionMapa && (data.ubicacionMapa.lat == null || data.ubicacionMapa.lng == null)) {

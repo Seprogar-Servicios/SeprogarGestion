@@ -279,7 +279,7 @@ exports.createTarea = async (req, res) => {
 
 /** Campos de listado (sin materiales / mensaje WhatsApp / blobs pesados). */
 const TAREA_LIST_SELECT =
-  'numero titulo descripcion estado tecnicos fechaCreacion fechaModificacion fechaEjecucion franja_horaria creadoPor cliente cuentaCliente fechaCompletado numeroTitular direccion direccionExtra entreCalles especialidad proveedor vip ubicacionMapa ubicacionDireccion origen',
+  'numero titulo descripcion estado tecnicos fechaCreacion fechaModificacion fechaEjecucion franja_horaria creadoPor cliente cuentaCliente fechaCompletado numeroTitular direccion direccionExtra entreCalles especialidad proveedor vip ubicacionMapa ubicacionDireccion origen';
 
 // Listar tareas con filtros (usuario, estado, fecha, cliente, q)
 exports.getTareas = async (req, res) => {
@@ -452,7 +452,9 @@ exports.getTareaById = async (req, res) => {
 
 // Actualizar tarea (admin, creador o técnico asignado)
 exports.updateTarea = async (req, res) => {
-  const body = sanitizeTareaBody(req.body);
+  const rawBody = req.body || {};
+  const bodyHadOrigen = Object.prototype.hasOwnProperty.call(rawBody, 'origen');
+  const body = sanitizeTareaBody(rawBody);
   const { error, value } = tareaSchema.validate(body, { abortEarly: false });
   if (error) {
     const details = error.details.map((d) => d.message).join(' · ');
@@ -471,6 +473,8 @@ exports.updateTarea = async (req, res) => {
     }
 
     let datosActualizados = { ...value };
+    // Joi aplica default origen=sistema; no pisar histórico si el front no lo mandó
+    if (!bodyHadOrigen) delete datosActualizados.origen;
 
     // Técnico asignado: solo puede cambiar estado y ubicación en vivo
     if (!isAdmin && !isCreator && isAssigned) {

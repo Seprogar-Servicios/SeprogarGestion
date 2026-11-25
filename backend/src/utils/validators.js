@@ -136,9 +136,28 @@ const tareaSchema = Joi.object({
   }).optional().allow(null),
 }).unknown(false); // No permitir campos adicionales
 
+/** Si viene populado `{ _id }`, dejar solo el id string. */
+function refToId(value) {
+  if (value == null || value === '') return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value._id != null) return String(value._id);
+  return value;
+}
+
 /** Normaliza body de tarea antes de Joi (vacíos / técnicos). */
 function sanitizeTareaBody(body = {}) {
   const data = { ...(body || {}) };
+
+  // Campos de documento/UI que a veces se reenvían al editar y rompen Joi (.unknown(false))
+  delete data._id;
+  delete data.id;
+  delete data.__v;
+  delete data.createdAt;
+  delete data.updatedAt;
+  delete data.fechaCreacion;
+  delete data.fechaModificacion;
+  delete data.materiales;
+  delete data.creadoPor;
 
   if (Array.isArray(data.tecnicos)) {
     data.tecnicos = data.tecnicos
@@ -150,7 +169,13 @@ function sanitizeTareaBody(body = {}) {
 
   if (data.fechaEjecucion === '' || data.fechaEjecucion == null) {
     delete data.fechaEjecucion;
+  } else if (typeof data.fechaEjecucion === 'string' && data.fechaEjecucion.includes('T')) {
+    // ISO → YYYY-MM-DD (edición desde lista / popover)
+    data.fechaEjecucion = data.fechaEjecucion.slice(0, 10);
   }
+
+  data.especialidad = refToId(data.especialidad);
+  data.proveedor = refToId(data.proveedor);
   if (data.especialidad === '') data.especialidad = null;
   if (data.proveedor === '') data.proveedor = null;
   if (data.cuentaCliente == null) data.cuentaCliente = '';
