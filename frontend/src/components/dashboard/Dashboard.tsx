@@ -5,6 +5,7 @@ import { fetchTasks, fetchTasksResumen, setFilters } from '../../store/slices/ta
 import { fetchUsers } from '../../store/slices/usersSlice';
 import { fetchEspecialidades } from '../../store/slices/especialidadesSlice';
 import UpcomingTasksFilter from '../filters/UpcomingTasksFilter';
+import AvisosDashboardCard from '../avisos/AvisosDashboardCard';
 import type { TaskFilters } from '../../types';
 import { isAdminRole } from '../../utils/roles';
 import { 
@@ -319,6 +320,8 @@ const Dashboard: React.FC = () => {
           onFiltersChange={handleFiltersChange}
         />
       )}
+
+      {isAdminRole(user) && <AvisosDashboardCard />}
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -5,8 +5,10 @@ import { fetchCurrentUser, setUser } from '../../store/slices/authSlice';
 import ChangePassword from './ChangePassword';
 import AdminPageHeader from '../common/AdminPageHeader';
 import AddressAutocomplete from '../common/AddressAutocomplete';
+import PushNotificationsCard from './PushNotificationsCard';
 import api from '../../config/api';
 import { showError, showSuccess } from '../../utils/toastUtils';
+import { isAdminRole } from '../../utils/roles';
 import type { User as AppUser } from '../../types';
 
 const ProfilePage: React.FC = () => {
@@ -84,6 +86,9 @@ const ProfilePage: React.FC = () => {
         eyebrow="Cuenta"
         icon={<User className="h-5 w-5" />}
       />
+
+      {/* Por ahora push solo para admin y super admin */}
+      {isAdminRole(user) && <PushNotificationsCard />}
 
       <div className={user?.rol === 'usuario' ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 md:grid-cols-3 gap-6'}>
         <div className={user?.rol === 'tecnico' ? '' : 'md:col-span-1'}>

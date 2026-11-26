@@ -157,6 +157,7 @@ app.use('/api/pagos-manuales', require('./routes/pagoManual.routes'));
 app.use('/api/data', require('./routes/data.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/subscribe', require('./routes/subscriptionRoutes'));
+app.use('/api/avisos', require('./routes/aviso.routes'));
 app.use('/api-docs', require('./swagger/swaggerUI'));
 
 // Manejador de errores global

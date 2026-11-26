@@ -31,9 +31,11 @@ import {
   Moon,
   AlertTriangle,
   Building2,
+  Bell,
 } from 'lucide-react';
 import { isAdminRole, roleLabel } from '../../utils/roles';
 import { useTheme } from '../../hooks/useTheme';
+import { disablePush } from '../../utils/pushNotifications';
 
 type NavItem = { name: string; href: string; icon: React.ComponentType<{ className?: string }> };
 type NavGroup = { id: string; label: string; items: NavItem[] };
@@ -138,7 +140,11 @@ const Layout: React.FC = () => {
     setSidebarPinned((prev) => !prev);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Quita la suscripción push de este dispositivo para que no reciba avisos del usuario saliente
+    if (isAdminRole(user)) {
+      await disablePush().catch(() => undefined);
+    }
     dispatch(logoutUser());
     navigate('/login');
   };
@@ -198,6 +204,7 @@ const Layout: React.FC = () => {
           { name: 'Recomendación', href: '/admin/recomendar-tecnico', icon: Lightbulb },
           { name: 'Tareas', href: '/tasks', icon: Calendar },
           { name: 'Tareas de Consorcio', href: '/admin/tareas-consorcio', icon: Building },
+          { name: 'Avisos', href: '/admin/avisos', icon: Bell },
         ],
       },
       {

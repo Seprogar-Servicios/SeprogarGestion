@@ -1,51 +1,55 @@
-const CACHE_NAME = 'futurgas-gestion-v1';
-const urlsToCache = [
-  '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
-];
+/*
+ * Service worker de Seprogar: SOLO notificaciones push.
+ * No intercepta peticiones de red (no cachea), así que no afecta el resto de la app.
+ */
 
-// Install event
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
 
-// Fetch event
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Return cached version or fetch from network
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
-});
-
-// Activate event
 self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: 'Seprogar', body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title || 'Seprogar';
+  const options = {
+    body: data.body || '',
+    icon: '/Seprogar vector.svg',
+    badge: '/Seprogar vector.svg',
+    tag: data.tag || undefined,
+    data: { url: data.url || '/' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of windows) {
+        if ('focus' in client) {
+          await client.focus();
+          if ('navigate' in client) {
+            await client.navigate(url).catch(() => undefined);
           }
-        })
-      );
-    })
+          return;
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(url);
+      }
+    })()
   );
 });

@@ -18,6 +18,7 @@ import Liquidaciones from './components/admin/Liquidaciones';
 import LiveMap from './components/admin/LiveMap';
 import DayMap from './components/admin/DayMap';
 import TecnicoRecommendPage from './components/admin/TecnicoRecommendPage';
+import AvisosManagement from './components/admin/AvisosManagement';
 import ReclamosManagement from './components/admin/ReclamosManagement';
 import CatalogoHub from './components/admin/CatalogoHub';
 import PagosHub from './components/admin/PagosHub';
@@ -134,6 +135,11 @@ const AppRoutes = () => {
         <Route path="/admin/mapa-dia" element={
           <ProtectedRoute requiredRole="admin">
             <DayMap />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/avisos" element={
+          <ProtectedRoute requiredRole="admin">
+            <AvisosManagement />
           </ProtectedRoute>
         } />
         <Route path="/admin/recomendar-tecnico" element={
